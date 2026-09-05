@@ -3,7 +3,7 @@
 Creates consistent dark-themed figures styled with src/theme.py.
 """
 
-from typing import Dict
+from typing import Dict, List
 import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -1072,4 +1072,84 @@ def plot_open_channel_rating(curve: Dict, state: Dict) -> go.Figure:
     fig.update_xaxes(title_text="Depth y [m]", row=1, col=2)
     fig.update_yaxes(title_text="Froude number [-]", row=1, col=2)
     fig.update_layout(title="", height=420)
+    return apply_plotly_theme(fig)
+
+
+def plot_thermal_boundary_layers(profiles: List[Dict]) -> go.Figure:
+    """Velocity and thermal profiles on one similarity axis, for several Pr.
+
+    The velocity profile is the same curve every time -- momentum does not know
+    about Pr. Only the thermal profile moves, and it is the ratio of the two
+    thicknesses that Pr names.
+    """
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("Profiles vs the similarity variable",
+                        "Wall gradient: solved ODE vs the Pr^(1/3) fit"),
+        horizontal_spacing=0.13,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=profiles[0]["f_prime"], y=profiles[0]["eta"],
+            mode="lines", line=dict(color=TEXT_MUTED, width=4, dash="dash"),
+            name="u/U (any Pr)",
+        ),
+        row=1, col=1,
+    )
+    for index, profile in enumerate(profiles):
+        fig.add_trace(
+            go.Scatter(
+                x=profile["theta"], y=profile["eta"],
+                mode="lines", line=dict(color=SERIES[index % len(SERIES)], width=2.6),
+                name=f"theta, Pr = {profile['prandtl']:g}",
+            ),
+            row=1, col=1,
+        )
+    prandtl = [p["prandtl"] for p in profiles]
+    fig.add_trace(
+        go.Scatter(
+            x=prandtl, y=[p["theta_gradient"] for p in profiles],
+            mode="markers", marker=dict(color=ACCENT, size=11),
+            name="solved ODE",
+        ),
+        row=1, col=2,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=prandtl, y=[p["power_law_estimate"] for p in profiles],
+            mode="lines", line=dict(color=WARNING, width=2.4, dash="dot"),
+            name="0.332 Pr^(1/3)",
+        ),
+        row=1, col=2,
+    )
+    fig.update_xaxes(title_text="u/U and theta [-]", row=1, col=1)
+    fig.update_yaxes(title_text="eta = y sqrt(U / nu x)", row=1, col=1)
+    fig.update_xaxes(title_text="Prandtl (or Schmidt) number", type="log", row=1, col=2)
+    fig.update_yaxes(title_text="theta'(0)", type="log", row=1, col=2)
+    fig.update_layout(title="", height=430)
+    return apply_plotly_theme(fig)
+
+
+def plot_transport_correlations(curves: List[Dict], operating: Dict = None) -> go.Figure:
+    """Nu (or Sh) against Re for several geometries, each over its own range."""
+    fig = go.Figure()
+    for index, curve in enumerate(curves):
+        fig.add_trace(
+            go.Scatter(
+                x=curve["reynolds"], y=curve["values"],
+                mode="lines", line=dict(color=SERIES[index % len(SERIES)], width=3),
+                name=curve["geometry"],
+            )
+        )
+    if operating:
+        fig.add_trace(
+            go.Scatter(
+                x=[operating["reynolds"]], y=[operating["value"]],
+                mode="markers", marker=dict(color=WARNING, size=14, symbol="diamond"),
+                name="your case",
+            )
+        )
+    fig.update_xaxes(title_text="Reynolds number", type="log")
+    fig.update_yaxes(title_text="Nusselt or Sherwood number", type="log")
+    fig.update_layout(title="", height=430)
     return apply_plotly_theme(fig)

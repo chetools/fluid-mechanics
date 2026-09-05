@@ -30,6 +30,7 @@ _MODULE_RELOAD_ORDER = (
     "src.physics.turbulence",
     "src.physics.dimensional_analysis",
     "src.physics.boundary_layer",
+    "src.physics.transport_analogy",
     "src.physics.non_newtonian",
     "src.physics.impeller",
     "src.svg_impeller",

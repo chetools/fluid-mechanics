@@ -1025,3 +1025,122 @@ def diagram_asu_flowsheet() -> str:
         <text x="52" y="448" fill="{TEXT_DIM}" font-size="11.5">&#183; The columns do the separating; they need only the temperature difference the condenser&#8211;reboiler provides. Schematic &#8212; not a design flowsheet.</text>
     </svg>
     """
+
+
+
+def _sub(text: str) -> str:
+    """A subscript of arbitrary text, as a tspan pair.
+
+    Unicode has subscripts only for digits and a handful of lowercase letters.
+    There is none for ``w``, none for capitals, and the entities nearby are
+    wildly unrelated -- U+20A2, one past the last subscript letter, is the
+    CRUZEIRO SIGN. Reaching for a numeric entity and hoping is how a wall
+    subscript becomes a currency symbol, so anything Unicode does not actually
+    provide goes through here instead.
+    """
+    return f'<tspan dy="3" font-size="9">{text}</tspan><tspan dy="-3"></tspan>'
+
+
+# =============================================================================
+# Transport analogy: one equation, three quantities
+# =============================================================================
+
+def diagram_transport_analogy() -> str:
+    """The same boundary layer, three times, with the diffusivity swapped."""
+    d_ab = f"D{_sub('AB')}"
+    wall = _sub("w")
+    panels = [
+        (60, "MOMENTUM", INERTIA, "u", "u/U&#8734;", "&#957; = &#956;/&#961;",
+         "&#957; &#8706;&#178;u/&#8706;y&#178;", "no slip: u = 0",
+         f"wall shear &#964;{wall}"),
+        (330, "HEAT", PRESSURE, "T", "&#952;", "&#945; = k/(&#961;c&#8346;)",
+         "&#945; &#8706;&#178;T/&#8706;y&#178;", f"T = T{wall}",
+         f"wall flux q{wall}"),
+        (600, "SPECIES", SUCCESS, "c", "c*", d_ab,
+         f"{d_ab} &#8706;&#178;c/&#8706;y&#178;", f"c = c{wall}",
+         f"wall flux N{wall}"),
+    ]
+    blocks = []
+    for x, title, colour, sym, scaled, diff, term, wall_bc, flux in panels:
+        blocks.append(f"""
+        <rect x="{x}" y="70" width="238" height="212" rx="8" fill="{rgba(colour, 0.07)}" stroke="{colour}" stroke-width="1.6"/>
+        <text x="{x + 16}" y="94" fill="{colour}" font-size="12.5" font-weight="700">{title}</text>
+        <line x1="{x + 16}" y1="248" x2="{x + 222}" y2="248" stroke="{TEXT}" stroke-width="2.5"/>
+        <text x="{x + 16}" y="266" fill="{TEXT_DIM}" font-size="10.5">{wall_bc}</text>
+        <path d="M {x + 30} 248 C {x + 44} 214 {x + 66} 196 {x + 96} 190 L {x + 96} 176" fill="none" stroke="{colour}" stroke-width="2.6"/>
+        <line x1="{x + 96}" y1="176" x2="{x + 210}" y2="176" stroke="{colour}" stroke-width="1.6" stroke-dasharray="5,4"/>
+        <text x="{x + 132}" y="170" fill="{colour}" font-size="11">{scaled} &#8594; 1</text>
+        <text x="{x + 26}" y="126" fill="{TEXT}" font-size="11.5" font-family="'JetBrains Mono', monospace">u &#8706;{sym}/&#8706;x + v &#8706;{sym}/&#8706;y</text>
+        <text x="{x + 26}" y="145" fill="{TEXT}" font-size="11.5" font-family="'JetBrains Mono', monospace">&#160;&#160;= {term}</text>
+        <text x="{x + 122}" y="238" fill="{colour}" font-size="12.5" font-weight="700">{diff}</text>
+        <text x="{x + 122}" y="254" fill="{TEXT_DIM}" font-size="10">m&#178;/s</text>
+        <text x="{x + 16}" y="{282 + 18}" fill="{TEXT_DIM}" font-size="10.5">gives the {flux}</text>
+        """)
+    return f"""
+    <svg viewBox="0 0 880 440" width="100%" height="440" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">One equation, three transported quantities</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Identical left-hand sides. Identical structure on the right. Only the diffusivity changes &#8212; and all three diffusivities are m&#178;/s.</text>
+        {"".join(blocks)}
+        <rect x="60" y="312" width="778" height="52" rx="8" fill="{rgba(WARNING, 0.10)}" stroke="{WARNING}" stroke-width="1.6"/>
+        <text x="80" y="334" fill="{TEXT}" font-size="12.5">Non-dimensionalise and the only fluid property left is a <tspan font-weight="700">ratio of diffusivities</tspan>:</text>
+        <text x="80" y="354" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">Pr = &#957;/&#945;&#160;&#160;&#160;&#160;Sc = &#957;/{d_ab}&#160;&#160;&#160;&#160;Le = &#945;/{d_ab} = Sc/Pr</text>
+        <text x="24" y="388" fill="{TEXT_DIM}" font-size="11.5">Air: Pr &#8776; 0.71, Sc &#8776; 0.6&#8211;0.7, so Le &#8776; 1 &#8212; heat and species spread at nearly the same rate, and the analogy is excellent.</text>
+        <text x="24" y="406" fill="{TEXT_DIM}" font-size="11.5">Water: Pr &#8776; 7, Sc &#8776; 700, so Le &#8776; 100 &#8212; heat outruns species by two orders of magnitude. The analogy still holds; the numbers simply differ.</text>
+        <text x="24" y="426" fill="{TEXT_DIM}" font-size="11.5">Liquid metals: Pr &#8776; 0.01 &#8212; heat outruns momentum, the thermal layer is far thicker than the velocity layer, and Pr^(1/3) fits fail.</text>
+    </svg>
+    """
+
+
+def diagram_transport_geometries() -> str:
+    """Correlation gallery: the same function, six cases, both transport modes."""
+    x_sub = "&#8339;"          # U+2093, the real subscript x
+    cards = [
+        (24, 78, "Flat plate, laminar", ACCENT,
+         f"Nu{x_sub} = 0.332 Re{x_sub}^&#189; Pr^&#8531;",
+         f"Sh{x_sub} = 0.332 Re{x_sub}^&#189; Sc^&#8531;",
+         "derived, not fitted &#183; 0.332 is Blasius f&#8243;(0)"),
+        (300, 78, "Pipe, turbulent", SHEAR,
+         "Nu = 0.023 Re^0.8 Pr^0.4",
+         "Sh = 0.023 Re^0.8 Sc^0.4",
+         "Dittus&#8211;Boelter &#183; Re &gt; 10&#8308;, L/D &gt; 10"),
+        (576, 78, "Sphere", SUCCESS,
+         "Nu = 2 + 0.6 Re^&#189; Pr^&#8531;",
+         "Sh = 2 + 0.6 Re^&#189; Sc^&#8531;",
+         "Ranz&#8211;Marshall &#183; the 2 is the conduction floor"),
+        (24, 246, "Cylinder in crossflow", VORTICITY,
+         "Nu = 0.193 Re^0.618 Pr^&#8531;",
+         "Sh = 0.193 Re^0.618 Sc^&#8531;",
+         "Hilpert &#183; constants change band by band"),
+        (300, 246, "Packed bed", WARNING,
+         "Nu = 2 + 1.1 Re^0.6 Pr^&#8531;",
+         "Sh = 2 + 1.1 Re^0.6 Sc^&#8531;",
+         f"Wakao &#183; superficial velocity, d{_sub('p')}"),
+        (576, 246, "Pipe, laminar", TEXT_MUTED,
+         "Nu = 3.66",
+         "Sh = 3.66",
+         "constant &#183; conduction across the profile"),
+    ]
+    blocks = []
+    for x, y, name, colour, heat, mass, note in cards:
+        blocks.append(f"""
+        <rect x="{x}" y="{y}" width="256" height="150" rx="8" fill="{rgba(colour, 0.06)}" stroke="{colour}" stroke-width="1.5"/>
+        <text x="{x + 16}" y="{y + 24}" fill="{colour}" font-size="12.5" font-weight="700">{name}</text>
+        <rect x="{x + 14}" y="{y + 36}" width="228" height="34" rx="5" fill="{rgba(PRESSURE, 0.12)}"/>
+        <text x="{x + 24}" y="{y + 58}" fill="{TEXT}" font-size="11.5" font-family="'JetBrains Mono', monospace">{heat}</text>
+        <rect x="{x + 14}" y="{y + 76}" width="228" height="34" rx="5" fill="{rgba(SUCCESS, 0.12)}"/>
+        <text x="{x + 24}" y="{y + 98}" fill="{TEXT}" font-size="11.5" font-family="'JetBrains Mono', monospace">{mass}</text>
+        <text x="{x + 16}" y="{y + 132}" fill="{TEXT_DIM}" font-size="10.5">{note}</text>
+        """)
+    return f"""
+    <svg viewBox="0 0 880 470" width="100%" height="470" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">The same correlation, read twice</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Red band: heat. Green band: mass. Every second line is the first with Pr replaced by Sc and Nu by Sh &#8212; nothing else changes.</text>
+        {"".join(blocks)}
+        <text x="24" y="428" fill="{TEXT}" font-size="12.5">This is why a wind-tunnel heat-transfer measurement predicts an evaporation rate, and why naphthalene sublimation is used to map heat-transfer coefficients.</text>
+        <text x="24" y="450" fill="{TEXT_DIM}" font-size="11.5">It fails where the two problems stop matching: high mass-transfer rates that distort the velocity profile, chemical reaction, and geometries where form drag dominates skin friction.</text>
+    </svg>
+    """

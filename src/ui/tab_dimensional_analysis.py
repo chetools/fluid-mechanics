@@ -4,7 +4,21 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-from src.svg_diagrams import diagram_null_space_matrix, render_svg
+from src.svg_diagrams import (
+    diagram_null_space_matrix,
+    diagram_transport_analogy,
+    diagram_transport_geometries,
+    render_svg,
+)
+from src.physics.transport_analogy import (
+    CORRELATIONS,
+    analogy_pair,
+    diffusivities,
+    pohlhausen_theta_gradient,
+    sweep_reynolds,
+)
+from src.plotting import plot_thermal_boundary_layers, plot_transport_correlations
+from src.ui.pedagogy import render_plot, render_symbols
 from src.physics.dimensional_analysis import (
     VARIABLE_REGISTRY,
     compute_null_space_pi_groups,
@@ -459,4 +473,267 @@ def render_tab_dimensional_analysis():
         ],
         "Search the kernel for the fewest Π's that share the most information with the output",
         "Buckingham is an upper bound on the number of groups. Information tells you which mix is worth measuring.",
+    )
+
+    # -------------------------------------------------------------------------
+    # PART 6: Transport analogies
+    # -------------------------------------------------------------------------
+    st.markdown("---")
+    st.markdown("### 3.6 The same analysis for heat and mass transfer")
+    render_objectives(
+        [
+            "Say why $\\nu$, $\\alpha$ and $D_{AB}$ are the same kind of quantity.",
+            "Get $\\mathrm{Nu} = f(\\mathrm{Re},\\mathrm{Pr})$ and $\\mathrm{Sh} = f(\\mathrm{Re},\\mathrm{Sc})$ from the same dimensional matrix.",
+            "Derive the flat-plate correlation from the Blasius solution instead of quoting it.",
+            "Convert a heat-transfer correlation into a mass-transfer one, and know when that is not allowed.",
+        ]
+    )
+    render_prose_and_latex(
+        r"""
+        Everything above was about momentum. None of it was *specific* to momentum. Run the
+        same machinery on heat and on species and you get the same structure, because the
+        governing equations are the same equation.
+        """
+    )
+    render_svg(diagram_transport_analogy())
+
+    st.markdown("#### 3.6.1 Three diffusivities doing one job")
+    render_prose_and_latex(
+        r"""
+        Momentum, heat and species each spread by a **diffusivity** with units of m²/s:
+        $$\nu = \frac{\mu}{\rho}, \qquad \alpha = \frac{k}{\rho c_p}, \qquad D_{AB}$$
+        In the boundary layer they appear in identical positions:
+        $$u\frac{\partial u}{\partial x}+v\frac{\partial u}{\partial y}=\nu\frac{\partial^2 u}{\partial y^2},
+        \quad u\frac{\partial T}{\partial x}+v\frac{\partial T}{\partial y}=\alpha\frac{\partial^2 T}{\partial y^2},
+        \quad u\frac{\partial c}{\partial x}+v\frac{\partial c}{\partial y}=D_{AB}\frac{\partial^2 c}{\partial y^2}$$
+        Because a diffusivity is the *only* property in each equation, non-dimensionalising
+        can leave only **ratios of diffusivities**:
+        $$\mathrm{Pr}=\frac{\nu}{\alpha}, \qquad \mathrm{Sc}=\frac{\nu}{D_{AB}},
+        \qquad \mathrm{Le}=\frac{\alpha}{D_{AB}}=\frac{\mathrm{Sc}}{\mathrm{Pr}}$$
+        Read them as *relative* rates. $\mathrm{Pr}\gg 1$ means momentum spreads faster than
+        heat, so the thermal layer sits *inside* the velocity layer. $\mathrm{Pr}\ll 1$
+        (a liquid metal) is the reverse.
+        """
+    )
+    render_symbols(
+        [
+            (r"\nu", r"momentum diffusivity, $\mu/\rho$ (m²/s). Also called kinematic viscosity."),
+            (r"\alpha", r"thermal diffusivity, $k/(\rho c_p)$ (m²/s)."),
+            (r"D_{AB}", "mass diffusivity of A through B (m²/s)."),
+            (r"\mathrm{Nu}", r"Nusselt number, $hL/k$. The dimensionless wall temperature gradient."),
+            (r"\mathrm{Sh}", r"Sherwood number, $k_c L/D_{AB}$. The dimensionless wall concentration gradient."),
+            (r"\mathrm{St}", r"Stanton number, $\mathrm{Nu}/(\mathrm{Re}\,\mathrm{Pr}) = h/(\rho c_p U)$."),
+        ]
+    )
+
+    st.markdown("#### 3.6.2 The dimensional analysis, done twice")
+    render_prose_and_latex(
+        r"""
+        Run §3.3's procedure on convective heat transfer. The variables are
+        $h, L, U, \rho, \mu, k, c_p$ — seven of them, in four dimensions
+        ($M, L, T, \Theta$, adding temperature). Rank 4, so
+        $$p = n - \operatorname{rank}(\mathbf{A}) = 7 - 4 = 3$$
+        three groups, conventionally
+        $$\mathrm{Nu}=\Phi\left(\mathrm{Re},\ \mathrm{Pr}\right)$$
+        Now mass transfer: $k_c, L, U, \rho, \mu, D_{AB}$ — six variables in three dimensions
+        ($M, L, T$; no temperature, and concentration cancels for dilute transfer). Rank 3, so
+        $p = 3$ again:
+        $$\mathrm{Sh}=\Phi\left(\mathrm{Re},\ \mathrm{Sc}\right)$$
+
+        **The two $\Phi$ are the same function.** That is not a coincidence and not an
+        empirical observation — it follows from the equations being identical once written in
+        dimensionless form. Whatever correlation holds for heat on a geometry holds for mass
+        on that geometry, with $\mathrm{Pr}\to\mathrm{Sc}$ and $\mathrm{Nu}\to\mathrm{Sh}$.
+        """
+    )
+
+    st.markdown("#### 3.6.3 Where the flat-plate correlation comes from")
+    render_prose_and_latex(
+        r"""
+        The textbook result $\mathrm{Nu}_x = 0.332\,\mathrm{Re}_x^{1/2}\mathrm{Pr}^{1/3}$ is
+        usually quoted as though it were a fit to data. It is not. It is the Blasius solution
+        of chapter 7, carrying a temperature field along with it.
+
+        **Step 1 — the same similarity variable.** Scale temperature between its two boundary
+        values, and use chapter 7's $\eta$ unchanged:
+        $$\theta(\eta) = \frac{T-T_w}{T_\infty-T_w},
+        \qquad \eta = y\sqrt{\frac{U_\infty}{\nu x}}$$
+
+        **Step 2 — substitute.** Putting $T = T_w + (T_\infty-T_w)\theta(\eta)$ into the
+        energy equation, with $u$ and $v$ taken from the Blasius solution, every $x$ and $y$
+        cancels exactly as it did for momentum, leaving
+        $$\boxed{\;\theta'' + \tfrac{1}{2}\mathrm{Pr}\,f\,\theta' = 0\;}
+        \qquad \theta(0)=0,\quad \theta(\infty)=1$$
+        The momentum problem enters **only** through $f$, which is already known. The thermal
+        problem is a passenger on it, and $\mathrm{Pr}$ is the only new parameter.
+
+        **Step 3 — solve, without shooting.** The equation is linear and homogeneous in
+        $\theta$, so it needs no iteration: integrate once with $\theta'(0)=1$ to get some
+        $\tilde\theta$, then the condition at infinity fixes the true gradient exactly,
+        $$\theta'(0) = \frac{1}{\tilde\theta(\infty)}$$
+        Equivalently, in closed form,
+        $$\theta'(0)=\left[\int_0^\infty \exp\left(-\tfrac{\mathrm{Pr}}{2}\int_0^{\eta}f\,d\eta'\right)d\eta\right]^{-1}$$
+
+        **Step 4 — read off the Nusselt number.** The wall flux is
+        $q_w = -k\,\partial T/\partial y|_0$, and $h \equiv q_w/(T_w-T_\infty)$, so
+        $$\mathrm{Nu}_x=\frac{hx}{k}=\theta'(0)\sqrt{\mathrm{Re}_x}$$
+        All the physics sits in $\theta'(0)$, and $\theta'(0)$ turns out to be very close to
+        $0.332\,\mathrm{Pr}^{1/3}$ over the ordinary range of fluids. That — and only that —
+        is where the constant and the cube root come from.
+        """
+    )
+    render_callout(
+        """
+        **The cleanest check available.** Set $\\mathrm{Pr}=1$. The energy equation becomes
+        $\\theta'' + \\tfrac12 f\\theta' = 0$, which is *exactly* the equation $f'$ satisfies
+        (differentiate Blasius once), with the same boundary conditions. So $\\theta$ must
+        equal $f'$, and therefore
+        $$\\theta'(0) = f''(0) = 0.332057\\ldots$$
+        The heat-transfer constant **is** the momentum constant. The app solves the ODE
+        numerically below; at $\\mathrm{Pr}=1$ it returns 0.33206, which is not a coincidence
+        to four decimal places.
+        """,
+        title="At Pr = 1 the two problems are the same problem",
+    )
+
+    prandtl_choices = [0.7, 1.0, 7.0, 50.0]
+    thermal_profiles = [pohlhausen_theta_gradient(pr) for pr in prandtl_choices]
+    render_what_to_notice(
+        "Left: the dashed velocity profile never moves — momentum does not know Pr exists. "
+        "Only θ moves, and the ratio of the two thicknesses is what Pr names: "
+        "δ_t/δ ≈ Pr^(−1/3). Right: the solved ODE against the 0.332 Pr^(1/3) fit — they "
+        "agree to about 2% from Pr = 0.6 to 100, which is exactly the range the textbooks quote."
+    )
+    render_plot(plot_thermal_boundary_layers(thermal_profiles), "thermal-similarity")
+    st.caption(
+        "Solved here, not tabulated: θ'(0) = "
+        + ", ".join(
+            f"{p['theta_gradient']:.4f} at Pr = {p['prandtl']:g}" for p in thermal_profiles
+        )
+        + f". The Pr = 1 value equals Blasius f''(0) = {thermal_profiles[1]['theta_gradient']:.5f}. "
+        "Below about Pr = 0.6 the cube-root fit degrades badly — liquid metals need their own "
+        "correlation, because there the thermal layer is far thicker than the velocity layer "
+        "and the assumption behind the fit fails."
+    )
+    render_prose_and_latex(
+        r"""
+        **And now for free, the mass-transfer result.** The species equation differs from the
+        energy equation only in the letter naming the diffusivity, so the identical solution
+        with $\mathrm{Pr}\to\mathrm{Sc}$ gives
+        $$\mathrm{Sh}_x = 0.332\,\mathrm{Re}_x^{1/2}\,\mathrm{Sc}^{1/3},
+        \qquad \frac{\delta_c}{\delta}\approx \mathrm{Sc}^{-1/3}$$
+        No new derivation, no new experiment. The same curve on the plot above serves both,
+        with its horizontal axis relabelled.
+        """
+    )
+
+    st.markdown("#### 3.6.4 The correlations, and swapping between them")
+    render_svg(diagram_transport_geometries())
+
+    geo1, geo2, geo3 = st.columns(3)
+    geometry = geo1.selectbox("Geometry", list(CORRELATIONS.keys()), key="ta_geom")
+    re_ta = geo2.number_input("Reynolds number", min_value=1e-3, max_value=1e8,
+                              value=1.0e4, step=1e3, format="%.4g", key="ta_re")
+    fluid_choice = geo3.selectbox(
+        "Fluid", ["Water (20 °C)", "Air (20 °C)", "Engine oil", "Liquid sodium"], key="ta_fluid")
+    presets = {
+        "Water (20 °C)": dict(rho=998.2, mu=1.002e-3, k_thermal=0.598, cp=4182.0, d_ab=1.5e-9),
+        "Air (20 °C)": dict(rho=1.204, mu=1.82e-5, k_thermal=0.0257, cp=1005.0, d_ab=2.4e-5),
+        "Engine oil": dict(rho=888.0, mu=0.8, k_thermal=0.145, cp=1880.0, d_ab=1.0e-10),
+        "Liquid sodium": dict(rho=927.0, mu=7.0e-4, k_thermal=86.0, cp=1380.0, d_ab=1.0e-8),
+    }
+    props = diffusivities(**presets[fluid_choice])
+
+    d1, d2, d3, d4 = st.columns(4)
+    d1.metric("ν (momentum)", f"{props['nu']:.3e} m²/s")
+    d2.metric("α (heat)", f"{props['alpha']:.3e} m²/s")
+    d3.metric("Prandtl ν/α", f"{props['prandtl']:.4g}")
+    d4.metric("Schmidt ν/D_AB", f"{props['schmidt']:.4g}")
+
+    try:
+        pair = analogy_pair(geometry, re_ta, props["prandtl"], props["schmidt"])
+    except ValueError as exc:
+        st.error(str(exc))
+    else:
+        h1, h2, h3 = st.columns(3)
+        h1.metric("Nu (heat)", f"{pair['heat']['value']:.4g}")
+        h2.metric("Sh (mass)", f"{pair['mass']['value']:.4g}")
+        h3.metric("Lewis Sc/Pr", f"{pair['lewis']:.4g}")
+
+        for result in (pair["heat"], pair["mass"]):
+            for warning in result["warnings"]:
+                st.warning(f"{result['symbol']}: {warning}")
+        if pair["heat"]["in_range"] and pair["mass"]["in_range"]:
+            st.success(
+                f"Both inside the correlation's stated range "
+                f"(Re {CORRELATIONS[geometry]['re_range'][0]:.3g}–"
+                f"{CORRELATIONS[geometry]['re_range'][1]:.3g})."
+            )
+        st.caption(
+            f"**{geometry}** · length scale: {CORRELATIONS[geometry]['length_scale']} · "
+            f"source: {CORRELATIONS[geometry]['source']}. {CORRELATIONS[geometry]['note']}"
+        )
+        if not pair["offset_breaks_pure_power_law"]:
+            st.caption(
+                f"Pure power law, so the analogy predicts Sh/Nu = Le^n = "
+                f"{pair['ratio_from_lewis']:.4g}, and the computed ratio is "
+                f"{pair['ratio']:.4g}. They agree because the *same* correlation produced both."
+            )
+        else:
+            st.caption(
+                f"This correlation has a conduction floor, so Sh/Nu = {pair['ratio']:.4g} is "
+                "not a clean power of Le: the additive 2 does not scale. The analogy still "
+                "holds term by term; only the tidy ratio is lost."
+            )
+
+        curves = [
+            sweep_reynolds(name, props["prandtl"])
+            for name in ("Flat plate, laminar (local)", "Sphere (Ranz-Marshall)",
+                         "Pipe, turbulent (Dittus-Boelter)", "Packed bed (Wakao)")
+        ]
+        render_plot(
+            plot_transport_correlations(curves, pair["heat"]), "transport-correlations"
+        )
+        st.caption(
+            "Each curve is drawn only across its own stated range of validity, which is why "
+            "they do not span the same axis. Extrapolating one past its band is the most "
+            "common way to misuse a correlation, so the plot refuses to draw it."
+        )
+
+    render_prose_and_latex(
+        r"""
+        **The Chilton–Colburn analogy** goes one step further and ties both to friction:
+        $$j_H=\mathrm{St}\,\mathrm{Pr}^{2/3}
+        =j_D=\mathrm{St}_m\,\mathrm{Sc}^{2/3}
+        =\frac{f_F}{2}=\frac{f_D}{8}$$
+        so a pressure-drop measurement predicts a heat-transfer coefficient. Chapter 4 uses
+        this; chapter 2 warns about the factor of four between $f_F$ and $f_D$.
+
+        **Where it breaks, and why.** The friction equality holds against **skin friction
+        only**. On a sphere, a cylinder or a packed bed most of the drag is *form* drag —
+        pressure acting on a separated wake — and form drag transports neither heat nor
+        species. Using $f_D/8$ there over-predicts $j$ badly. The heat/mass half of the
+        analogy ($j_H = j_D$) survives on bluff bodies; the friction half does not.
+        """
+    )
+    render_self_check(
+        "transport_self_check_swap",
+        "You measured Nu = 120 for air (Pr = 0.71) over a cylinder. For the same cylinder "
+        "and the same Re, evaporating a species with Sc = 2.4, Sh is closest to…",
+        ["120", "180", "40"],
+        "180",
+        "Same geometry, same Re, so the same correlation: Sh/Nu = (Sc/Pr)^(1/3) = "
+        "(2.4/0.71)^(1/3) = 1.50, giving Sh ≈ 180. Nothing was re-derived and no new "
+        "experiment was needed — that is the whole value of the analogy.",
+    )
+    render_callout(
+        """
+        **Assumptions the analogy needs and does not announce.** Constant properties;
+        no viscous dissipation; **low mass-transfer rates**, so the blowing velocity at the
+        surface does not distort the velocity profile (high-flux evaporation needs a
+        correction factor); no chemical reaction; and matching boundary conditions — a
+        constant-temperature wall corresponds to a constant-concentration surface, not a
+        constant-flux one. Every correlation above is also bounded in Re and in Pr or Sc,
+        and the calculator refuses to hide it when you leave that range.
+        """
     )

@@ -120,3 +120,40 @@ def test_no_unresolved_format_placeholders_in_diagrams():
             svg = getattr(module, name)()
             leaked = re.findall(r"\{[a-z_][a-z0-9_]*\}", svg)
             assert not leaked, f"{name} leaked placeholders {leaked}"
+
+
+def test_no_diagram_contains_a_currency_or_stray_symbol():
+    """A numeric entity one off from a subscript letter is a currency sign.
+
+    Unicode provides subscripts for digits and a few lowercase letters only --
+    there is none for `w`, and none for capitals. Guessing an entity near the
+    subscript block lands in Currency Symbols: U+20A2, one past the last
+    subscript letter, is the CRUZEIRO SIGN, which is exactly what a wall
+    subscript turned into once already. No diagram in a fluid-mechanics course
+    has any business containing a currency symbol, so this is a cheap and total
+    guard on that whole class of mistake.
+    """
+    import html
+    import unicodedata
+
+    from src import svg_diagrams, svg_impeller
+
+    offenders = []
+    for module in (svg_diagrams, svg_impeller):
+        for name in dir(module):
+            if not name.startswith("diagram_"):
+                continue
+            text = html.unescape(getattr(module, name)())
+            for char in sorted(set(text)):
+                point = ord(char)
+                # Currency Symbols block, plus the letterlike/arrow ranges that
+                # neighbour the subscript block and read as noise in a figure.
+                if 0x20A0 <= point <= 0x20BF:
+                    offenders.append(
+                        f"{name}: U+{point:04X} {unicodedata.name(char, '?')}"
+                    )
+    assert not offenders, (
+        "Diagrams contain currency symbols, which almost certainly means a "
+        "numeric entity was used for a subscript that Unicode does not have. "
+        "Use svg_diagrams._sub() instead:\n" + "\n".join(sorted(set(offenders)))
+    )

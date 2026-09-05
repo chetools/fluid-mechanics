@@ -27,6 +27,11 @@ from src.physics.exact_solutions import (
 from src.physics.impeller import head_flow_curve, velocity_triangles
 from src.physics.numerical_solver import run_lid_driven_cavity
 from src.physics.open_channel import MANNING_N, channel_state, rating_curve
+from src.physics.transport_analogy import (
+    pohlhausen_theta_gradient,
+    sweep_reynolds,
+    transport_correlation,
+)
 from src.physics.turbulence import law_of_the_wall, velocity_profile_comparison
 
 
@@ -57,13 +62,21 @@ def _figures():
             rating_curve(3.0, 1.5, MANNING_N["Clean earth canal, straight"], 0.0008, max_depth=3.0),
             channel_state(8.0, 3.0, 1.5, MANNING_N["Clean earth canal, straight"], 0.0008, bank_depth=2.5),
         ),
+        "thermal": plotting.plot_thermal_boundary_layers(
+            [pohlhausen_theta_gradient(pr) for pr in (0.7, 1.0, 7.0)]
+        ),
+        "transport": plotting.plot_transport_correlations(
+            [sweep_reynolds("Sphere (Ranz-Marshall)", 7.0),
+             sweep_reynolds("Flat plate, laminar (local)", 7.0)],
+            transport_correlation("Sphere (Ranz-Marshall)", 100.0, 7.0),
+        ),
     }
 
 
 FIGURE_NAMES = (
     "venturi", "cylinder", "channel", "stokes", "hagen", "cavity",
     "moody", "profiles", "wall", "blasius", "separation", "straws",
-    "impeller", "canal",
+    "impeller", "canal", "thermal", "transport",
 )
 
 
