@@ -283,8 +283,11 @@ def velocity_triangles(
 
     # Degree of reaction: the share of the stage's energy rise that appears as
     # static head inside the rotor rather than as kinetic energy to be recovered
-    # downstream in the volute. R -> 1 is a radial-bladed impeller doing all its
-    # work as pressure; low R dumps a fast, hard-to-diffuse jet into the volute.
+    # downstream in the volute. R rises with backsweep -- a heavily backswept
+    # impeller does most of its work as pressure. A radial-bladed impeller has
+    # the LOWER reaction: C_theta2 -> sigma U_2 makes C_2 large, so more of the
+    # work leaves as kinetic energy and is dumped into the volute as a fast,
+    # hard-to-diffuse jet.
     reaction = 1.0 - (c2 ** 2 - c1 ** 2) / (2.0 * work) if work != 0 else float("nan")
 
     return {

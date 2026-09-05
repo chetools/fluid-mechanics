@@ -700,8 +700,9 @@ def render_tab_pipe_flow():
            not the design point, is the answer to "will it flood".**
         7. **Check the bed shear.** $\tau_w = \rho g R_h S_0 = 998 \times 9.81 \times 0.867
            \times 0.0008 = 6.8\ \mathrm{Pa}$. Compare against the permissible tractive stress
-           for the bed material — roughly 3–5 Pa for fine sand, 15–20 Pa for stiff clay.
-           Sand would scour here; compacted clay would hold.
+           for the bed material. Chow's table gives roughly 1.3 Pa for noncolloidal fine
+           sand and about 12 Pa for stiff colloidal clay, so sand would scour badly here
+           while compacted clay would hold comfortably.
         """
     )
     render_callout(

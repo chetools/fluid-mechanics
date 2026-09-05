@@ -341,8 +341,17 @@ def render_tab_solving_ns():
         $u\,\partial u/\partial x$. The transverse velocity is small yet fully active.
 
         The $y$-momentum equation, scaled the same way, gives $\partial p/\partial y \sim
-        \rho U_\infty^2 \delta / x^2$, which is smaller than $\partial p/\partial x$ by
-        $(\delta/x)^2$. So **pressure does not vary across the layer. Deletion 2.**
+        \rho U_\infty^2 \delta / x^2$. Compare it with $\partial p/\partial x \sim
+        \rho U_\infty^2 / x$: the *gradient* across the layer is smaller by one factor of
+        $\delta/x$. What matters, though, is the pressure **change**, and that picks up a
+        second factor because the layer is only $\delta$ thick:
+        $$\Delta p\big|_{\text{across}} \sim \frac{\partial p}{\partial y}\,\delta
+        \sim \rho U_\infty^2\left(\frac{\delta}{x}\right)^{2},
+        \qquad \Delta p\big|_{\text{along}} \sim \frac{\partial p}{\partial x}\,x
+        \sim \rho U_\infty^2$$
+        so the pressure difference from wall to edge is smaller than the streamwise
+        variation by $(\delta/x)^2 \sim 1/\mathrm{Re}_x$. So **pressure does not vary across
+        the layer. Deletion 2.**
         $$\boxed{\;u\frac{\partial u}{\partial x} + v\frac{\partial u}{\partial y}
         = -\frac{1}{\rho}\frac{dp}{dx} + \nu\frac{\partial^2 u}{\partial y^2},
         \qquad \frac{\partial p}{\partial y} = 0\;}$$
@@ -490,8 +499,10 @@ def render_tab_solving_ns():
             "below are the laminar solution regardless — read them as theory, not prediction."
         )
     render_what_to_notice(
-        "Left: u/U rises from 0 to 1 by η ≈ 5, and the curve has an inflection nowhere — "
-        "a zero-pressure-gradient profile is convex all the way to the wall. "
+        "Left: u/U rises from 0 to 1 by η ≈ 5, with no inflection point inside the layer. "
+        "At the wall the curvature is exactly zero, because f''' = -(1/2) f f'' and f(0) = 0 "
+        "— the marginal case that dp/dx = 0 buys you, and the reason 7.3's adverse "
+        "gradient is so destructive. Above the wall the profile bends over monotonically. "
         "Right: δ, δ* and θ all grow like √x, holding fixed ratios 1 : 0.35 : 0.135."
     )
     fig_bl = plot_blasius_profile(sim, plate)
@@ -547,9 +558,9 @@ def render_tab_solving_ns():
         $\theta/x = c_f = 0.664/\sqrt{\mathrm{Re}_x}$ is that identity in disguise.
 
         Their ratio is the **shape factor** $H = \delta^*/\theta = 1.721/0.664 = 2.59$ for
-        Blasius. $H$ is a health check on a boundary layer: it rises as the profile becomes
-        fuller near the wall and thinner in momentum, and laminar separation is approached
-        around $H \approx 3.5$. Turbulent layers run near $H \approx 1.4$ — far more
+        Blasius. $H$ is a health check on a boundary layer: it **rises as the
+        profile becomes *less* full** — more retarded near the wall, carrying proportionally
+        less momentum — and laminar separation is approached around $H \approx 3.5$. Turbulent layers run near $H \approx 1.4$ — far more
         resistant to separation, which is the whole point of chapter 8's drag crisis.
         """
     )

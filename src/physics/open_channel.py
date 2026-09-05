@@ -23,8 +23,8 @@ Two conventions coexist in practice and both are supported here:
   written carries units of s/m^(1/3), so these n values are for SI only.
 
 The two agree when  n = R_h^(1/6) sqrt(f/(8 g)), which is why Manning works at
-all: in fully rough turbulent flow f is nearly constant, so f ~ R_h^(1/3) is a
-weak, slowly varying correction that n absorbs.
+all: in fully rough turbulent flow f is nearly constant, so n varies only as
+R_h^(1/6) -- a dependence weak enough to hide inside a tabulated constant.
 
 Model limits: steady uniform (normal) flow in a prismatic channel, no sediment
 transport, no bends or structures, rigid boundaries, and freshwater density.

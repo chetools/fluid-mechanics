@@ -41,7 +41,7 @@ $$h+\frac{W^2}{2}-\frac{U^2}{2}=\text{constant}$$''')
     st.markdown('### 9.2 Where the angles are · impeller geometry in three dimensions')
     prose(r'''Almost every mistake in a turbomachinery calculation is an angle measured from the wrong reference. Fix the conventions once and the arithmetic follows.
 
-**The two planes.** A radial machine is cut two ways, and they are perpendicular. The **meridional** (r–z) section contains the shaft axis: it shows the ninety-degree turn from axial inlet to radial discharge, and it is where the passage widths $b_1$ and $b_2$ are measured. The **blade-to-blade** section is wrapped around the shaft at a fixed radius: it shows the blade curvature and it is the plane the velocity triangle lives in. A drawing that mixes them will not close.
+**The two planes.** A radial machine is cut two ways, and they are perpendicular. The **meridional** (r–z) section contains the shaft axis: it shows the ninety-degree turn from axial inlet to radial discharge, and it is where the passage widths $b_1$ and $b_2$ are measured. The **blade-to-blade** section is taken on the surface of revolution the flow actually follows — for a radial impeller that is the $r$–$\theta$ plane, perpendicular to the shaft. It shows the blade curvature, and it is the plane the velocity triangle lives in. (In an *axial* machine the same surface is a cylinder at fixed radius, which is why that description is the one usually quoted.) A drawing that mixes them will not close.
 
 **The convention used here.** Blade and flow angles are measured **from the tangential direction**, so a radial-ended blade is $\beta=90^\circ$ and an industrial backswept impeller is $\beta_2\approx20$–$35^\circ$. Gas-turbine texts often measure from the meridional direction instead, where the same blade reads $90^\circ-\beta$. Both numbers are reported below so the lab can be checked against either book.
 
@@ -116,7 +116,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
             )
 
         render_what_to_notice(
-            "Raise β₂ towards 90° and Cθ₂ climbs towards U₂: a radial-bladed impeller extracts "
+            "Raise β₂ towards 90° and Cθ₂ climbs — though slip keeps it well short of U₂, because σ falls as the blade goes radial. A radial-bladed impeller extracts "
             "the most work per unit speed. Then look at C₂ — it climbs too, and that kinetic "
             "energy has to be diffused in the volute at some loss. Backsweep trades head for a "
             "stable curve and an easier diffuser. That trade is the whole design argument."
@@ -217,9 +217,9 @@ Three consequences follow immediately, and each one is a piece of turbomachinery
         **The idea the whole plant turns on.** A throttling valve and an expander both drop the
         pressure. The valve is isenthalpic: for an ideal gas it produces *no* temperature change
         at all, and for real air near 180 K it produces roughly 0.3–0.5 K per bar of
-        Joule–Thomson cooling. The expander removes energy as **shaft work**, so its enthalpy
-        drop — and therefore its temperature drop — is larger by an order of magnitude at the
-        same pressure ratio. Section 9.4 stated this as a distinction between processes. Here it
+        Joule–Thomson cooling. The expander removes energy as **shaft work**, so it has a real
+        enthalpy drop where the valve has exactly none, and its temperature drop is larger by
+        nearly an order of magnitude at the same pressure ratio. Section 9.4 stated this as a distinction between processes. Here it
         is the difference between a plant that runs and a plant that slowly warms up and stops.
         """,
         title="Valve versus expander",
@@ -228,10 +228,10 @@ Three consequences follow immediately, and each one is a piece of turbomachinery
     st.markdown('#### 9.5.2 The double column, and why it needs two pressures')
     prose(r'''A single distillation column separating air would need a condenser colder than 77 K and a reboiler hotter than 90 K, and there is no free cold sink at 77 K anywhere on the plant. Linde's double column solves this by **stacking two columns and letting one boil the other**.
 
-The high-pressure (HP) column runs at about 5.5 bar. Raising the pressure raises every saturation temperature, so nitrogen condenses at roughly 95 K instead of 77 K. The low-pressure (LP) column above it runs near 1.4 bar, where liquid oxygen boils at about 90 K. Put a heat exchanger between them — the **condenser–reboiler** — and the HP column's condensing nitrogen boils the LP column's oxygen across a temperature difference of a few kelvin.
+The high-pressure (HP) column runs at about 5.5 bar. Raising the pressure raises every saturation temperature, so nitrogen condenses at roughly 95 K instead of 77 K. The low-pressure (LP) column above it runs near 1.4 bar, where liquid oxygen boils at about 93 K — not the 90.2 K normal boiling point quoted earlier, because it too is above atmospheric. Put a heat exchanger between them — the **condenser–reboiler** — and the HP column's condensing nitrogen boils the LP column's oxygen across a temperature difference of only about 2 K.
 
 $$T_{\mathrm{cond}}^{\mathrm{HP}}(\mathrm{N_2},\ 5.5\ \mathrm{bar}) \approx 95\ \mathrm{K}
-\;>\; T_{\mathrm{boil}}^{\mathrm{LP}}(\mathrm{O_2},\ 1.4\ \mathrm{bar}) \approx 90\ \mathrm{K}$$
+\;>\; T_{\mathrm{boil}}^{\mathrm{LP}}(\mathrm{O_2},\ 1.4\ \mathrm{bar}) \approx 93\ \mathrm{K}$$
 
 The reflux for both columns is generated internally, with no external refrigeration duty at all. **The pressure ratio is doing thermodynamic work** — and that pressure ratio is what the MAC exists to supply. This is the clearest answer to "why compress air you are only going to separate": the compressor is not pushing the flow, it is buying a temperature difference.''')
 
