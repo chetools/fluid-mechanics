@@ -40,7 +40,7 @@ ALLOWED_COMMANDS = frozenset(
     partial nabla infty propto approx sim simeq equiv neq ne le ge leq geq
     ll gg lesssim gtrsim pm mp times cdot cdots ldots dots vdots ddots
     to mapsto implies impliedby iff in notin not subset subseteq
-    rightarrow leftarrow longrightarrow longleftarrow
+    rightarrow leftarrow longrightarrow longleftarrow xrightarrow xleftarrow
     Rightarrow Leftarrow Longrightarrow Longleftarrow Longleftrightarrow
     leftrightarrow Leftrightarrow parallel perp angle
     alpha beta gamma delta epsilon varepsilon zeta eta theta vartheta iota

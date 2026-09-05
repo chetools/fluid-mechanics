@@ -26,6 +26,7 @@ from src.ui.pedagogy import (
     render_self_check,
     render_prose_and_latex,
     render_symbols,
+    render_derivation,
 )
 
 
@@ -215,6 +216,102 @@ def render_tab_stress_ns():
             """
         )
 
+    render_derivation(
+        r"why an isotropic linear fluid has exactly two viscosity coefficients",
+        [
+            (
+                "Count the equations and see what is missing",
+                r"""
+                Cauchy's equation is three scalar equations, but the symmetric stress tensor
+                carries six unknown components on top of the three velocities and the pressure.
+                Conservation laws alone can never close this: they hold for water, honey,
+                custard and steel alike, and those materials plainly behave differently. What
+                is missing is a statement about **the material**, and that is what a
+                constitutive law is.
+                """,
+            ),
+            (
+                "Three physical postulates, each of which can be argued from experience",
+                r"""
+                **(a) Stress depends on the rate of deformation, not on the deformation.**
+                A solid pushed out of shape pushes back and remembers its original shape; a
+                fluid does not. Left alone under a static shear stress a fluid simply keeps
+                flowing, so the stress can only respond to $\nabla\mathbf u$, never to
+                displacement.
+                **(b) The dependence is linear.** This is Newton's experimental observation,
+                and it is a *restriction*: §6.6 gives fluids that violate it.
+                **(c) The fluid is isotropic.** Water has no grain, no fibres and no preferred
+                direction, so the law must take the same form in every rotated frame.
+                """,
+            ),
+            (
+                r"Postulate (a) plus frame-indifference eliminates $\boldsymbol\Omega$",
+                r"""
+                Any linear function of $\nabla\mathbf u$ can be split as
+                $\nabla\mathbf u=\mathbf D+\boldsymbol\Omega$. Suppose the stress responded to
+                $\boldsymbol\Omega$. Then a bucket of water rotating steadily as a solid body
+                would carry internal viscous stress — yet an observer rotating with the bucket
+                sees still water, and no material can generate stress that depends on who is
+                looking at it. So the viscous stress is a function of $\mathbf D$ only, which
+                is the formal version of §6.2's geometric argument.
+                """,
+            ),
+            (
+                "Isotropy collapses a fourth-order tensor down to two numbers",
+                r"""
+                The most general linear map from a tensor to a tensor is
+                $\tau_{ij}=C_{ijkl}D_{kl}$, with $81$ coefficients. Requiring $C$ to be
+                **isotropic** — unchanged by every rotation — forces it into the only available
+                isotropic form, built from products of Kronecker deltas:
+                $$C_{ijkl}=\lambda\,\delta_{ij}\delta_{kl}
+                +\mu\left(\delta_{ik}\delta_{jl}+\delta_{il}\delta_{jk}\right)$$
+                Contracting with the symmetric $\mathbf D$ gives
+                $$\boxed{\tau_{ij}=2\mu D_{ij}+\lambda\,(\nabla\cdot\mathbf u)\,\delta_{ij}}$$
+                since $D_{kk}=\nabla\cdot\mathbf u$. Eighty-one numbers have become two, and no
+                experiment can ever require a third for an isotropic linear fluid.
+                """,
+            ),
+            (
+                r"Fix $\mu$ by checking against Newton's own experiment",
+                r"""
+                Put simple shear $\mathbf u=(\dot\gamma y,0,0)$ into the result. Then
+                $D_{xy}=\tfrac12\dot\gamma$ and $\nabla\cdot\mathbf u=0$, so
+                $$\tau_{xy}=2\mu\cdot\tfrac12\dot\gamma=\mu\dot\gamma$$
+                which is exactly $\tau=\mu\,du/dy$. The factor of $2$ in front of $\mathbf D$ is
+                there precisely so that $\mu$ means what Newton measured in 1687 — it is not a
+                stray coefficient.
+                """,
+            ),
+            (
+                r"Take the trace to find out what $\lambda$ is for",
+                r"""
+                The mechanical mean normal stress is one third of the trace of the **total**
+                stress. Using $\operatorname{tr}(\mathbf I)=3$ and
+                $\operatorname{tr}(\mathbf D)=\nabla\cdot\mathbf u$:
+                $$\bar\sigma=\tfrac13\operatorname{tr}(\boldsymbol\sigma)
+                =-p+\tfrac13\left(2\mu+3\lambda\right)(\nabla\cdot\mathbf u)
+                =-p+\underbrace{\left(\lambda+\tfrac23\mu\right)}_{\textstyle\zeta}(\nabla\cdot\mathbf u)$$
+                So the thermodynamic pressure and the average of what a gauge would feel differ
+                **only when the fluid is changing volume**. $\zeta$ is the bulk viscosity: a
+                resistance to the *rate* of compression, quite distinct from the bulk modulus,
+                which resists the *amount*.
+                """,
+            ),
+            (
+                "Stokes' hypothesis, and when you are allowed to stop caring",
+                r"""
+                Stokes proposed $\zeta=0$, i.e. $\lambda=-\tfrac23\mu$, which is exact for a
+                dilute monatomic gas and approximate otherwise; where $\zeta$ matters at all it
+                matters for sound absorption and shock thickness. For **incompressible** flow
+                $\nabla\cdot\mathbf u=0$ kills the whole term regardless of what $\lambda$ is,
+                which is why the rest of this course never mentions it again:
+                $$\boldsymbol\tau=2\mu\mathbf D
+                =\mu\left(\nabla\mathbf u+(\nabla\mathbf u)^{T}\right)$$
+                """,
+            ),
+        ],
+    )
+
     # -------------------------------------------------------------------------
     # PART 4: Arriving at Navier–Stokes
     # -------------------------------------------------------------------------
@@ -227,18 +324,57 @@ def render_tab_stress_ns():
         """
     )
 
-    with st.expander("🔍 Vector Calculus Step: Divergence of the Viscous Stress Tensor"):
-        render_prose_and_latex(
-            r"""
-            $$\nabla \cdot \boldsymbol{\sigma} = \nabla \cdot (-p\mathbf{I}) + \nabla \cdot (2\mu \mathbf{D})$$
-            $$\nabla \cdot (-p\mathbf{I}) = -\nabla p$$
-            For constant viscosity $\mu$:
-            $$\nabla \cdot (2\mu \mathbf{D}) = \mu \nabla \cdot \left(\nabla \mathbf{u} + (\nabla \mathbf{u})^T\right) = \mu \left[\nabla^2 \mathbf{u} + \nabla(\nabla \cdot \mathbf{u})\right]$$
-            Since the fluid is incompressible ($\nabla \cdot \mathbf{u} = 0$):
-            $$\nabla \cdot (2\mu \mathbf{D}) = \mu \nabla^2 \mathbf{u}$$
-            Combining terms yields the famous Navier–Stokes momentum equation!
-            """
-        )
+    render_derivation(
+        r"taking the divergence of the stress, index by index",
+        [
+            (
+                "Split the stress before differentiating",
+                r"""
+                $$\nabla\cdot\boldsymbol\sigma
+                =\nabla\cdot(-p\mathbf I)+\nabla\cdot(2\mu\mathbf D)$$
+                The first piece is easy in components: $\partial_j(-p\,\delta_{ij})
+                =-\partial_i p$, i.e. $-\nabla p$. A fluid element is pushed by the
+                **gradient** of pressure, not by pressure itself — uniform pressure squeezes
+                a parcel equally from all sides and moves it nowhere.
+                """,
+            ),
+            (
+                "Write the viscous term in indices and split the two derivatives",
+                r"""
+                With constant $\mu$, and $2D_{ij}=\partial_ju_i+\partial_iu_j$:
+                $$\left[\nabla\cdot(2\mu\mathbf D)\right]_i
+                =\mu\,\partial_j\left(\partial_ju_i+\partial_iu_j\right)
+                =\mu\,\underbrace{\partial_j\partial_ju_i}_{\nabla^{2}u_i}
+                +\mu\,\partial_j\partial_iu_j$$
+                """,
+            ),
+            (
+                "Swap the order of the mixed derivative — the step that does the work",
+                r"""
+                Partial derivatives of a smooth field commute, so in the second term
+                $\partial_j\partial_i u_j=\partial_i\left(\partial_ju_j\right)
+                =\partial_i(\nabla\cdot\mathbf u)$. Hence in general
+                $$\nabla\cdot(2\mu\mathbf D)=\mu\left[\nabla^{2}\mathbf u
+                +\nabla(\nabla\cdot\mathbf u)\right]$$
+                Both terms come from viscosity; the second is the resistance to *compressing*
+                rather than to *shearing*.
+                """,
+            ),
+            (
+                "Impose incompressibility and read the surviving operator",
+                r"""
+                $\nabla\cdot\mathbf u=0$ deletes the second term outright:
+                $$\nabla\cdot(2\mu\mathbf D)=\mu\nabla^{2}\mathbf u$$
+                and substituting into Cauchy gives Navier–Stokes. The Laplacian is worth
+                recognising for what it is: the **same operator that appears in heat
+                conduction and in Fick diffusion**. Viscosity diffuses momentum exactly as
+                conductivity diffuses heat, with $\nu=\mu/\rho$ playing the part of thermal
+                diffusivity — which is the formal basis of the transport analogy used in
+                Tab 3 and Tab 7.
+                """,
+            ),
+        ],
+    )
 
     st.markdown(":blue[**Incompressible Navier–Stokes Equations:**]")
     st.latex(r"\rho \underbrace{\left(\frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u}\cdot\nabla)\mathbf{u}\right)}_{\text{Inertial Acceleration}} = \underbrace{-\nabla p}_{\text{Pressure Force}} + \underbrace{\mu \nabla^2 \mathbf{u}}_{\text{Viscous Diffusion}} + \underbrace{\rho \mathbf{g}}_{\text{Body Force}}")
@@ -377,6 +513,84 @@ Thus zero divergence preserves area exactly. The D-only and Ω-only outlines sol
         """
     )
     render_svg(diagram_power_law())
+    render_derivation(
+        r"the power-law pipe profile, and where $(3n+1)/(n+1)$ comes from",
+        [
+            (
+                "The force balance does not know what fluid this is",
+                r"""
+                Repeat the cylindrical-plug balance of Tab 4 word for word: steady, fully
+                developed flow, so the pressure force on a coaxial plug of radius $r$ equals
+                the shear on its jacket.
+                $$\tau(r)=\frac{r}{2}\left(-\frac{dp}{dz}\right),
+                \qquad \tau_w=\frac{R}{2}\left(-\frac{dp}{dz}\right)$$
+                **This is unchanged for any fluid whatsoever** — Newtonian, power-law, paste
+                or slurry — because it is a momentum statement, not a material one. The linear
+                $\tau(r)$ in the plot is therefore not a result of the model; it is a
+                constraint the model has to satisfy.
+                """,
+            ),
+            (
+                "Only now insert the constitutive law",
+                r"""
+                For a shear-thinning or thickening fluid in this geometry, with $u$ decreasing
+                outwards so $\dot\gamma=-du/dr>0$:
+                $$K\left(-\frac{du}{dr}\right)^{n}=\frac{r}{2}\left(-\frac{dp}{dz}\right)
+                \;\Longrightarrow\;
+                -\frac{du}{dr}=\left[\frac{r}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
+                Setting $n=1$, $K=\mu$ returns Tab 4's equation exactly, which is the check to
+                run before trusting anything that follows.
+                """,
+            ),
+            (
+                "Integrate outward from the wall, where the velocity is known",
+                r"""
+                The only boundary condition available is no-slip, $u(R)=0$, so integrate from
+                $r$ to $R$ and use $\int r^{1/n}dr=r^{(n+1)/n}\big/\frac{n+1}{n}$:
+                $$u(r)=\frac{n}{n+1}
+                \left[\frac{1}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}
+                \left(R^{\frac{n+1}{n}}-r^{\frac{n+1}{n}}\right)$$
+                $$\Longrightarrow\quad
+                u(r)=u_{\max}\left[1-\left(\frac{r}{R}\right)^{\frac{n+1}{n}}\right],
+                \qquad u_{\max}=\frac{n}{n+1}R\left[\frac{R}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
+                The exponent $(n+1)/n$ is the whole shape story: it is $2$ for a Newtonian
+                parabola, larger than $2$ for $n>1$ (a sharper apex), and tends to $1$ as
+                $n\to0$ — a flat plug with all the shear crammed against the wall.
+                """,
+            ),
+            (
+                "Integrate again over the annuli to get the flow rate",
+                r"""
+                $$Q=\int_0^R u(r)\,2\pi r\,dr
+                =\frac{\pi n}{3n+1}R^{3}
+                \left[\frac{R}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
+                and dividing by $\pi R^{2}$ gives the mean speed. The ratio to the centreline
+                value is then pure arithmetic, with the pressure gradient, $K$ and $R$ all
+                cancelling:
+                $$\frac{u_{\max}}{\bar u}=\frac{3n+1}{n+1}$$
+                At $n=1$ this is $4/2=2$, recovering the Newtonian factor derived in Tab 4 —
+                and the metric above reports it live, so you can watch it fall toward $1$ as
+                the fluid is made more shear-thinning.
+                """,
+            ),
+            (
+                r"Why $\mathrm{Re}_{MR}$ exists at all",
+                r"""
+                A power-law fluid has no single viscosity, so $\rho uD/\mu$ is undefined.
+                Metzner and Reed's answer was to run the argument backwards: **define** a
+                Reynolds number by whatever expression makes the laminar friction factor come
+                out as $f_D=64/\mathrm{Re}$, so that the entire Newtonian design apparatus
+                keeps working:
+                $$\mathrm{Re}_{MR}=\frac{\rho\,\bar u^{\,2-n}D^{n}}
+                {K\,8^{\,n-1}\left(\frac{3n+1}{4n}\right)^{n}}$$
+                Every strange-looking factor in the denominator is there to make that identity
+                exact. Note what this does *not* do: it does not predict the transition
+                point. The $2100$ used here is carried over from Newtonian pipes and is an
+                approximation for these fluids.
+                """,
+            ),
+        ],
+    )
     col_n1, col_n2, col_n3 = st.columns(3)
     with col_n1:
         n_pl = persistent_input(st.slider, "Power-law index n", min_value=0.3, max_value=1.7, value=0.7, step=0.05, key="pl_n")

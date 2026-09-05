@@ -22,6 +22,7 @@ from src.ui.pedagogy import (
     render_self_check,
     render_prose_and_latex,
     render_callout,
+    render_derivation,
 )
 
 
@@ -289,6 +290,70 @@ def render_tab_euler():
             so $u_1 = Q / (\\pi D_1^2/4)$ and $u_\\mathrm{throat} = Q / (\\pi D_t^2/4)$.
             """
         )
+        render_derivation(
+            r"the Venturi meter: turning a pressure difference into a flow rate",
+            [
+                (
+                    "Continuity ties the two speeds together",
+                    r"""
+                    Incompressible steady flow through one inlet and one throat:
+                    $$A_1u_1=A_tu_t=Q
+                    \;\Longrightarrow\; u_1=\frac{Q}{A_1},\quad u_t=\frac{Q}{A_t}$$
+                    The throat is faster purely because the same volume must pass through less
+                    area each second. No force argument is involved yet — this is bookkeeping.
+                    """,
+                ),
+                (
+                    "Bernoulli says what the acceleration costs",
+                    r"""
+                    Along the central streamline, horizontal and inviscid:
+                    $$p_1+\tfrac12\rho u_1^{2}=p_t+\tfrac12\rho u_t^{2}
+                    \;\Longrightarrow\;
+                    \Delta p=p_1-p_t=\tfrac12\rho\left(u_t^{2}-u_1^{2}\right)$$
+                    The pressure drop is not caused by friction — an ideal Venturi has none. It
+                    is the force that *did* the accelerating, exactly as the $-\partial
+                    p/\partial x$ term in §5.2 requires.
+                    """,
+                ),
+                (
+                    "Eliminate the velocities in favour of the measured quantity",
+                    r"""
+                    Substitute both speeds in terms of $Q$ and factor:
+                    $$\Delta p=\frac{\rho Q^{2}}{2}\left(\frac{1}{A_t^{2}}-\frac{1}{A_1^{2}}\right)
+                    =\frac{\rho Q^{2}}{2A_t^{2}}\left(1-\beta^{4}\right),
+                    \qquad \beta\equiv\frac{d_t}{D_1}$$
+                    using $A_t/A_1=\beta^{2}$. Solving for the flow rate:
+                    $$\boxed{Q=A_t\sqrt{\frac{2\Delta p}{\rho\left(1-\beta^{4}\right)}}}$$
+                    A differential pressure gauge has become a flow meter, with no moving parts.
+                    """,
+                ),
+                (
+                    "What the real instrument adds",
+                    r"""
+                    A measured Venturi carries a discharge coefficient $C_d\approx0.98$ in front
+                    of this expression, covering the boundary layer the derivation ignored and
+                    the slight non-uniformity of the throat profile. It is close to one because
+                    the passage is *converging*: an accelerating flow has a favourable pressure
+                    gradient and will not separate. An orifice plate, which forces the flow to
+                    separate, needs $C_d\approx0.61$ instead — and the difference between those
+                    two numbers is the whole engineering argument for the more expensive
+                    Venturi, whose permanent head loss is a small fraction of $\Delta p$ rather
+                    than most of it.
+                    """,
+                ),
+                (
+                    "Where the model breaks in this lab",
+                    r"""
+                    Shrink the throat far enough and $p_t$ falls below the liquid's vapour
+                    pressure. Bernoulli keeps returning numbers, but the fluid stops being a
+                    liquid: it cavitates, the flow chokes, and the meter reads nonsense. The
+                    warning below fires on exactly that condition. It is the same failure mode
+                    as the pump suction in Tab 2, arrived at from the other direction.
+                    """,
+                ),
+            ],
+        )
+
         render_predict(
             "venturi_predict",
             "If you shrink the throat at fixed Q, throat static pressure will…",
@@ -346,6 +411,89 @@ def render_tab_euler():
             $C_p = 1 - 4\\sin^2\\theta$.
             """
         )
+        render_derivation(
+            r"$u_\theta=2U_\infty\sin\theta$, $C_p=1-4\sin^{2}\theta$, and zero drag",
+            [
+                (
+                    "Build the flow by superposition, because the equations are linear",
+                    r"""
+                    For steady, incompressible, irrotational flow the velocity is the gradient
+                    of a potential and continuity becomes $\nabla^{2}\phi=0$ — Laplace's
+                    equation, which is **linear**. So known solutions may simply be added. Put
+                    a uniform stream together with a doublet (a source and sink brought
+                    infinitesimally close) at the origin; in stream-function form,
+                    $$\psi=U_\infty\sin\theta\left(r-\frac{R^{2}}{r}\right)$$
+                    Nothing yet says this represents a cylinder. The next step is what does.
+                    """,
+                ),
+                (
+                    "Check that the boundary condition is satisfied",
+                    r"""
+                    $$u_r=\frac{1}{r}\frac{\partial\psi}{\partial\theta}
+                    =U_\infty\cos\theta\left(1-\frac{R^{2}}{r^{2}}\right)$$
+                    At $r=R$ this is **identically zero** for every $\theta$: no fluid crosses
+                    the circle, so the circle *is* a solid boundary. The doublet strength was
+                    chosen to make this happen, which is why $R$ appears in $\psi$ at all. Note
+                    what is **not** imposed: the tangential velocity is free to be anything,
+                    because an inviscid fluid may slip along a wall.
+                    """,
+                ),
+                (
+                    "Read the surface speed",
+                    r"""
+                    $$u_\theta=-\frac{\partial\psi}{\partial r}
+                    =-U_\infty\sin\theta\left(1+\frac{R^{2}}{r^{2}}\right)
+                    \;\xrightarrow{\ r=R\ }\;
+                    -2U_\infty\sin\theta$$
+                    The factor of two is worth pausing on: the fluid must get around an obstacle
+                    of the same width as itself, so at the shoulder it runs at **twice** the
+                    free-stream speed. At $\theta=0$ and $\pi$ it is zero — the two stagnation
+                    points, fore and aft.
+                    """,
+                ),
+                (
+                    "Convert speed to pressure with Bernoulli",
+                    r"""
+                    The flow is irrotational everywhere, so Bernoulli's constant is the same on
+                    *every* streamline, not just along one. Comparing the surface with infinity:
+                    $$p+\tfrac12\rho u_\theta^{2}=p_\infty+\tfrac12\rho U_\infty^{2}
+                    \;\Longrightarrow\;
+                    C_p\equiv\frac{p-p_\infty}{\tfrac12\rho U_\infty^{2}}
+                    =1-\left(\frac{u_\theta}{U_\infty}\right)^{2}=1-4\sin^{2}\theta$$
+                    $C_p=+1$ at both stagnation points, and $C_p=-3$ at the shoulders — a
+                    suction three times the dynamic pressure, which is why cavitation and
+                    separation both start there on a real cylinder.
+                    """,
+                ),
+                (
+                    "Integrate the pressure and watch the drag vanish",
+                    r"""
+                    Per unit span, with $\mathbf n=\mathbf e_r$ and $dS=R\,d\theta$:
+                    $$F_x=-\oint p\cos\theta\,R\,d\theta
+                    =-R\int_0^{2\pi}\left[p_\infty+\tfrac12\rho U_\infty^{2}
+                    \left(1-4\sin^{2}\theta\right)\right]\cos\theta\,d\theta$$
+                    Every piece dies for the same reason: $\int_0^{2\pi}\cos\theta\,d\theta=0$
+                    and $\int_0^{2\pi}\sin^{2}\theta\cos\theta\,d\theta=0$, both because the
+                    integrand is **antisymmetric between front and back**. Hence $F_x=0$
+                    exactly, and by the same argument with $\sin\theta$, $F_y=0$ too.
+                    """,
+                ),
+                (
+                    "The paradox is a statement about the model, not about nature",
+                    r"""
+                    $C_p(0)=C_p(\pi)=+1$: the pressure recovered on the back face exactly repays
+                    what was spent on the front. A real fluid cannot do this, because the
+                    boundary layer arriving at the shoulder has already lost energy to friction
+                    and cannot climb back up the rising pressure — it separates, the rear
+                    suction never recovers, and pressure drag appears. The metric below is a
+                    numerical quadrature of the integral above, so it should read $\sim10^{-12}$,
+                    not zero: that residual is the arithmetic, and its size is your check that
+                    the quadrature is behaving.
+                    """,
+                ),
+            ],
+        )
+
         col_c1, col_c2 = st.columns(2)
         with col_c1:
             u_inf = persistent_input(st.slider, "Freestream Velocity U∞ [m/s]", min_value=1.0, max_value=15.0, value=5.0, step=1.0, key="tab_euler_freestream_velocity_u_m_s")
