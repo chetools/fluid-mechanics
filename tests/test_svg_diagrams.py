@@ -26,7 +26,7 @@ from src.svg_diagrams import (
     clean_svg
 )
 from src.svg_impeller import (
-    diagram_impeller_3d,
+    diagram_blade_angles,
     diagram_impeller_meridional,
     diagram_outlet_triangle_true_shape,
 )
@@ -58,8 +58,8 @@ def test_svg_diagrams_render_valid_xml():
         # Generated from the computed geometry, including non-default cases: a
         # near-radial blade and a two-blade rotor exercise the projection and
         # the painter's ordering differently from the defaults.
-        diagram_impeller_3d(),
-        diagram_impeller_3d(beta2_deg=85.0, n_blades=2),
+        diagram_blade_angles(),
+        diagram_blade_angles(beta2_deg=85.0, n_blades=2),
         diagram_impeller_meridional(),
         diagram_outlet_triangle_true_shape(),
         diagram_outlet_triangle_true_shape(beta2_deg=80.0, u2=120.0, cm2=30.0, sigma=0.92),
@@ -97,8 +97,8 @@ def test_renderer_uses_native_image_api(monkeypatch):
 
 def test_generated_impeller_diagram_tracks_its_geometry():
     """The drawing must move when the geometry does, or it is decoration."""
-    shallow = diagram_impeller_3d(beta2_deg=20.0)
-    steep = diagram_impeller_3d(beta2_deg=70.0)
+    shallow = diagram_blade_angles(beta2_deg=20.0)
+    steep = diagram_blade_angles(beta2_deg=70.0)
     assert shallow != steep
     assert "20&#176;" in shallow and "70&#176;" in steep
     # A shallower blade wraps further around the shaft; the caption reports it.

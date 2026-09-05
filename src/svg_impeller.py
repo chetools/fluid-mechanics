@@ -138,7 +138,7 @@ def _angle_mark(cx, cy, start_deg, end_deg, colour, label, radius=48.0,
     return "".join(parts)
 
 
-def diagram_impeller_3d(
+def diagram_blade_angles(
     r1: float = 0.045,
     r2: float = 0.150,
     beta1_deg: float = 30.0,

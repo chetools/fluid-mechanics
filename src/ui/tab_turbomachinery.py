@@ -5,7 +5,7 @@ from src.physics.impeller import blade_camberline, head_flow_curve, velocity_tri
 from src.plotting import plot_impeller_head_curve
 from src.svg_diagrams import diagram_asu_flowsheet, render_svg
 from src.svg_impeller import (
-    diagram_impeller_3d,
+    diagram_blade_angles,
     diagram_impeller_meridional,
     diagram_outlet_triangle_true_shape,
 )
@@ -38,7 +38,7 @@ $$\Delta T_0=\frac{w_{\mathrm{in}}}{c_p}\quad\text{(constant-}c_p\text{ ideal ga
 Another useful check follows from W² = C² + U² − 2UCθ: Euler's equation implies constant rothalpy through an ideal adiabatic rotor.
 $$h+\frac{W^2}{2}-\frac{U^2}{2}=\text{constant}$$''')
     st.caption('[MIT: Euler turbine equation and velocity components](https://web.mit.edu/course/16/16.unified/www/SPRING/thermodynamics/notes/node91.html). Velocities in this balance are mass-flow averages; blade losses and nonuniformity require additional modeling.')
-    st.markdown('### 9.2 Where the angles are · impeller geometry in three dimensions')
+    st.markdown('### 9.2 Where the angles are · impeller geometry and blade angles')
     prose(r'''Almost every mistake in a turbomachinery calculation is an angle measured from the wrong reference. Fix the conventions once and the arithmetic follows.
 
 **The two planes.** A radial machine is cut two ways, and they are perpendicular. The **meridional** (r–z) section contains the shaft axis: it shows the ninety-degree turn from axial inlet to radial discharge, and it is where the passage widths $b_1$ and $b_2$ are measured. The **blade-to-blade** section is taken on the surface of revolution the flow actually follows — for a radial impeller that is the $r$–$\theta$ plane, perpendicular to the shaft. It shows the blade curvature, and it is the plane the velocity triangle lives in. (In an *axial* machine the same surface is a cylinder at fixed radius, which is why that description is the one usually quoted.) A drawing that mixes them will not close.
@@ -52,7 +52,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
     render_svg(diagram_impeller_meridional(r1=0.045, r2=0.150, b1=0.030, b2=0.012))
 
     st.markdown('#### Rotor and velocity-triangle lab')
-    st.caption('The 3D figure, the triangle and the numbers below all come from the same geometry code, so they cannot disagree.')
+    st.caption('The figures, the triangle and the numbers below all come from the same geometry code, so they cannot disagree.')
 
     g1, g2, g3, g4 = st.columns(4)
     imp_rpm = g1.number_input('Shaft speed [rpm]', min_value=100., max_value=60000., value=2900., step=100., key='imp_rpm')
@@ -73,7 +73,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
             beta1_deg=imp_beta1, beta2_deg=imp_beta2, b1=imp_b1, b2=imp_b2,
             n_blades=imp_blades, rho=float(get_fluid_state()['rho']),
         )
-        render_svg(diagram_impeller_3d(
+        render_svg(diagram_blade_angles(
             r1=imp_r1, r2=imp_r2, beta1_deg=imp_beta1, beta2_deg=imp_beta2,
             b1=imp_b1, b2=imp_b2, n_blades=imp_blades,
         ))
