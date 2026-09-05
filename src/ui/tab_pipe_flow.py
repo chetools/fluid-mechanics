@@ -33,6 +33,7 @@ from src.plotting import (
 )
 from src.units import format_quantity, get_fluid_state
 from src.ui.pedagogy import (
+    render_derivation,
     render_objectives,
     render_what_to_notice,
     render_predict,
@@ -98,6 +99,75 @@ def render_tab_pipe_flow():
         ]
     )
 
+    render_derivation(
+        r"Darcy–Weisbach: a momentum balance plus one definition",
+        [
+            (
+                "Momentum balance on the whole pipe, not on a fluid particle",
+                r"""
+                Take the entire column of fluid between two sections a distance $L$ apart, in
+                fully developed flow. "Fully developed" means the velocity profile is the same
+                at both ends, so the momentum flux in equals the momentum flux out and the
+                fluid does not accelerate. Newton's second law therefore reduces to a statics
+                problem: the pressure force pushing must equal the wall shear holding back.
+                $$\underbrace{\Delta p_f\cdot\frac{\pi D^{2}}{4}}_{\text{pressure, on the area}}
+                =\underbrace{\tau_w\cdot\pi D L}_{\text{shear, on the perimeter}}$$
+                Note carefully which geometry each force uses: pressure acts on the
+                cross-**section**, friction on the wetted **perimeter**. That mismatch is the
+                whole reason diameter appears at all.
+                """,
+            ),
+            (
+                "Solve for the pressure drop and look at the geometry factor",
+                r"""
+                $$\Delta p_f=\frac{4L}{D}\,\tau_w$$
+                This is exact — no turbulence model, no laminar assumption, no correlation.
+                The group $4/D$ is the surface-to-volume ratio of a cylinder, so a pipe of
+                half the diameter suffers twice the pressure drop *at the same wall stress*,
+                purely because it offers twice as much wall per unit of fluid carried.
+                """,
+            ),
+            (
+                r"The problem: nobody can measure $\tau_w$",
+                r"""
+                $\tau_w$ depends on the velocity profile at the wall, which depends on the
+                turbulence, which is what we cannot compute. So the engineering move is to
+                **define** a dimensionless stress by dividing by the dynamic pressure — the
+                natural scale for a momentum-driven stress, from Bernoulli:
+                $$f_F\equiv\frac{\tau_w}{\tfrac12\rho \bar u^{2}}$$
+                This is the **Fanning** friction factor. Nothing has been solved; the unknown
+                has been repackaged as a dimensionless number that experiments can chart
+                against $\mathrm{Re}$ and $\varepsilon/D$ once and for all pipes.
+                """,
+            ),
+            (
+                "Substitute the definition back into the balance",
+                r"""
+                $$\Delta p_f=\frac{4L}{D}\cdot f_F\cdot\frac{\rho\bar u^{2}}{2}
+                =\underbrace{(4f_F)}_{\textstyle f_D}\frac{L}{D}\frac{\rho\bar u^{2}}{2}$$
+                The factor of four is nothing but the $4$ from the surface-to-volume ratio in
+                Step 2, absorbed into the friction factor for tidiness. **That is the entire
+                origin of the Darcy/Fanning confusion** — two communities chose to put the
+                same $4$ in different places, and $f_D=4f_F$ forever after.
+                $$\boxed{\Delta p_f=f_D\frac{L}{D}\frac{\rho\bar u^{2}}{2}},
+                \qquad h_f=\frac{\Delta p_f}{\rho g}=f_D\frac{L}{D}\frac{\bar u^{2}}{2g}$$
+                """,
+            ),
+            (
+                "What has actually been established, and what has not",
+                r"""
+                Darcy–Weisbach is a definition wrapped around an exact force balance: it is
+                true for laminar, turbulent, smooth and rough pipes alike, and it predicts
+                nothing on its own. Every piece of physics sits in $f_D(\mathrm{Re},
+                \varepsilon/D)$ — computed exactly for laminar flow in Tab 4
+                ($f_D=64/\mathrm{Re}$), and measured for turbulent flow, which is what the
+                Moody chart below plots. Dividing by $\rho g$ converts a pressure to a **head**
+                in metres of the flowing fluid, which is the currency pumps are sold in.
+                """,
+            ),
+        ],
+    )
+
     with st.expander("⚠️ Chemical Engineering Nomenclature Alert: Darcy vs. Fanning Friction Factors", expanded=False):
         st.markdown(
             r"""
@@ -136,6 +206,127 @@ def render_tab_pipe_flow():
         For two large tanks, $u_1\approx u_2\approx 0$ and an outlet $K_L=1$ already dumps
         the exit kinetic head — do not add $\alpha u^2/2g$ on top of that $K_L$.
         """
+    )
+
+    render_derivation(
+        r"minor losses: why $K_L u^{2}/2g$, and the one case that can be derived exactly",
+        [
+            (
+                "Where the energy actually goes in a fitting",
+                r"""
+                An elbow, a valve or an expansion loses head not by wall friction — they are
+                far too short for that — but because the flow **separates**. Fluid cannot turn
+                a sharp corner, so it detaches, forms a recirculating eddy, and that eddy
+                grinds the kinetic energy it was given into heat. The loss is therefore
+                proportional to the kinetic energy available to be wasted, which is why every
+                fitting is charged as a multiple of the velocity head:
+                $$h_{\text{minor}}=K_L\frac{\bar u^{2}}{2g}$$
+                $K_L$ is measured, not derived, for almost every fitting. But one geometry is
+                simple enough to solve exactly, and it is worth doing because it shows the
+                mechanism.
+                """,
+            ),
+            (
+                "Sudden expansion: momentum on the control volume",
+                r"""
+                A pipe of area $A_1$ discharges abruptly into one of area $A_2$. Take the
+                control volume from the expansion plane to a section downstream where the flow
+                has refilled the larger pipe. The jet issues into a region of nearly stagnant,
+                recirculating fluid, so the pressure across the whole face at the plane is
+                effectively $p_1$ acting on the full area $A_2$:
+                $$(p_1-p_2)A_2=\dot m\,(u_2-u_1)=\rho A_2u_2(u_2-u_1)
+                \;\Longrightarrow\;\frac{p_1-p_2}{\rho}=u_2(u_2-u_1)$$
+                Momentum is used here rather than energy precisely because momentum does not
+                care that the interior is a violent mess — the same reasoning as the shock in
+                Tab 10.
+                """,
+            ),
+            (
+                "Energy on the same control volume, and subtract",
+                r"""
+                The mechanical energy equation over the same two sections **defines** the loss:
+                $$g\,h_L=\frac{p_1-p_2}{\rho}+\frac{u_1^{2}-u_2^{2}}{2}$$
+                Substitute the momentum result and watch it collapse to a perfect square:
+                $$g\,h_L=u_2^{2}-u_1u_2+\frac{u_1^{2}-u_2^{2}}{2}
+                =\frac{u_1^{2}-2u_1u_2+u_2^{2}}{2}=\frac{(u_1-u_2)^{2}}{2}$$
+                $$\boxed{h_L=\frac{(u_1-u_2)^{2}}{2g}}$$
+                This is the Borda–Carnot loss, and its form is deeply physical: what is
+                dissipated is the kinetic energy of the **velocity difference** — the relative
+                motion between the jet and the slower fluid it must mix with. If there were no
+                velocity difference there would be no loss.
+                """,
+            ),
+            (
+                r"Read off $K_L$, and explain the exit fitting",
+                r"""
+                Continuity gives $u_2=u_1A_1/A_2$, so in terms of the *upstream* velocity head
+                $$h_L=\left(1-\frac{A_1}{A_2}\right)^{2}\frac{u_1^{2}}{2g}
+                \;\Longrightarrow\; K_L=\left(1-\frac{A_1}{A_2}\right)^{2}$$
+                Now let $A_2\to\infty$: a pipe discharging into a large tank. Then $K_L\to1$,
+                and the fitting throws away **exactly one velocity head**. That is the
+                justification for the $K_L=1$ outlet in the fittings list below, and it is why
+                adding $\alpha\bar u^{2}/2g$ on top of it would count the same energy twice.
+                """,
+            ),
+            (
+                "Why the other fittings are tabulated instead",
+                r"""
+                An elbow or a globe valve separates in a geometry no control volume can be
+                drawn around cleanly, so its $K_L$ comes from measurement. The equivalent-length
+                method ($L_e/D$) is the same information in different clothing: setting
+                $K_L=f_D L_e/D$ converts one to the other. Both are approximations at the
+                $\pm25\%$ level, and both depend on Reynolds number more than their tabulation
+                admits.
+                """,
+            ),
+        ],
+    )
+
+    render_derivation(
+        r"from head loss to pump kilowatts and dollars",
+        [
+            (
+                "The energy equation already contains the pump term",
+                r"""
+                Rearrange the mechanical energy equation above for the one unknown a designer
+                actually buys:
+                $$h_{\text{shaft}}
+                =\underbrace{(z_2-z_1)}_{\text{static lift}}
+                +\underbrace{\frac{p_2-p_1}{\rho g}}_{\text{vessel pressures}}
+                +\underbrace{h_f+h_{\text{minor}}}_{\text{friction}}
+                +\underbrace{\frac{\alpha_2u_2^{2}-\alpha_1u_1^{2}}{2g}}_{\text{usually zero}}$$
+                Between two large tanks the last term vanishes because both surfaces are
+                effectively still. Notice the static lift is **independent of flow rate** while
+                friction grows roughly as $Q^{2}$: that is the shape of the system curve the
+                pump must intersect.
+                """,
+            ),
+            (
+                "Head is energy per unit weight, so power needs a weight flow rate",
+                r"""
+                $h_{\text{shaft}}$ is joules per newton of fluid. Multiply by newtons per
+                second — the weight flow rate $\rho g Q$ — to get watts:
+                $$P_{\text{hydraulic}}=\rho g Q\,h_{\text{shaft}}=Q\,\Delta p_{\text{total}}$$
+                The two forms are identical; the second is often quicker because $Q\Delta p$
+                has obvious units of $\mathrm{m^{3}/s}\times\mathrm{Pa}=\mathrm{W}$.
+                """,
+            ),
+            (
+                "Efficiency divides, it does not multiply",
+                r"""
+                The pump and motor deliver less to the fluid than they draw, so the shaft
+                power is larger:
+                $$P_{\text{shaft}}=\frac{\rho g Q\,h_{\text{shaft}}}{\eta}$$
+                Getting this the wrong way round is a common and expensive slip. Annual cost
+                follows by multiplying by running hours and tariff:
+                $$\text{cost}=P_{\text{shaft}}\times\text{hours}\times\text{\$/kWh}$$
+                Because $h_f\propto Q^{2}$ in turbulent flow, $P\propto Q^{3}$ (Tab 4), and
+                because $h_f\propto D^{-5}$ at fixed $Q$, a modest increase in pipe diameter
+                is nearly always cheaper over a plant's life than the pump it saves. The lab
+                below is built to let you test exactly that trade.
+                """,
+            ),
+        ],
     )
 
     # -------------------------------------------------------------------------
@@ -356,6 +547,67 @@ def render_tab_pipe_flow():
             (r"z", "free-surface elevation above the pump eye (m). $z>0$ flooded; $z<0$ suction lift."),
             (r"h_f", "head loss in the suction line, major + minor (m)."),
         ]
+    )
+    render_derivation(
+        r"$\mathrm{NPSH}_A$ from the energy equation, and why the velocity head disappears",
+        [
+            (
+                "State what is being protected against",
+                r"""
+                Cavitation happens when the local absolute pressure falls to the liquid's
+                vapour pressure $P_v$ and bubbles form; they collapse violently a moment later
+                in the higher pressure inside the impeller, pitting the metal. So the quantity
+                to track is not pressure but the **margin above vapour pressure** at the worst
+                point in the system, which is the pump eye.
+                """,
+            ),
+            (
+                "Define the margin as a total head, not a static one",
+                r"""
+                $$\mathrm{NPSH}_A\equiv\frac{p_{\text{eye}}+\tfrac12\rho u_{\text{eye}}^{2}-P_v}{\rho g}$$
+                The kinetic term is included deliberately: the fluid arriving at the eye still
+                carries that energy, and the pressure dip that actually causes cavitation
+                happens *inside* the impeller, as the blade accelerates the flow further. How
+                deep that internal dip goes is a property of the impeller, so it is charged to
+                the manufacturer's $\mathrm{NPSH}_R$ — which is why $\mathrm{NPSH}_A$ is
+                written on stagnation head and the two can be compared at all.
+                """,
+            ),
+            (
+                "Apply the mechanical energy equation from the tank surface to the eye",
+                r"""
+                Station 1 is the free surface, where the velocity is negligible and the
+                pressure is $P_{\text{tank}}$; station 2 is the eye, a height $z$ below it:
+                $$\frac{P_{\text{tank}}}{\rho g}+0+z
+                =\frac{p_{\text{eye}}}{\rho g}+\frac{u_{\text{eye}}^{2}}{2g}+0+h_f$$
+                Rearranged, the whole left-hand group of the definition appears:
+                $$\frac{p_{\text{eye}}}{\rho g}+\frac{u_{\text{eye}}^{2}}{2g}
+                =\frac{P_{\text{tank}}}{\rho g}+z-h_f$$
+                """,
+            ),
+            (
+                "Subtract the vapour-pressure head",
+                r"""
+                $$\boxed{\mathrm{NPSH}_A=\frac{P_{\text{tank}}-P_v}{\rho g}+z-h_f}$$
+                The velocity head has vanished from the final expression — not because it was
+                neglected, but because the definition and the energy equation contained it on
+                opposite sides. This is the step most often got wrong, in both directions.
+                """,
+            ),
+            (
+                "Read each term as a design lever",
+                r"""
+                $(P_{\text{tank}}-P_v)/\rho g$ says a hot liquid is dangerous: $P_v$ rises
+                steeply with temperature, so the same pump that is safe on cold water cavitates
+                on hot condensate. $z$ says flooded suction ($z>0$) is the cheapest insurance
+                there is, and it enters one-for-one. $-h_f$ says every metre of suction line,
+                every elbow, and every partly shut suction valve is spent directly out of the
+                margin — which is why suction lines are drawn short, straight and one size
+                larger than the discharge. Cavitation occurs when
+                $\mathrm{NPSH}_A<\mathrm{NPSH}_R$; the calculator below reports both.
+                """,
+            ),
+        ],
     )
     render_svg(diagram_npsh())
     if fluid.get("kind") == "gas":
@@ -650,6 +902,76 @@ def render_tab_pipe_flow():
         jump to happen where the concrete can take it.
         """
     )
+    render_derivation(
+        r"critical depth: differentiating the specific energy, with one geometric fact",
+        [
+            (
+                "Specific energy is the energy the flow has, measured from the bed",
+                r"""
+                At a section, each kilogram carries pressure head (which for a free surface at
+                depth $y$ is just $y$, by hydrostatics) plus velocity head. Writing
+                $V=Q/A(y)$ and holding $Q$ fixed:
+                $$E(y)=y+\frac{V^{2}}{2g}=y+\frac{Q^{2}}{2gA(y)^{2}}$$
+                The two terms pull in opposite directions as the depth changes: deep slow flow
+                is nearly all potential ($E\to y$), shallow fast flow is nearly all kinetic
+                ($E\to\infty$ as $A\to0$). Something in between must be a minimum.
+                """,
+            ),
+            (
+                r"The geometric fact: $dA/dy=T$",
+                r"""
+                Raise the surface by $dy$ in a channel of any shape. The area gained is a thin
+                strip of height $dy$ spanning the **top width** $T$:
+                $$dA=T\,dy\;\Longrightarrow\;\frac{dA}{dy}=T$$
+                This one line is what lets the derivation handle trapezoids, circles and
+                natural river sections without new algebra for each.
+                """,
+            ),
+            (
+                "Differentiate and set to zero",
+                r"""
+                $$\frac{dE}{dy}=1-\frac{Q^{2}}{gA^{3}}\frac{dA}{dy}
+                =1-\frac{Q^{2}T}{gA^{3}}
+                \;\Longrightarrow\;\boxed{\frac{Q^{2}T}{gA^{3}}=1\ \text{at }y=y_c}$$
+                """,
+            ),
+            (
+                "Recognise the group as a Froude number",
+                r"""
+                Divide numerator and denominator by $A^{2}$ and use the hydraulic depth
+                $D_h=A/T$:
+                $$\frac{Q^{2}T}{gA^{3}}=\frac{(Q/A)^{2}}{g(A/T)}=\frac{V^{2}}{gD_h}=\mathrm{Fr}^{2}$$
+                So minimum specific energy and $\mathrm{Fr}=1$ are the *same condition*, not
+                two facts to memorise. For a rectangular channel, $A=by$, $T=b$ and $q=Q/b$
+                reduce it to $y_c=(q^{2}/g)^{1/3}$.
+                """,
+            ),
+            (
+                "Why the same number is also a wave speed",
+                r"""
+                A long surface wave in shallow water travels at $c=\sqrt{gD_h}$ relative to the
+                water, so $\mathrm{Fr}=V/c$ compares how fast the flow moves with how fast news
+                can travel through it — precisely the role $M=u/a$ plays in Tab 10. Below
+                critical, waves outrun the flow and a downstream gate controls the depth here;
+                above critical, nothing reaches upstream, and the return to subcritical must
+                happen discontinuously in a hydraulic jump. The hydraulic jump is the free-
+                surface analogue of a shock wave, down to the fact that momentum is conserved
+                across it while energy is not.
+                """,
+            ),
+            (
+                "Why roughness is missing, and why that is useful",
+                r"""
+                Nothing in this derivation mentioned $n$, $f_D$ or $S_0$ — only $Q$ and the
+                cross-section. Critical depth is therefore a property of geometry and discharge
+                alone. That is exactly what makes a weir or flume a flow meter: force the flow
+                through critical, measure one depth, and read $Q$ without knowing anything
+                about how rough the channel is.
+                """,
+            ),
+        ],
+    )
+
     render_predict(
         "canal_predict_slope",
         "An earth canal carries 8 m³/s. Regrading doubles its bed slope. Its capacity at the same depth rises by about…",

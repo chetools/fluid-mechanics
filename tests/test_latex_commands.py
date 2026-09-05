@@ -56,7 +56,7 @@ ALLOWED_COMMANDS = frozenset(
     det dim ker deg gcd
     boxed begin end cases bmatrix pmatrix matrix vmatrix array aligned
     ell circ prime star ast dagger
-    displaystyle limits nolimits
+    displaystyle textstyle scriptstyle scriptscriptstyle limits nolimits
     color textcolor
     """.split()
 )
