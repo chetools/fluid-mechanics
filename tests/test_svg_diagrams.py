@@ -23,6 +23,9 @@ from src.svg_diagrams import (
     diagram_canal_section,
     diagram_canal_uniform_flow,
     diagram_asu_flowsheet,
+    diagram_relief_valve,
+    diagram_transport_analogy,
+    diagram_transport_geometries,
     clean_svg
 )
 from src.svg_impeller import (
@@ -55,6 +58,9 @@ def test_svg_diagrams_render_valid_xml():
         diagram_canal_section(),
         diagram_canal_uniform_flow(),
         diagram_asu_flowsheet(),
+        diagram_relief_valve(),
+        diagram_transport_analogy(),
+        diagram_transport_geometries(),
         # Generated from the computed geometry, including non-default cases: a
         # near-radial blade and a two-blade rotor exercise the projection and
         # the painter's ordering differently from the defaults.

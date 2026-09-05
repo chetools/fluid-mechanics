@@ -28,6 +28,7 @@ Keep one main server on 8501. Stop temporary diagnostic servers when finished. S
 | `src/physics/pipe_flow.py` | Churchill/Colebrook friction, pipe/pump calculations and material roughness estimates |
 | `src/physics/pipe_network.py` | Nominal schedules, pipe-input resolution, signed head losses and nodal network solution |
 | `src/physics/open_channel.py` | Trapezoidal geometry, Manning and Darcy uniform flow, normal/critical depth, Froude, freeboard |
+| `src/physics/transport_analogy.py` | Diffusivity ratios, one correlation table serving heat and mass, Pohlhausen thermal-layer ODE |
 | `src/physics/impeller.py` | Blade camberline from the angle definition, 3D blade surfaces, slip, velocity triangles, isometric projection |
 | `src/svg_impeller.py` | Impeller diagrams projected from that computed geometry (needs NumPy, so kept out of `svg_diagrams.py`) |
 | `src/physics/gas_dynamics.py` | Perfect-gas nozzle, normal shock, compressor/turbine and sphere-drag calculations |
@@ -291,3 +292,59 @@ Consequences to keep in mind:
 Do not restore `st.tabs` without re-measuring the full-page render in a real browser. A
 passing AppTest does not establish that the page finishes drawing — that was the entire
 lesson here, and it matches the earlier live-browser section above.
+
+## Markdown indentation kills KaTeX, and looks like a KaTeX bug
+
+Recorded after a user reported "LaTeX did not render properly, this happens in many places".
+
+The cause was markdown, not KaTeX. A triple-quoted prose block carries the source
+indentation of the function it sits in. `iter_prose_and_math` only called `.strip()`,
+which dedents the **first** line; every later line still began with eight spaces. In
+CommonMark, a line indented four or more spaces *after a blank line* opens an indented
+code block, so the list, the `**bold**` and the `$...$` all rendered literally in
+monospace and KaTeX never ran on any of it.
+
+Why it hid for so long: a single-paragraph block is unaffected, because its later lines
+are lazy continuations of the first paragraph and their indentation is ignored. The bug
+only fires when a chunk contains a blank line followed by indented content — lists and
+multi-paragraph prose. Two live instances existed and had presumably been visible for
+some time: the Moody-zone list in chapter 2 and the entire textbook reference list in
+chapter 12.
+
+`src/ui/pedagogy.py` now exposes `dedent_markdown()` and applies it in
+`iter_prose_and_math`, so everything routed through the helpers is safe.
+`textwrap.dedent` strips only the common prefix, so a list continuation indented three
+spaces deeper stays three deeper and remains inside its list item.
+
+`tests/test_markdown_indentation.py` walks the AST of every UI module, extracts string
+literals passed to `st.markdown` / `st.caption` / `st.write`, and fails on any that
+CommonMark would swallow into a code block. Direct `st.*` calls bypass the helpers, so
+that scan is what stops this recurring. Prefer `render_prose_and_latex` for any block
+containing a blank line.
+
+## Unicode has no subscript for "w", and the neighbours are currency signs
+
+Subscripts exist in Unicode for digits and a handful of lowercase letters. There is none
+for `w`, and none for capitals. Guessing a numeric entity near the subscript block lands
+in Currency Symbols: `&#8354;` (U+20A2) is the CRUZEIRO SIGN, and it was rendering as a
+wall subscript in the canal diagrams. The transport diagrams then repeated the mistake
+with `&#8347;` (subscript *s*, used for *x*) and `&#8320;&#8342;` (subscript zero and *k*,
+used for *AB*).
+
+Use `svg_diagrams._sub()` for any subscript Unicode does not actually provide. `R_h` and
+`D_h` are fine as `&#8341;` because subscript *h* genuinely exists.
+`test_no_diagram_contains_a_currency_or_stray_symbol` asserts no diagram output contains
+a character from the Currency Symbols block, which catches the whole class for free.
+
+## Angles cannot be drawn on an axonometric projection
+
+The impeller figure originally marked beta_2 on the 3D view. A projection foreshortens
+each direction by a different amount, so a 25-degree blade angle rendered as roughly 50.
+No caption rescues that. The figure is now two panels: the axonometric wheel for shape,
+and a plan view looking down the shaft for angles, where the r-theta plane is undistorted
+and the angles are true. This is the split turbomachinery texts use, and it also fixed a
+legend that no longer had to fit beside the geometry.
+
+Every angle mark draws both bounding rays from its vertex. An arc floating beside a
+vector does not say which two directions it spans, which was the substance of the
+original complaint.

@@ -100,3 +100,79 @@ def test_machine_efficiency_changes_work_and_temperature_correctly():
 def test_sphere_drag_recovers_creeping_limit():
     assert sphere_drag(1e-8)*1e-8==pytest.approx(24,rel=1e-5)
     with pytest.raises(ValueError): sphere_drag(1e5)
+
+
+# --- choked flow in pressure-relief sizing ---------------------------------
+
+def test_critical_pressure_ratio_matches_the_textbook_value():
+    from src.physics.gas_dynamics import critical_pressure_ratio
+    assert critical_pressure_ratio(1.4) == pytest.approx(0.5283, abs=1e-4)
+    # A vessel above about 1.9x the downstream absolute pressure is choked.
+    assert 1 / critical_pressure_ratio(1.4) == pytest.approx(1.893, abs=1e-3)
+
+
+def test_choked_flux_is_independent_of_back_pressure():
+    """The defining property, and the one relief sizing depends on."""
+    from src.physics.gas_dynamics import relief_sizing
+    low = relief_sizing(5.0, p0=12e5, t0=333.15, back_pressure=1.0e5)
+    lower = relief_sizing(5.0, p0=12e5, t0=333.15, back_pressure=0.2e5)
+    assert low['choked'] and lower['choked']
+    assert low['mass_flux'] == pytest.approx(lower['mass_flux'])
+    assert low['area'] == pytest.approx(lower['area'])
+
+
+def test_choked_flux_scales_with_pressure_and_inverse_root_temperature():
+    from src.physics.gas_dynamics import choked_mass_flux
+    base = choked_mass_flux(10e5, 300.0)
+    assert choked_mass_flux(20e5, 300.0) == pytest.approx(2 * base)
+    assert choked_mass_flux(10e5, 1200.0) == pytest.approx(base / 2)
+
+
+def test_hot_relief_needs_more_area():
+    """G ~ 1/sqrt(T0): the same hole passes less mass when the gas is hot."""
+    from src.physics.gas_dynamics import relief_sizing
+    cold = relief_sizing(5.0, p0=12e5, t0=300.0, back_pressure=1.0e5)
+    hot = relief_sizing(5.0, p0=12e5, t0=900.0, back_pressure=1.0e5)
+    assert hot['area'] > cold['area']
+    assert hot['area'] / cold['area'] == pytest.approx(math.sqrt(3.0), rel=1e-9)
+
+
+def test_high_back_pressure_unchokes_and_costs_capacity():
+    from src.physics.gas_dynamics import relief_sizing
+    result = relief_sizing(5.0, p0=12e5, t0=333.15, back_pressure=9.0e5)
+    assert not result['choked']
+    assert result['back_pressure_ratio'] > result['critical_ratio']
+    assert 0 < result['capacity_loss_vs_choked'] < 1
+    assert result['mass_flux'] < result['choked_mass_flux']
+
+
+def test_capacity_curve_is_flat_below_the_critical_ratio():
+    from src.physics.gas_dynamics import relief_capacity_curve
+    curve = relief_capacity_curve(12e5, 333.15)
+    choked = [f for r, f in zip(curve['ratio'], curve['mass_flux'])
+              if r <= curve['critical_ratio']]
+    assert len(choked) > 10
+    assert max(choked) == pytest.approx(min(choked))
+    assert max(choked) == pytest.approx(curve['choked_mass_flux'])
+    # And it falls away above the critical ratio.
+    assert curve['mass_flux'][-1] < curve['choked_mass_flux']
+
+
+def test_area_is_inversely_proportional_to_discharge_coefficient():
+    from src.physics.gas_dynamics import relief_sizing
+    valve = relief_sizing(5.0, p0=12e5, t0=333.15, back_pressure=1e5,
+                          discharge_coefficient=0.975)
+    disc = relief_sizing(5.0, p0=12e5, t0=333.15, back_pressure=1e5,
+                         discharge_coefficient=0.62)
+    assert disc['area'] / valve['area'] == pytest.approx(0.975 / 0.62)
+
+
+@pytest.mark.parametrize("kwargs", [
+    dict(required_flow=0.0, p0=12e5, t0=300.0, back_pressure=1e5),
+    dict(required_flow=5.0, p0=0.0, t0=300.0, back_pressure=1e5),
+    dict(required_flow=5.0, p0=12e5, t0=-5.0, back_pressure=1e5),
+])
+def test_invalid_relief_inputs_rejected(kwargs):
+    from src.physics.gas_dynamics import relief_sizing
+    with pytest.raises(ValueError):
+        relief_sizing(**kwargs)

@@ -25,6 +25,7 @@ from src.physics.exact_solutions import (
     stokes_first_problem,
 )
 from src.physics.impeller import head_flow_curve, velocity_triangles
+from src.physics.gas_dynamics import relief_capacity_curve
 from src.physics.numerical_solver import run_lid_driven_cavity
 from src.physics.open_channel import MANNING_N, channel_state, rating_curve
 from src.physics.transport_analogy import (
@@ -65,6 +66,9 @@ def _figures():
         "thermal": plotting.plot_thermal_boundary_layers(
             [pohlhausen_theta_gradient(pr) for pr in (0.7, 1.0, 7.0)]
         ),
+        "relief": plotting.plot_relief_capacity(
+            relief_capacity_curve(12e5, 333.15), operating_ratio=0.084
+        ),
         "transport": plotting.plot_transport_correlations(
             [sweep_reynolds("Sphere (Ranz-Marshall)", 7.0),
              sweep_reynolds("Flat plate, laminar (local)", 7.0)],
@@ -76,7 +80,7 @@ def _figures():
 FIGURE_NAMES = (
     "venturi", "cylinder", "channel", "stokes", "hagen", "cavity",
     "moody", "profiles", "wall", "blasius", "separation", "straws",
-    "impeller", "canal", "thermal", "transport",
+    "impeller", "canal", "thermal", "transport", "relief",
 )
 
 

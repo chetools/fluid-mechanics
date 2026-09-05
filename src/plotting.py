@@ -1153,3 +1153,46 @@ def plot_transport_correlations(curves: List[Dict], operating: Dict = None) -> g
     fig.update_yaxes(title_text="Nusselt or Sherwood number", type="log")
     fig.update_layout(title="", height=430)
     return apply_plotly_theme(fig)
+
+
+def plot_relief_capacity(curve: Dict, operating_ratio: float = None) -> go.Figure:
+    """Mass flux against back-pressure ratio: the choking plateau.
+
+    The flat portion is the whole message. A relief device operating on it
+    cannot be persuaded to pass more by lowering the downstream pressure.
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=curve["ratio"], y=curve["mass_flux"],
+            mode="lines", line=dict(color=ACCENT, width=3.5),
+            name="mass flux G",
+        )
+    )
+    fig.add_vrect(
+        x0=min(curve["ratio"]), x1=curve["critical_ratio"],
+        fillcolor=SUCCESS, opacity=0.10, line_width=0,
+        annotation_text="choked: capacity fixed by p0 and T0 alone",
+        annotation_position="top left",
+    )
+    fig.add_vline(
+        x=curve["critical_ratio"],
+        line=dict(color=WARNING, width=2, dash="dash"),
+        annotation_text=f"critical {curve['critical_ratio']:.3f}",
+    )
+    if operating_ratio is not None:
+        index = min(
+            range(len(curve["ratio"])),
+            key=lambda i: abs(curve["ratio"][i] - operating_ratio),
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[curve["ratio"][index]], y=[curve["mass_flux"][index]],
+                mode="markers", marker=dict(color=PRESSURE, size=14, symbol="diamond"),
+                name="your case",
+            )
+        )
+    fig.update_xaxes(title_text="Back pressure / upstream stagnation pressure [-]")
+    fig.update_yaxes(title_text="Mass flux G [kg/(s m2)]")
+    fig.update_layout(title="", height=400)
+    return apply_plotly_theme(fig)

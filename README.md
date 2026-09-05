@@ -23,7 +23,7 @@ The interface features a persistent physical KPI strip above twelve chapters, or
 | **📏 7. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, step-by-step Blasius derivation, cylinder separation |
 | **8. External Flow** | Stokes derivation, settling, Schiller–Naumann and drag crisis |
 | **9. Turbomachinery** | Angular momentum, 3D impeller geometry and blade angles, velocity triangles, compressor/turbine efficiencies, intercooling, and a worked air-separation plant |
-| **10. Compressible Flow** | Stepwise nozzle derivation, choking calculator, normal shocks, Fanno and Rayleigh flow, everyday and process examples |
+| **10. Compressible Flow** | Stepwise nozzle derivation, choking calculator, normal shocks, Fanno and Rayleigh flow, and choked flow as the basis of pressure-relief sizing |
 | **💻 11. CFD (Projection)** | Incompressible Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
 | **📖 12. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
 
@@ -38,6 +38,32 @@ The course moves through plant balances, scaling and regimes, local momentum,
 then external flow, turbomachinery, gas dynamics and numerical verification. All twelve
 chapter buttons wrap on narrow screens. Selecting a chapter is a Streamlit rerun rather
 than a client-side tab switch; widget state is preserved by explicit keys.
+
+### Transport analogies, and where correlations come from
+
+Chapter 3 does not stop at momentum. `nu`, `alpha` and `D_AB` are the same kind of
+quantity, so the same dimensional matrix gives `Nu = Phi(Re, Pr)` and
+`Sh = Phi(Re, Sc)` with the *same* `Phi`. `src/physics/transport_analogy.py`
+stores each correlation once and evaluates it for either mode, so heat and mass
+cannot drift apart, and each correlation carries its own range of validity, which
+the app reports rather than silently extrapolating.
+
+The flat-plate result is derived rather than quoted. Substituting the Blasius
+similarity variable into the energy equation gives
+`theta'' + (Pr/2) f theta' = 0`, which the app solves live. At `Pr = 1` that ODE
+*is* the differentiated Blasius equation, so `theta'(0)` must equal `f''(0)`, and
+the solver returns 0.33206 against 0.332057. The familiar `0.332 Pr^(1/3)` is then
+shown to be a ~2% fit to the solved ODE over `Pr = 0.6` to 100.
+
+### Pressure relief
+
+Chapter 10 closes with the reason choking matters industrially. Above the critical
+ratio the throat cannot detect the downstream pressure, so a relief device's
+capacity is a property of the vessel and the hole, not of the header it discharges
+into — which is what makes it sizeable at all. The calculator sizes a throat, flags
+whether the case is choked, and reports the capacity lost when it is not. It covers
+single-phase ideal gas only; two-phase and flashing relief need the omega method
+and are explicitly out of scope.
 
 ### Open channels and canals
 

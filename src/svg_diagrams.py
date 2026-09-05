@@ -1144,3 +1144,52 @@ def diagram_transport_geometries() -> str:
         <text x="24" y="450" fill="{TEXT_DIM}" font-size="11.5">It fails where the two problems stop matching: high mass-transfer rates that distort the velocity profile, chemical reaction, and geometries where form drag dominates skin friction.</text>
     </svg>
     """
+
+
+def diagram_relief_valve() -> str:
+    """A relief device, with the three pressures that decide whether it chokes."""
+    zero = _sub("0")
+    return f"""
+    <svg viewBox="0 0 880 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Pressure relief &#183; why the throat cannot hear the tailpipe</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Once the throat reaches Mach 1, information cannot travel upstream against it. Capacity is then fixed by p{zero} and T{zero} alone.</text>
+
+        <rect x="40" y="120" width="180" height="190" rx="10" fill="{rgba(PRESSURE, 0.12)}" stroke="{PRESSURE}" stroke-width="2.4"/>
+        <text x="60" y="150" fill="{PRESSURE}" font-size="13" font-weight="700">PROTECTED VESSEL</text>
+        <text x="60" y="176" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">p{zero}, T{zero}</text>
+        <text x="60" y="198" fill="{TEXT_DIM}" font-size="11">stagnation state</text>
+        <text x="60" y="222" fill="{TEXT_DIM}" font-size="11">at relieving conditions</text>
+        <text x="60" y="248" fill="{TEXT_DIM}" font-size="11">(set pressure + overpressure,</text>
+        <text x="60" y="264" fill="{TEXT_DIM}" font-size="11">not the normal operating point)</text>
+
+        <line x1="220" y1="215" x2="292" y2="215" stroke="{ACCENT}" stroke-width="10"/>
+        <text x="228" y="200" fill="{TEXT_DIM}" font-size="10.5">inlet line</text>
+        <text x="196" y="330" fill="{WARNING}" font-size="10.5">inlet line loss must stay below 3% of the set pressure, or the valve chatters</text>
+
+        <path d="M 292 186 L 330 208 L 330 222 L 292 244 Z" fill="{rgba(SHEAR, 0.30)}" stroke="{SHEAR}" stroke-width="2.4"/>
+        <text x="300" y="168" fill="{SHEAR}" font-size="12.5" font-weight="700">throat</text>
+        <text x="286" y="276" fill="{SHEAR}" font-size="12" font-weight="700">M = 1</text>
+        <text x="270" y="292" fill="{TEXT_DIM}" font-size="10.5">area A, coefficient K&#8340;</text>
+
+        <path d="M 330 208 L 430 176 L 430 254 L 330 222 Z" fill="{rgba(ACCENT, 0.10)}" stroke="{ACCENT}" stroke-width="2"/>
+        <line x1="430" y1="215" x2="560" y2="215" stroke="{ACCENT}" stroke-width="10"/>
+        <text x="446" y="200" fill="{TEXT_DIM}" font-size="10.5">tailpipe / flare header</text>
+
+        <rect x="560" y="170" width="150" height="92" rx="8" fill="{SURFACE_RAISED}" stroke="{BORDER_STRONG}" stroke-width="1.8"/>
+        <text x="576" y="196" fill="{TEXT}" font-size="12.5" font-weight="700">BACK PRESSURE</text>
+        <text x="576" y="218" fill="{TEXT_DIM}" font-size="11">superimposed (header)</text>
+        <text x="576" y="236" fill="{TEXT_DIM}" font-size="11">+ built-up (own flow)</text>
+        <text x="576" y="254" fill="{TEXT_DIM}" font-size="11">= total p&#8342;</text>
+
+        <line x1="330" y1="322" x2="330" y2="352" stroke="{TEXT_FAINT}" stroke-width="1.4" stroke-dasharray="4,3"/>
+        <line x1="640" y1="272" x2="640" y2="352" stroke="{TEXT_FAINT}" stroke-width="1.4" stroke-dasharray="4,3"/>
+        <line x1="330" y1="352" x2="640" y2="352" stroke="{VORTICITY}" stroke-width="2" marker-start="url(#arrow-purple)" marker-end="url(#arrow-purple)"/>
+        <text x="360" y="344" fill="{VORTICITY}" font-size="11.5">no signal can travel this way while M = 1 at the throat</text>
+
+        <rect x="40" y="368" width="800" height="48" rx="8" fill="{rgba(SUCCESS, 0.10)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="60" y="390" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">G = p{zero} &#8730;(&#947;/RT{zero}) &#183; (2/(&#947;+1))^((&#947;+1)/2(&#947;&#8722;1))&#160;&#160;&#160;&#8658;&#160;&#160;&#160;A = W / (K&#8340; G)</text>
+        <text x="60" y="408" fill="{TEXT_DIM}" font-size="11">p&#8342; appears nowhere: that is the design fact. Capacity rises with p{zero}, and falls as &#8730;T{zero} rises &#8212; a hot relief case passes less.</text>
+    </svg>
+    """

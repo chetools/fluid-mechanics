@@ -68,3 +68,115 @@ def sphere_drag(reynolds, strict=True):
     if reynolds > SCHILLER_NAUMANN_RE_MAX and strict:
         raise ValueError('Schiller–Naumann demonstration limited to Re <= 1000.')
     return 24 / reynolds * (1 + 0.15 * reynolds**0.687)
+
+
+def critical_pressure_ratio(gamma=1.4):
+    """p*/p0 at which a converging passage chokes: (2/(gamma+1))^(gamma/(gamma-1)).
+
+    About 0.528 for a diatomic gas, so a vessel above roughly 1.9 times the
+    downstream absolute pressure is already choked. Most relief scenarios start
+    well above that, which is why choked flow is the normal case in relief
+    sizing rather than a special one.
+    """
+    if not math.isfinite(gamma) or gamma <= 1:
+        raise ValueError('gamma must exceed one.')
+    return (2 / (gamma + 1)) ** (gamma / (gamma - 1))
+
+
+def choked_mass_flux(p0, t0, gamma=1.4, gas_constant=287.05):
+    """Mass flow per unit throat area when choked, kg/(s.m^2).
+
+        G = p0 sqrt(gamma/(R T0)) (2/(gamma+1))^((gamma+1)/(2(gamma-1)))
+
+    Note what is absent: the downstream pressure. Once choked, the throat has no
+    way of learning what is downstream, because the information would have to
+    travel upstream against a flow already moving at the speed of sound. The
+    capacity of a relief device is therefore fixed by its upstream stagnation
+    state and its throat area alone.
+
+    Two design consequences follow directly from the formula:
+    G scales with p0, so capacity rises as the vessel pressure rises; and G goes
+    as 1/sqrt(T0), so a hot relief case passes *less* mass through the same hole.
+    """
+    positive(p0, 'Upstream stagnation pressure')
+    positive(t0, 'Upstream stagnation temperature')
+    gas_properties(gamma, gas_constant)
+    return p0 * math.sqrt(gamma / (gas_constant * t0)) * (
+        (2 / (gamma + 1)) ** ((gamma + 1) / (2 * (gamma - 1)))
+    )
+
+
+def relief_sizing(required_flow, p0, t0, back_pressure, gamma=1.4,
+                  gas_constant=287.05, discharge_coefficient=0.975):
+    """Throat area for a gas relief device, and whether it is choked.
+
+    `discharge_coefficient` is the device's effective coefficient (API 520 K_d;
+    about 0.975 for a nozzle-type safety relief valve, about 0.62 for a
+    rupture disc treated as an orifice).
+
+    Model limits, and they matter: single-phase, ideal, non-reacting gas with
+    constant gamma; no inlet line pressure loss; no valve-lift dynamics. This
+    does **not** cover flashing or two-phase relief, which needs the omega
+    method or HEM and can require an order of magnitude more area. It also does
+    not check the 3% inlet-loss rule or the built-up backpressure limits that
+    decide whether a conventional spring valve will chatter.
+    """
+    positive(required_flow, 'Required relief rate')
+    positive(back_pressure, 'Back pressure')
+    critical = critical_pressure_ratio(gamma)
+    flux = choked_mass_flux(p0, t0, gamma, gas_constant)
+    ratio = back_pressure / positive(p0, 'Upstream stagnation pressure')
+    choked = ratio <= critical
+
+    if choked:
+        effective_flux = flux
+    else:
+        # Subcritical: the throat now does feel the downstream pressure.
+        mach = math.sqrt(2 / (gamma - 1) * (ratio ** (-(gamma - 1) / gamma) - 1))
+        temperature = t0 / (1 + (gamma - 1) * mach ** 2 / 2)
+        density = back_pressure / (gas_constant * temperature)
+        effective_flux = density * mach * math.sqrt(gamma * gas_constant * temperature)
+
+    area = required_flow / (discharge_coefficient * effective_flux)
+    return {
+        'required_flow': required_flow,
+        'area': area,
+        'diameter': math.sqrt(4 * area / math.pi),
+        'mass_flux': effective_flux,
+        'choked_mass_flux': flux,
+        'choked': choked,
+        'critical_ratio': critical,
+        'back_pressure_ratio': ratio,
+        'capacity_loss_vs_choked': 1 - effective_flux / flux,
+        'discharge_coefficient': discharge_coefficient,
+        'p0': p0, 't0': t0, 'back_pressure': back_pressure,
+    }
+
+
+def relief_capacity_curve(p0, t0, gamma=1.4, gas_constant=287.05, n_points=120):
+    """Mass flux against back-pressure ratio: the plateau that defines choking.
+
+    The flat left-hand portion is the entire point. Lowering the downstream
+    pressure below the critical ratio buys no extra flow, so a relief device
+    cannot be made to pass more by venting it somewhere lower.
+    """
+    critical = critical_pressure_ratio(gamma)
+    flux = choked_mass_flux(p0, t0, gamma, gas_constant)
+    ratios = [0.02 + (0.98 - 0.02) * index / (n_points - 1) for index in range(n_points)]
+    fluxes = []
+    for ratio in ratios:
+        if ratio <= critical:
+            fluxes.append(flux)
+        else:
+            mach = math.sqrt(2 / (gamma - 1) * (ratio ** (-(gamma - 1) / gamma) - 1))
+            temperature = t0 / (1 + (gamma - 1) * mach ** 2 / 2)
+            density = ratio * p0 / (gas_constant * temperature)
+            fluxes.append(density * mach * math.sqrt(gamma * gas_constant * temperature))
+    return {
+        'ratio': ratios,
+        'mass_flux': fluxes,
+        'critical_ratio': critical,
+        'choked_mass_flux': flux,
+        'p0': p0,
+        't0': t0,
+    }
