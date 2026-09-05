@@ -12,6 +12,7 @@ from src.svg_impeller import (
 )
 from src.ui.pedagogy import (
     render_callout,
+    render_derivation,
     render_plot,
     render_prose_and_latex as prose,
     render_self_check,
@@ -38,6 +39,154 @@ $$h_2-h_1=U_2C_{\theta2}-U_1C_{\theta1}-\frac{C_2^2-C_1^2}{2}$$
 $$\Delta T_0=\frac{w_{\mathrm{in}}}{c_p}\quad\text{(constant-}c_p\text{ ideal gas)}$$
 Another useful check follows from W² = C² + U² − 2UCθ: Euler's equation implies constant rothalpy through an ideal adiabatic rotor.
 $$h+\frac{W^2}{2}-\frac{U^2}{2}=\text{constant}$$''')
+
+    render_derivation(
+        r"Euler's rotor equation from moment of momentum, and why the blade shape never appears",
+        [
+            (
+                "Linear momentum is the wrong balance to start from",
+                r"""
+                A shaft does not push the fluid; it **twists** it. Whatever crosses the
+                coupling is a torque, so the conservation statement that can see shaft work
+                is the moment of momentum, not the force balance used everywhere else in this
+                course.
+                """,
+            ),
+            (
+                "Build the moment-of-momentum theorem from Newton",
+                r"""
+                For a single particle, cross $\mathbf r$ into $\mathbf F=d(m\mathbf v)/dt$:
+                $$\mathbf r\times\mathbf F=\frac{d}{dt}(\mathbf r\times m\mathbf v)$$
+                because $\dot{\mathbf r}\times m\mathbf v=\mathbf v\times m\mathbf v=\mathbf 0$.
+                Summing over the fluid inside a fixed control volume and applying the transport
+                theorem for **steady** flow — storage inside is unchanging, so only the flux
+                through the boundary survives:
+                $$\sum(\text{torque about the axis})
+                =\oint_{S}(r C_\theta)\,\rho(\mathbf C\cdot\mathbf n)\,dA$$
+                The quantity being transported is $rC_\theta$, angular momentum per kilogram.
+                """,
+            ),
+            (
+                "Only the tangential velocity has a moment arm",
+                r"""
+                A geometric point worth pausing on. Decompose $\mathbf C$ at the rotor exit
+                into axial, radial and tangential parts. The axial component is **parallel**
+                to the shaft, so its moment about the shaft is zero; the radial component's
+                line of action **passes through** the axis, so its moment is zero too. Only
+                $C_\theta$, acting at arm $r$, carries angular momentum. That is why the
+                entire chapter is about swirl.
+                """,
+            ),
+            (
+                "Almost every external torque vanishes, which is what makes this useful",
+                r"""
+                On an axisymmetric casing, pressure acts along lines that intersect the axis:
+                no axial moment. Gravity on a vertical machine likewise has none, and casing
+                shear is a loss term, not a work term. So the **only** surviving torque is
+                the one the blades exert. With one inlet and one outlet, using mass-averaged
+                velocities:
+                $$\tau_{\text{fluid}}=\dot m\left(r_2C_{\theta2}-r_1C_{\theta1}\right)$$
+                """,
+            ),
+            (
+                "Multiply by shaft speed to get power, then divide by mass flow",
+                r"""
+                Power is torque times angular speed, and the blade speed is $U=\omega r$:
+                $$\dot W_{\text{in}}=\omega\tau_{\text{fluid}}
+                =\dot m\left(\omega r_2 C_{\theta2}-\omega r_1 C_{\theta1}\right)
+                \;\Longrightarrow\;
+                \boxed{w_{\text{in}}=U_2C_{\theta2}-U_1C_{\theta1}}$$
+                Look at what is **absent**: no blade count, no blade shape, no viscosity, no
+                fluid property, and no statement of whether this is a pump, a fan, a
+                compressor or a turbine. Euler's equation is a conservation statement, so it
+                constrains every machine of this type; the geometry re-enters only when you
+                ask what $C_{\theta2}$ actually is (§9.2).
+                """,
+            ),
+            (
+                "Attach it to the first law to get a thermodynamic result",
+                r"""
+                For an adiabatic rotor with negligible elevation change, the steady-flow
+                energy equation of §1.2 says shaft work goes entirely into stagnation
+                enthalpy:
+                $$h_{02}-h_{01}=w_{\text{in}},\qquad h_0=h+\tfrac12C^{2}$$
+                so the *static* enthalpy rise is whatever is left after the kinetic energy
+                change is accounted for:
+                $$h_2-h_1=U_2C_{\theta2}-U_1C_{\theta1}-\frac{C_2^{2}-C_1^{2}}{2}$$
+                A rotor that dumps most of its work into $C_2$ has done little to the static
+                state and has handed the diffuser a large job. That fraction is exactly the
+                degree of reaction reported in the lab below.
+                """,
+            ),
+            (
+                "Sign convention, stated once",
+                r"""
+                $w_{\text{in}}>0$ means the rotor adds angular momentum: pump, fan or
+                compressor. $w_{\text{in}}<0$ means the fluid loses swirl and drives the
+                shaft: turbine or expander. The shaft always feels the equal and opposite
+                torque. A stationary blade row has $U=0$, hence no work at all — it can only
+                trade static enthalpy for kinetic energy at constant $h_0$, which is precisely
+                what a nozzle or a diffuser does.
+                """,
+            ),
+        ],
+    )
+
+    render_derivation(
+        r"the velocity triangle identity, and the three separate ways a rotor makes head",
+        [
+            (
+                r"$\mathbf C=\mathbf U+\mathbf W$ is a change of observer, nothing more",
+                r"""
+                Stand in the room and you see the absolute velocity $\mathbf C$. Ride the
+                blade — a frame moving tangentially at $\mathbf U=\omega r$ — and you see the
+                relative velocity $\mathbf W$. Galilean addition of velocities gives
+                $\mathbf C=\mathbf U+\mathbf W$, and drawing that vector sum *is* the velocity
+                triangle. The blade can only impose a direction on $\mathbf W$, because that
+                is the velocity it actually sees.
+                """,
+            ),
+            (
+                "Apply the cosine rule to that triangle",
+                r"""
+                The angle between $\mathbf C$ and $\mathbf U$ is $\alpha$, so
+                $C\cos\alpha=C_\theta$, and the side opposite is $W$:
+                $$W^{2}=C^{2}+U^{2}-2UC\cos\alpha=C^{2}+U^{2}-2UC_\theta$$
+                Rearranged, this is a rewriting of the Euler work per unit blade speed:
+                $$UC_\theta=\tfrac12\left(C^{2}+U^{2}-W^{2}\right)$$
+                """,
+            ),
+            (
+                "Substitute into Euler and read the three mechanisms",
+                r"""
+                $$w_{\text{in}}=\underbrace{\frac{C_2^{2}-C_1^{2}}{2}}_{\text{(a) kinetic energy}}
+                +\underbrace{\frac{U_2^{2}-U_1^{2}}{2}}_{\text{(b) centrifugal}}
+                -\underbrace{\frac{W_2^{2}-W_1^{2}}{2}}_{\text{(c) relative diffusion}}$$
+                **(a)** is energy handed to the absolute stream as *speed*; a volute or
+                diffuser must convert it to pressure afterwards, at some loss.
+                **(b)** is pressure produced simply by carrying fluid outward against the
+                centrifugal field — it needs no diffusion at all, which is the fundamental
+                reason a centrifugal stage makes several times the head of an axial stage at
+                the same tip speed. **(c)** is diffusion inside the rotating passage, limited
+                by the same separation physics as any diffuser.
+                """,
+            ),
+            (
+                "The same identity gives a conserved quantity in the rotating frame",
+                r"""
+                Put $h_{02}-h_{01}=U_2C_{\theta2}-U_1C_{\theta1}$ together with
+                $h_0=h+\tfrac12C^{2}$ and the cosine rule above. Everything with subscript 2
+                collects on one side and everything with subscript 1 on the other:
+                $$h+\frac{W^{2}}{2}-\frac{U^{2}}{2}=\text{constant}$$
+                This is **rothalpy** — the rotating-frame analogue of stagnation enthalpy.
+                The $-U^{2}/2$ is the potential of the centrifugal field, exactly as $gz$ is
+                the potential of gravity. Rothalpy is the check to run on any ideal adiabatic
+                rotor calculation: if it drifts between inlet and outlet, the triangle is
+                wrong.
+                """,
+            ),
+        ],
+    )
     st.caption('[MIT: Euler turbine equation and velocity components](https://web.mit.edu/course/16/16.unified/www/SPRING/thermodynamics/notes/node91.html). Velocities in this balance are mass-flow averages; blade losses and nonuniformity require additional modeling.')
     st.markdown('### 9.2 Where the angles are · impeller geometry and blade angles')
     prose(r'''Almost every mistake in a turbomachinery calculation is an angle measured from the wrong reference. Fix the conventions once and the arithmetic follows.
@@ -136,6 +285,118 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
             'shutoff head. Nothing here models the volute, leakage or disc friction.'
         )
 
+        render_derivation(
+            r"from a blade angle to the head curve $H(Q)$, one geometric fact at a time",
+            [
+                (
+                    "What a blade angle asserts, and what it draws",
+                    r"""
+                    On the blade-to-blade surface, a step along the camberline has a radial
+                    part $dr$ and a tangential part $r\,d\theta$ — the arc length, which is why
+                    the radius multiplies the angle. Measuring $\beta$ from the tangential
+                    direction, "opposite over adjacent" gives
+                    $$\tan\beta=\frac{dr}{r\,d\theta}$$
+                    That is the *entire* content of a blade angle. Integrating it with $\beta$
+                    held constant,
+                    $$\theta=\frac{1}{\tan\beta}\ln\frac{r}{r_1}$$
+                    a logarithmic spiral — and it is literally how the blade in the figure was
+                    drawn. A shallow $\beta$ makes $1/\tan\beta$ large, so the blade wraps much
+                    further around the shaft: that is why heavily backswept impellers look like
+                    spirals and radial-bladed ones like spokes.
+                    """,
+                ),
+                (
+                    "Start the head from Euler, with the usual inlet assumption",
+                    r"""
+                    Head is work per unit weight, $H=w_{\text{in}}/g$. Most pumps are designed
+                    for swirl-free entry ($C_{\theta1}=0$, the flow arriving straight down the
+                    eye), so Euler's equation collapses to one term:
+                    $$H=\frac{U_2C_{\theta2}}{g},\qquad U_2=\omega r_2$$
+                    Everything that follows is the work of finding $C_{\theta2}$.
+                    """,
+                ),
+                (
+                    "Continuity fixes the meridional component — and only that component",
+                    r"""
+                    The fluid leaves through the cylindrical surface at the tip, area
+                    $A_2=2\pi r_2b_2$ (blade thickness blockage ignored here). Only the
+                    velocity component **normal** to that surface transports volume through
+                    it, and at the tip of a radial machine that is the radial (meridional)
+                    component:
+                    $$C_{m2}=\frac{Q}{2\pi r_2 b_2}$$
+                    The swirl $C_{\theta2}$ slides *along* the surface and carries no flow
+                    through it — which is exactly why swirl can be large without any of it
+                    showing up in the flow rate.
+                    """,
+                ),
+                (
+                    "The blade fixes the direction of the relative velocity",
+                    r"""
+                    A blade can only steer the fluid it sees, so in the ideal case the relative
+                    velocity leaves *parallel to the blade*. From the outlet triangle, with
+                    $\beta_2$ measured from tangential,
+                    $$\tan\beta_2=\frac{C_{m2}}{W_{\theta2}}
+                    \;\Longrightarrow\; W_{\theta2}=\frac{C_{m2}}{\tan\beta_2}$$
+                    and since $C_\theta=U-W_\theta$ along the tangential direction,
+                    $$C_{\theta2}=U_2-\frac{C_{m2}}{\tan\beta_2}$$
+                    Notice the flow rate has now entered the swirl through $C_{m2}$. That
+                    coupling is the origin of the whole head curve.
+                    """,
+                ),
+                (
+                    "Finite blades do not perfectly guide the flow: slip",
+                    r"""
+                    Perfect guidance would need infinitely many blades. In a real passage the
+                    fluid tends to keep its **absolute** orientation while the passage rotates
+                    around it, which appears in the rotating frame as an eddy turning opposite
+                    to the shaft. That relative eddy subtracts tangential momentum at the tip
+                    — with no viscosity involved; it survives in potential flow. It is folded
+                    into one measured factor $\sigma<1$ (the lab uses Wiesner's fit to
+                    Busemann's solution):
+                    $$C_{\theta2}=\sigma U_2-\frac{C_{m2}}{\tan\beta_2}$$
+                    Fewer blades means a wider passage, a stronger relative eddy and a smaller
+                    $\sigma$. This is the one genuinely empirical step in the chain.
+                    """,
+                ),
+                (
+                    "Assemble, and the curve is a straight line",
+                    r"""
+                    $$H=\frac{U_2}{g}\left(\sigma U_2-\frac{Q}{2\pi r_2b_2\tan\beta_2}\right)
+                    =\underbrace{\frac{\sigma U_2^{2}}{g}}_{\text{shutoff head}}
+                    -\underbrace{\frac{U_2}{2\pi r_2b_2 g\tan\beta_2}}_{\text{slope}}\;Q$$
+                    The intercept at $Q=0$ is the shutoff head, and it depends only on tip
+                    speed — which is why "head scales with $U_2^{2}$" is the first thing said
+                    about any centrifugal machine, and why doubling the speed quadruples the
+                    head (the affinity law).
+                    """,
+                ),
+                (
+                    "The sign of the slope is the whole stability argument",
+                    r"""
+                    Backswept ($\beta_2<90^\circ$): $\tan\beta_2>0$, the slope is **negative**,
+                    and the curve falls with flow. If the operating point is disturbed toward
+                    higher flow, the pump offers less head than the system needs and the flow
+                    falls back — a restoring slope. Radial-ended ($\beta_2=90^\circ$):
+                    $\tan\beta_2\to\infty$, the slope vanishes and the curve is flat, so
+                    nothing restores the operating point. Forward-curved: the slope reverses
+                    and the curve **rises**, which is the classical route to surge described in
+                    §9.5.4. Backsweep costs head — visible as the drop in $C_{\theta2}$ in the
+                    lab above — and buys stability plus an easier diffuser.
+                    """,
+                ),
+                (
+                    "What this straight line deliberately omits",
+                    r"""
+                    A measured pump curve bends below it. Friction inside the passages grows
+                    roughly as $Q^{2}$; incidence loss grows on **both** sides of the design
+                    flow, because §9.2's shockless-entry condition holds at only one $Q$; and
+                    nothing here represents the volute, leakage, disc friction or blade
+                    blockage. The line is the ideal envelope those losses subtract from.
+                    """,
+                ),
+            ],
+        )
+
     render_self_check(
         'turbo_self_check_angle',
         'An impeller has β₂ = 25° in this app\'s convention. A textbook that measures from the meridional direction would call the same blade…',
@@ -180,6 +441,100 @@ Each intercooler rejects cp times the preceding temperature rise. There are n−
 **Expansion with reheating.** Reheating between equal-ratio turbine stages back to the original hot inlet temperature increases shaft output; external heat supplies the added energy. A refrigeration expander instead keeps the cold exhaust and avoids reheating.
 $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)}\right]$$
 **Throttling is different.** A valve has no shaft output. With negligible heat, elevation and endpoint kinetic-energy changes, h₂ = h₁. An ideal gas therefore has no temperature change through the complete valve process. Real-gas Joule–Thomson cooling or heating depends on state and composition; it is not the turbine relation. Steam, condensing fluids and large temperature ranges require real property data.''')
+
+    render_derivation(
+        r"why compressor work is $\int v\,dp$, and why equal stage ratios are optimal",
+        [
+            (
+                r"Reversible steady-flow work is $\int v\,dp$, not $\int p\,dv$",
+                r"""
+                Two facts, combined. The steady-flow energy equation with negligible kinetic
+                and potential changes gives $\delta w_{\text{in}}=dh-\delta q$. Gibbs' relation
+                gives $dh=T\,ds+v\,dp$, and reversibility gives $\delta q=T\,ds$. Subtract:
+                $$\delta w_{\text{in}}=T\,ds+v\,dp-T\,ds=v\,dp
+                \;\Longrightarrow\; w_{\text{in}}=\int_{p_1}^{p_2}v\,dp$$
+                The closed-system result $\int p\,dv$ is a different quantity for a different
+                situation; using it for a compressor is a standard and expensive error. The
+                practical reading of $\int v\,dp$ is immediate: **work is proportional to
+                specific volume**, so anything that keeps the gas dense while you squeeze it
+                — cooling — reduces the bill.
+                """,
+            ),
+            (
+                "The isothermal reference, and why it is the cheapest possible path",
+                r"""
+                Hold $T$ constant and substitute the ideal-gas $v=RT/p$:
+                $$w_{\text{iso,in}}=\int_{p_1}^{p_2}\frac{RT}{p}dp=RT\ln\frac{p_2}{p_1}$$
+                Since $\Delta h=0$ for an isothermal ideal gas, the first law forces
+                $q=-w_{\text{iso,in}}$: every joule of shaft work must be removed as heat.
+                Adiabatic compression instead lets $T$ — and therefore $v$ — climb as the
+                pressure rises, so the integrand grows and the same pressure ratio costs more.
+                Isothermal is the floor; adiabatic is the ceiling.
+                """,
+            ),
+            (
+                "Stage work for the real, adiabatic machine",
+                r"""
+                Each stage is adiabatic with isentropic efficiency $\eta_c$, and perfect
+                intercooling returns the gas to $T_{\text{in}}$ before the next one. Writing
+                $k=(\gamma-1)/\gamma$, §9.3 gives one stage of ratio $r_i$:
+                $$w_i=\frac{c_pT_{\text{in}}}{\eta_c}\left(r_i^{\,k}-1\right)$$
+                Every stage starts from the same $T_{\text{in}}$ — that is what intercooling
+                buys, and it is what makes the stages *comparable* in the next step.
+                """,
+            ),
+            (
+                "Minimise the sum subject to the fixed overall ratio",
+                r"""
+                The constraint is a product, $\prod_i r_i=r_p$, so take logarithms and let
+                $x_i=\ln r_i$; the constraint becomes a **sum**, $\sum x_i=\ln r_p$, and the
+                objective becomes
+                $$\sum_i e^{k x_i}\ \to\ \min \quad\text{subject to}\quad \sum_i x_i=\text{const}$$
+                $e^{kx}$ is convex, and for a convex function with a fixed sum of arguments
+                the sum of values is smallest when all the arguments are **equal** (Jensen).
+                Hence
+                $$r_{p,\text{stage}}=r_p^{1/n},\qquad
+                w_n=\frac{n\,c_pT_{\text{in}}}{\eta_c}\left(r_p^{\frac{\gamma-1}{n\gamma}}-1\right)$$
+                The physical statement behind the algebra: any stage doing more than its share
+                of the pressure ratio arrives at the next intercooler hotter, and hot gas is
+                expensive to compress.
+                """,
+            ),
+            (
+                "Take the many-stage limit and recover the isothermal floor",
+                r"""
+                As $n\to\infty$, $r_p^{k/n}-1\to (k/n)\ln r_p$, so
+                $$w_n\to\frac{c_pT_{\text{in}}}{\eta_c}\,k\ln r_p
+                =\frac{R\,T_{\text{in}}}{\eta_c}\ln r_p$$
+                using $c_pk=c_p(\gamma-1)/\gamma=R$. Infinitely many stages with perfect
+                intercooling *is* isothermal compression, recovered exactly. Real machines
+                stop at three or four stages because each intercooler brings pressure drop,
+                cost and fouling — the curve of diminishing returns is steep.
+                """,
+            ),
+            (
+                "Where the rejected heat goes",
+                r"""
+                Each intercooler must remove the temperature rise the preceding stage created,
+                $q_i=c_p\left(T_{\text{out},i}-T_{\text{in}}\right)$, and there are $n-1$ of
+                them between $n$ stages. An aftercooler, if fitted, is a separate duty. Note
+                that irreversibility is paid for twice: once as extra shaft work, and again as
+                extra cooling-water duty to throw that same energy away.
+                """,
+            ),
+            (
+                "Throttling is not a degenerate case of any of this",
+                r"""
+                A valve has no shaft, so $w=0$, and with negligible heat and kinetic terms the
+                energy equation reduces to $h_2=h_1$. For an ideal gas $h$ depends on $T$
+                alone, so $T_2=T_1$ exactly — an ideal-gas throttle produces **no** cooling.
+                Real-gas Joule–Thomson cooling comes entirely from the departure of $h$ from
+                ideality, which is why §9.5 has to size it with a measured coefficient rather
+                than derive it here.
+                """,
+            ),
+        ],
+    )
     stages=persistent_input(st.slider, 'Number of ideal intercooled / reheated stages',1,8,2, key="tab_turbomachinery_number_of_ideal_intercooled_reheated_stages")
     exponent=(gamma-1)/(gamma*stages)
     if mode=='Compressor':
