@@ -150,21 +150,30 @@ def diagram_impeller_3d(
     pitch_deg: float = 27.0,
     z_exaggeration: float = 2.6,
 ) -> str:
-    """Axonometric view of the real blade set, with each angle marked in place.
+    """Two panels: the wheel in space, and the blade angles at true size.
 
-    Blades are painted far-to-near using the projected depth, so near blades
-    occlude far ones and the eye reads a solid wheel instead of a wire tangle.
+    Split the way turbomachinery texts split it, and for the same reason. The
+    left panel is an axonometric projection: it shows how the blades sit in
+    space, and it is honest about nothing else, because a projection foreshortens
+    each direction by a different amount and an angle drawn on it is not the
+    angle it names. The right panel looks straight down the shaft, where the
+    r-theta plane is undistorted, so beta_1 and beta_2 appear at TRUE size.
 
-    The axial coordinate is stretched by `z_exaggeration`, the way a textbook
-    cutaway does: a real passage is 12 mm tall on a 300 mm wheel, and drawn to
-    true scale the blades collapse into edge-on slivers. Radii, blade curvature
-    and every angle in the r-theta plane are untouched, so the wrap angle and
-    the blade shape remain exact.
+    Blades in the left panel are painted far-to-near by projected depth, so near
+    blades occlude far ones and the eye reads a solid wheel rather than a wire
+    tangle. Its axial coordinate is stretched by `z_exaggeration`, the way a
+    cutaway does: a real passage is 12 mm tall on a 300 mm wheel and would
+    otherwise collapse to an edge-on sliver. Radii, blade curvature and every
+    r-theta angle are untouched, so the wrap angle and blade shape stay exact.
+
+    The velocity triangle is deliberately absent from both panels; it belongs to
+    `diagram_outlet_triangle_true_shape`, where it can be drawn closed and to
+    scale.
     """
     geom = impeller_geometry(r1=r1, r2=r2, beta1_deg=beta1_deg, beta2_deg=beta2_deg,
                              b1=b1, b2=b2, n_blades=n_blades, n_points=90)
-    width, height = 1000, 520
-    cx, cy, scale = 286.0, 258.0, 182.0 / r2
+    width, height = 880, 500
+    cx, cy, scale = 232.0, 208.0, 120.0 / r2
 
     def screen(x, y, z):
         u, v, depth = project_isometric(x, y, np.asarray(z) * z_exaggeration,
@@ -221,114 +230,145 @@ def diagram_impeller_3d(
     parts.append(f'<text x="{_f(shaft_u[1] - 26)}" y="{_f(shaft_v[1] - 14)}" '
                  f'fill="{TEXT_MUTED}" font-size="13">shaft &#969;</text>')
 
-    # Which blade carries the annotation. It must be on the near side (so the
-    # marks are not drawn behind the wheel) *and* have its tip projecting to the
-    # right, where there is open canvas: cramming a velocity triangle and two
-    # angle marks against the left edge made them illegible.
-    tip_screen = []
-    for blade in geom["blades"]:
-        u_tip, _, d_tip = screen(blade["x"][0, -1:], blade["y"][0, -1:], blade["z"][0, -1:])
-        tip_screen.append((float(u_tip[0]), float(d_tip[0])))
-    median_depth = float(np.median([d for _, d in tip_screen]))
-    front = [i for i, (_, d) in enumerate(tip_screen) if d >= median_depth]
-    near_index = max(front, key=lambda i: tip_screen[i][0])
-    near = geom["blades"][near_index]
-    tip_theta = float(near["theta"][0, -1])
-    tip_x, tip_y = r2 * math.cos(tip_theta), r2 * math.sin(tip_theta)
+    # --- panel 2: plan view, looking straight down the shaft ------------------
+    #
+    # This is where the blade angles are marked, and the reason is geometric
+    # rather than aesthetic. An axonometric view foreshortens every direction by
+    # a different amount, so an angle drawn on it is not the angle it names -- a
+    # 25 degree blade can easily project as 50. Looking straight down the shaft
+    # leaves the r-theta plane undistorted, so beta appears at TRUE size, which
+    # is why every pump textbook marks blade angles on a plan view.
+    #
+    # A blade angle is then pure geometry: the angle at one point between the
+    # tangent to the circle and the tangent to the blade camberline. Both rays
+    # are real curves on the wheel, so both are drawn.
+    plan_cx, plan_cy = 598.0, 206.0
+    plan_scale = 116.0 / r2
+    # A plan view of an axisymmetric wheel may be spun freely, so spin it until
+    # the annotated blade's trailing edge sits at the lower right, where the
+    # marks have room. A rigid rotation preserves every angle, so nothing the
+    # figure asserts changes.
+    plan_rot = math.radians(-32.0) - float(geom["blades"][0]["theta"][0, -1])
+    rot_cos, rot_sin = math.cos(plan_rot), math.sin(plan_rot)
 
-    def direction_on_screen(dx, dy, length):
-        u0, v0, _ = screen(np.array([tip_x]), np.array([tip_y]), np.array([0.0]))
-        u1, v1, _ = screen(np.array([tip_x + dx * length]), np.array([tip_y + dy * length]),
-                           np.array([0.0]))
-        return float(u0[0]), float(v0[0]), float(u1[0]), float(v1[0])
+    def plan(x, y):
+        x, y = np.asarray(x), np.asarray(y)
+        xr = x * rot_cos - y * rot_sin
+        yr = x * rot_sin + y * rot_cos
+        return plan_cx + plan_scale * xr, plan_cy - plan_scale * yr
 
-    tangential = (-math.sin(tip_theta), math.cos(tip_theta))
-    radial = (math.cos(tip_theta), math.sin(tip_theta))
-    beta2 = math.radians(beta2_deg)
-    # The relative velocity leaves along the blade: beta_2 measured from the
-    # direction *opposed* to the blade motion, tilted out by the meridional part.
-    relative = (-tangential[0] * math.cos(beta2) + radial[0] * math.sin(beta2),
-                -tangential[1] * math.cos(beta2) + radial[1] * math.sin(beta2))
+    plan_parts = []
+    circle_theta = geom["hub_theta"]
+    for radius, colour, dash in ((r2, BORDER_STRONG, ""), (r1, TEXT_FAINT, "5,4")):
+        cu, cv = plan(radius * np.cos(circle_theta), radius * np.sin(circle_theta))
+        plan_parts.append(_polyline(cu, cv, colour, 1.5, 0.9, dash))
 
-    # The absolute velocity closes the triangle: C = U + W. It has to be drawn
-    # here too, because alpha_2 is the angle between C and the tangential
-    # direction and an angle cannot be marked against a ray that is not there.
-    # Magnitudes use the same representative C_m2/U_2 ratio as the true-shape
-    # figure, so the two pictures show the same triangle.
-    cm_over_u = 0.36
-    absolute = (tangential[0] + (radial[0] * cm_over_u - tangential[0] * cm_over_u / math.tan(beta2)),
-                tangential[1] + (radial[1] * cm_over_u - tangential[1] * cm_over_u / math.tan(beta2)))
-    absolute_norm = math.hypot(*absolute) or 1.0
-    absolute = (absolute[0] / absolute_norm, absolute[1] / absolute_norm)
+    annotated = 0
+    for index, blade in enumerate(geom["blades"]):
+        bu, bv = plan(blade["x"][0], blade["y"][0])
+        highlight = index == annotated
+        plan_parts.append(_polyline(bu, bv, ACCENT if highlight else TEXT_FAINT,
+                                    3.0 if highlight else 1.4,
+                                    1.0 if highlight else 0.5))
 
-    tip_u, tip_v, _, _ = direction_on_screen(1.0, 0.0, 0.0)
-    for label, vector, length, colour, marker in (
-        ("U&#8322;", tangential, 0.082, WARNING, "imp-orange"),
-        ("W&#8322;", relative, 0.072, SUCCESS, "imp-green"),
-        ("C&#8344;&#8322;", radial, 0.052, VORTICITY, "imp-purple"),
-        ("C&#8322;", absolute, 0.078, ACCENT, "imp-sky"),
-    ):
-        u0, v0, u1, v1 = direction_on_screen(vector[0], vector[1], length)
-        parts.append(f'<line x1="{_f(u0)}" y1="{_f(v0)}" x2="{_f(u1)}" y2="{_f(v1)}" '
-                     f'stroke="{colour}" stroke-width="2.8" marker-end="url(#{marker})"/>')
-        parts.append(f'<text x="{_f(u1 + 7)}" y="{_f(v1 - 7)}" fill="{colour}" '
-                     f'font-size="13.5" font-weight="700">{label}</text>')
+    # Rotation sense. The camberline integrates to increasing theta with
+    # increasing radius, so the wheel must turn towards DECREASING theta for the
+    # blades to trail backwards -- which is what "backswept" means.
+    # Rotation sense, drawn in screen space at the lower left of the plan circle
+    # so it cannot collide with the panel heading. The camberline integrates to
+    # increasing theta with increasing radius, so the wheel must turn towards
+    # DECREASING theta for the blades to trail backwards -- which is what
+    # "backswept" means, and it is the sense the true-shape triangle assumes.
+    arc_px = plan_scale * r2 * 1.2
+    a0, a1 = math.radians(212.0), math.radians(148.0)
+    ax0, ay0 = plan_cx + arc_px * math.cos(a0), plan_cy + arc_px * math.sin(a0)
+    ax1, ay1 = plan_cx + arc_px * math.cos(a1), plan_cy + arc_px * math.sin(a1)
+    plan_parts.append(f'<path d="M {_f(ax0)} {_f(ay0)} A {_f(arc_px)} {_f(arc_px)} 0 0 1 '
+                      f'{_f(ax1)} {_f(ay1)}" fill="none" stroke="{TEXT_MUTED}" '
+                      f'stroke-width="2" marker-end="url(#imp-dim)"/>')
+    plan_parts.append(f'<text x="{_f(ax0 - 4)}" y="{_f(ay0 + 16)}" fill="{TEXT_MUTED}" '
+                      f'font-size="11.5" text-anchor="middle">rotation &#969;</text>')
 
-    u_t0, v_t0, u_t1, v_t1 = direction_on_screen(-tangential[0], -tangential[1], 0.068)
-    u_w0, v_w0, u_w1, v_w1 = direction_on_screen(relative[0], relative[1], 0.072)
-    start = math.degrees(math.atan2(v_t1 - v_t0, u_t1 - u_t0))
-    end = math.degrees(math.atan2(v_w1 - v_w0, u_w1 - u_w0))
-    parts.append(_angle_mark(tip_u, tip_v, start, end, SHEAR,
-                             f"&#946;&#8322; = {beta2_deg:.0f}&#176;",
-                             radius=46.0, label_gap=40.0))
+    def plan_edge(theta_edge, radius, beta_deg, colour, name, ray_px, label_gap):
+        """Circle tangent, blade tangent, and beta between them -- at true size."""
+        beta = math.radians(beta_deg)
+        t_hat = (-math.sin(theta_edge), math.cos(theta_edge))
+        r_hat = (math.cos(theta_edge), math.sin(theta_edge))
+        # tan(beta) = dr / (r dtheta), so the camberline tangent carries cos(beta)
+        # along t_hat and sin(beta) along r_hat: the angle to t_hat is beta.
+        b_hat = (t_hat[0] * math.cos(beta) + r_hat[0] * math.sin(beta),
+                 t_hat[1] * math.cos(beta) + r_hat[1] * math.sin(beta))
+        world = ray_px / plan_scale
 
-    # alpha_2, between C_2 and the +tangential direction, marked at the same vertex.
-    u_a0, v_a0, u_a1, v_a1 = direction_on_screen(absolute[0], absolute[1], 0.078)
-    u_p0, v_p0, u_p1, v_p1 = direction_on_screen(tangential[0], tangential[1], 0.082)
-    parts.append(_angle_mark(
-        tip_u, tip_v,
-        math.degrees(math.atan2(v_p1 - v_p0, u_p1 - u_p0)),
-        math.degrees(math.atan2(v_a1 - v_a0, u_a1 - u_a0)),
-        ACCENT, "&#945;&#8322;", radius=84.0, label_gap=22.0))
+        def at(vec, length):
+            u, v = plan(radius * math.cos(theta_edge) + vec[0] * length,
+                        radius * math.sin(theta_edge) + vec[1] * length)
+            return float(u), float(v)
 
-    # Inlet (eye) angle on the same blade's leading edge.
-    lead_theta = float(near["theta"][0, 0])
-    lead_x, lead_y = r1 * math.cos(lead_theta), r1 * math.sin(lead_theta)
-    lu, lv, _ = screen(np.array([lead_x]), np.array([lead_y]), np.array([0.0]))
-    parts.append(f'<circle cx="{_f(lu[0])}" cy="{_f(lv[0])}" r="5.5" fill="{PRESSURE}"/>')
-    parts.append(f'<line x1="{_f(lu[0])}" y1="{_f(lv[0])}" x2="{_f(lu[0] + 66)}" '
-                 f'y2="{_f(lv[0] - 62)}" stroke="{PRESSURE}" stroke-width="1.2" '
-                 f'stroke-dasharray="4,3"/>')
-    parts.append(f'<text x="{_f(lu[0] + 70)}" y="{_f(lv[0] - 64)}" fill="{PRESSURE}" '
-                 f'font-size="12.5" font-weight="600">&#946;&#8321; = {beta1_deg:.0f}&#176; at the eye</text>')
+        here = at((0.0, 0.0), 0.0)
+        back = at(t_hat, -world * 0.40)
+        # The two rays are only beta apart, so their end labels would collide if
+        # both stopped at the same radius. Run the circle tangent further out.
+        fwd = at(t_hat, world * 1.62)
+        tip_blade = at(b_hat, world)
+
+        out = [
+            f'<line x1="{_f(back[0])}" y1="{_f(back[1])}" x2="{_f(fwd[0])}" y2="{_f(fwd[1])}" '
+            f'stroke="{TEXT_MUTED}" stroke-width="1.5" stroke-dasharray="6,4"/>',
+            f'<line x1="{_f(here[0])}" y1="{_f(here[1])}" x2="{_f(tip_blade[0])}" '
+            f'y2="{_f(tip_blade[1])}" stroke="{colour}" stroke-width="3"/>',
+        ]
+        start = math.degrees(math.atan2(fwd[1] - here[1], fwd[0] - here[0]))
+        end = math.degrees(math.atan2(tip_blade[1] - here[1], tip_blade[0] - here[0]))
+        out.append(_angle_mark(here[0], here[1], start, end, colour,
+                               f"{name} = {beta_deg:.0f}&#176;", radius=34.0,
+                               label_gap=label_gap, ray_len=0.0))
+        out.append(f'<circle cx="{_f(here[0])}" cy="{_f(here[1])}" r="4" fill="{colour}"/>')
+        return out, fwd, tip_blade
+
+    blade0 = geom["blades"][annotated]
+    tip_marks, tip_tan, tip_blade_end = plan_edge(
+        float(blade0["theta"][0, -1]), r2, beta2_deg, SHEAR, "&#946;&#8322;", 74.0, 24.0)
+    eye_marks, eye_tan, eye_blade_end = plan_edge(
+        float(blade0["theta"][0, 0]), r1, beta1_deg, PRESSURE, "&#946;&#8321;", 58.0, 20.0)
+    plan_parts.extend(tip_marks)
+    plan_parts.extend(eye_marks)
+    plan_parts.append(f'<text x="{_f(tip_tan[0] + 6)}" y="{_f(tip_tan[1] + 4)}" '
+                      f'fill="{TEXT_MUTED}" font-size="10.5">tangent to the tip circle</text>')
+    plan_parts.append(f'<text x="{_f(tip_blade_end[0] + 8)}" y="{_f(tip_blade_end[1] + 14)}" '
+                      f'fill="{SHEAR}" font-size="10.5">tangent to the blade</text>')
+    plan_parts.append(f'<text x="{_f(eye_blade_end[0] - 6)}" y="{_f(eye_blade_end[1] - 8)}" '
+                      f'fill="{PRESSURE}" font-size="10.5" text-anchor="end">blade at the eye</text>')
 
     legend_rows = [
-        (WARNING, "U&#8322; = &#969;r&#8322; &#183; blade speed, purely tangential"),
-        (SUCCESS, "W&#8322; &#183; relative velocity, leaves along the blade"),
-        (VORTICITY, "C&#8344;&#8322; = Q/(2&#960;r&#8322;b&#8322;) &#183; meridional, radial here"),
-        (ACCENT, "C&#8322; = U&#8322; + W&#8322; &#183; absolute velocity, what the volute sees"),
-        (SHEAR, f"&#946;&#8322; &#183; W&#8322; from &#8722;tangential ({90 - beta2_deg:.0f}&#176; from meridional)"),
-        (ACCENT, "&#945;&#8322; &#183; C&#8322; from +tangential &#183; the flow angle"),
-        (PRESSURE, "&#946;&#8321; &#183; inlet blade angle, set for shockless entry"),
+        (SHEAR, f"&#946;&#8322; = {beta2_deg:.0f}&#176; at the tip &#183; between the tangent to the tip circle and the tangent to the blade"),
+        (PRESSURE, f"&#946;&#8321; = {beta1_deg:.0f}&#176; at the eye &#183; the same construction at the inlet, set for shockless entry"),
     ]
     legend = []
     for index, (colour, text) in enumerate(legend_rows):
-        y = 328 + index * 24
-        legend.append(f'<rect x="716" y="{y - 9}" width="18" height="4" rx="2" fill="{colour}"/>')
-        legend.append(f'<text x="742" y="{y}" fill="{TEXT_MUTED}" font-size="11.5">{text}</text>')
+        y = 414 + index * 22
+        legend.append(f'<rect x="34" y="{y - 9}" width="18" height="4" rx="2" fill="{colour}"/>')
+        legend.append(f'<text x="60" y="{y}" fill="{TEXT_MUTED}" font-size="11.5">{text}</text>')
 
     return f"""
     <svg viewBox="0 0 {width} {height}" width="100%" height="{height}"
          xmlns="http://www.w3.org/2000/svg"
          style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
         {_arrow_marker_defs()}
-        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Backswept centrifugal impeller &#183; where each angle actually lives</text>
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Blade angles on the wheel &#183; where &#946;&#8321; and &#946;&#8322; actually live</text>
         <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">{n_blades} blades &#183; r&#8321; = {r1 * 1000:.0f} mm, r&#8322; = {r2 * 1000:.0f} mm &#183; &#946;&#8321; = {beta1_deg:.0f}&#176;, &#946;&#8322; = {beta2_deg:.0f}&#176; &#183; blade wraps {geom['wrap_angle_deg']:.0f}&#176; around the shaft</text>
+        <text x="34" y="78" fill="{TEXT_MUTED}" font-size="12.5" font-weight="600">How it sits in space</text>
+        <text x="34" y="96" fill="{TEXT_DIM}" font-size="11">axonometric &#183; angles foreshortened here</text>
+        <text x="472" y="78" fill="{TEXT_MUTED}" font-size="12.5" font-weight="600">Plan view, looking down the shaft</text>
+        <text x="472" y="96" fill="{TEXT_DIM}" font-size="11">the r&#8211;&#952; plane is undistorted &#183; angles at TRUE size</text>
+        <line x1="452" y1="66" x2="452" y2="360" stroke="{BORDER}" stroke-width="1"/>
         {"".join(parts)}
-        <text x="716" y="300" fill="{TEXT}" font-size="13" font-weight="600">At the trailing edge (tip)</text>
+        {"".join(plan_parts)}
+        <line x1="24" y1="372" x2="{width - 24}" y2="372" stroke="{BORDER}" stroke-width="1"/>
+        <text x="34" y="392" fill="{TEXT}" font-size="12.5" font-weight="600">A blade angle is pure geometry: two tangents at one point on the wheel</text>
         {"".join(legend)}
-        <text x="24" y="{height - 34}" fill="{TEXT_DIM}" font-size="11.5">Axonometric projection of the computed blade surface; axial scale exaggerated {z_exaggeration:.1f}&#215; so the passage is visible.</text>
-        <text x="24" y="{height - 16}" fill="{TEXT_DIM}" font-size="11.5">Angles appear foreshortened because the page is not the blade-to-blade plane &#8212; the true-shape figure below shows their real size.</text>
+        <text x="24" y="{height - 30}" fill="{TEXT_DIM}" font-size="11.5">Left: axonometric projection of the computed blade surface, axial scale exaggerated {z_exaggeration:.1f}&#215; so the passage is visible. It shows the shape, not the angles.</text>
+        <text x="24" y="{height - 12}" fill="{TEXT_DIM}" font-size="11.5">The velocity triangle is a separate matter and is drawn below in true shape, where U&#8322;, W&#8322; and C&#8322; close head to tail and &#945;&#8322; can be measured.</text>
     </svg>
     """
 
@@ -474,9 +514,10 @@ def diagram_outlet_triangle_true_shape(
         flat_note = (
             f'<text x="24" y="84" fill="{WARNING}" font-size="11.5">'
             f'At this flow coefficient C&#8344;&#8322;/U&#8322; = {flow_coefficient:.2f} the triangle '
-            f'genuinely is this flat and &#945;&#8322; genuinely is this shallow: the discharge is '
-            f'almost purely tangential, which is exactly what makes the volute hard to design.'
-            f'</text>'
+            f'genuinely is this flat, and &#945;&#8322; genuinely is this shallow.</text>'
+            f'<text x="24" y="100" fill="{WARNING}" font-size="11.5">'
+            f'The discharge is almost purely tangential &#8212; which is exactly what makes '
+            f'the volute hard to design.</text>'
         )
 
     return f"""
