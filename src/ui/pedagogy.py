@@ -93,6 +93,35 @@ def render_prose_and_latex(md: str) -> None:
             st.markdown(text)
 
 
+def render_derivation(
+    title: str,
+    steps: Sequence[Tuple[str, str]],
+    *,
+    expanded: bool = False,
+    symbols: Optional[Sequence[Tuple[str, str]]] = None,
+    closing: Optional[str] = None,
+) -> None:
+    """Show where an equation comes from, one conservation statement at a time.
+
+    No result in this course is meant to arrive as a quotable formula. Each
+    ``steps`` entry is ``(heading, body)``: the heading names the balance or the
+    geometric fact being invoked (*"Momentum balance on the annulus"*, not
+    *"Step 2"*), and the body must say **why** that step is allowed in physical
+    terms before it shows any algebra.
+
+    ``body`` goes through :func:`render_prose_and_latex`, so ``$$...$$`` is
+    safe and source indentation is stripped.
+    """
+    with st.expander(f"🔍 Derivation · {title}", expanded=expanded):
+        for index, (heading, body) in enumerate(steps, 1):
+            st.markdown(f"**Step {index} — {heading}**")
+            render_prose_and_latex(body)
+        if symbols:
+            render_symbols(symbols)
+        if closing:
+            render_prose_and_latex(closing)
+
+
 def render_symbols(rows: Sequence[Tuple[str, str]]) -> None:
     """Define every symbol at the point of first use.
 

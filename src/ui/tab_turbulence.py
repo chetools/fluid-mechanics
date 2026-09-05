@@ -24,6 +24,7 @@ from src.ui.pedagogy import (
     render_predict,
     render_self_check,
     render_callout,
+    render_derivation,
     render_prose_and_latex,
     render_symbols,
 )
@@ -76,6 +77,74 @@ def render_tab_turbulence():
         - **At high $\text{Re}_D > 4000$ in a pipe:** $(\mathbf{u}\cdot\nabla)\mathbf{u}$ overwhelms damping. In *three* dimensions, vortex stretching feeds a cascade down to Kolmogorov scales.
         A flat plate, a cylinder, and a lid-driven cavity each have their own critical Re; do not import 2300 there.
         """
+    )
+
+    render_derivation(
+        r"where $\rho u D/\mu$ comes from — it is a ratio of two terms in Newton's law",
+        [
+            (
+                "Start from the momentum balance, not from a definition",
+                r"""
+                Tab 6 writes Newton's second law for one lump of fluid, per unit volume:
+                $$\rho\underbrace{\frac{\partial\mathbf{u}}{\partial t}}_{\text{unsteady}}
+                + \rho\underbrace{(\mathbf{u}\cdot\nabla)\mathbf{u}}_{\text{inertia}}
+                = -\nabla p + \underbrace{\mu\nabla^{2}\mathbf{u}}_{\text{viscous}}$$
+                A small wobble in the dye filament grows or dies according to which of
+                the two labelled terms wins. Nothing else in the equation can decide it:
+                pressure only enforces continuity, and the unsteady term is what we are
+                asking about.
+                """,
+            ),
+            (
+                "Size each term geometrically, using the pipe itself as the ruler",
+                r"""
+                In a pipe of diameter $D$ carrying mean speed $U$, the velocity goes from
+                $0$ at the wall to about $U$ at the centre — a change of order $U$ across
+                a distance of order $D$. So *every* cross-stream derivative is of order
+                $1/D$, and $\mathbf{u}$ itself is of order $U$:
+                $$\rho(\mathbf{u}\cdot\nabla)\mathbf{u}\ \sim\ \rho\frac{U^{2}}{D},
+                \qquad
+                \mu\nabla^{2}\mathbf{u}\ \sim\ \mu\frac{U}{D^{2}}$$
+                These are not values of the terms. They are the largest size each term
+                *can* have once the geometry and the flow rate are fixed — which is all a
+                competition between them requires.
+                """,
+            ),
+            (
+                "Divide. Everything cancels except one group",
+                r"""
+                $$\frac{\text{inertia}}{\text{viscous}}
+                \sim \frac{\rho U^{2}/D}{\mu U/D^{2}} = \frac{\rho U D}{\mu} = \mathrm{Re}_D$$
+                $\mathrm{Re}$ is therefore not a quantity someone chose to define. It is
+                what survives when you ask Newton's law which of its two transport terms
+                is bigger, and the answer is forced to be dimensionless because a ratio of
+                two forces has no units to keep.
+                """,
+            ),
+            (
+                "Read the same group as a race between two clocks",
+                r"""
+                Momentum spreads sideways by viscous diffusion in a time $t_\nu\sim D^{2}/\nu$
+                (the diffusion law of Tab 7), and the flow carries a fluid particle one pipe
+                diameter downstream in $t_{\mathrm{flow}}\sim D/U$. Their ratio is the same
+                number:
+                $$\frac{t_\nu}{t_{\mathrm{flow}}} = \frac{D^{2}/\nu}{D/U} = \frac{UD}{\nu} = \mathrm{Re}_D$$
+                At large $\mathrm{Re}$ a disturbance is swept away and stretched long before
+                viscosity can smear it out, so it survives, tangles, and becomes turbulence.
+                At small $\mathrm{Re}$ viscosity erases it within one pipe diameter of travel.
+                """,
+            ),
+            (
+                "This is why 2300 is a pipe number and not a law of nature",
+                r"""
+                Step 2 used $D$ because a pipe offers exactly one length. A flat plate offers
+                the distance $x$ from its leading edge, a cylinder its diameter, this course's
+                lid-driven cavity its side. Each choice rescales the same ratio by a different
+                factor, so the *group* transfers to every geometry and the *critical value*
+                does not.
+                """,
+            ),
+        ],
     )
 
     st.markdown("### 4.1b Laminar force balance → $f_D = 64/\\mathrm{Re}$")
@@ -176,30 +245,105 @@ def render_tab_turbulence():
     fig_prof = plot_laminar_turbulent_profiles(prof_res)
     render_plot(fig_prof, key="tab_turbulence-fig_prof")
     
-    with st.expander("🔍 Engineering Consequence: Kinetic Energy Flux Correction Factor α in Bernoulli's Equation"):
-        render_prose_and_latex(
-            r"""
-            When writing the engineering mechanical energy balance (extended Bernoulli equation), 
-            the true kinetic energy flux carried across a pipe cross-section is:
-            $$\dot{E}_k = \int \frac{1}{2}\rho u^3 dA = \alpha \left(\frac{1}{2}\rho \bar{u}^3 A\right)$$
-            where $\alpha = \frac{1}{A} \int \left(\frac{u}{\bar{u}}\right)^3 dA$ is the **kinetic energy correction factor**:
-            * **Laminar Flow:** $\alpha = 2.00$ exactly! Neglecting $\alpha$ introduces a **100% error** in the kinetic head term!
-            * **Turbulent Flow:** Because the velocity profile is nearly flat across the core, $\alpha \approx 1.04 \text{ to } 1.08 \approx 1.0$.
-            In practical chemical engineering design, engineers assume $\alpha = 1.0$ for turbulent *pipe* calculations, but for laminar *pipe* flows (e.g., polymer extrusions, heavy crude oils), $\alpha = 2.0$ must be used. Do not use α = 2 for a plane slit.
-            """
-        )
-        render_symbols(
-            [
-                (
-                    r"\alpha",
-                    r"kinetic-energy correction $\alpha=(1/A)\int(u/\bar{u})^3\,dA$. "
-                    "Not an angle, not thermal diffusivity, not Tab 6's angular acceleration $\\alpha_z$. "
-                    "Circular pipe: $\\alpha=2$ laminar, $\\alpha\\approx 1.05$ turbulent.",
-                ),
-                (r"\dot{E}_k", r"true kinetic-energy flux through the cross-section (W)."),
-                (r"\bar{u}", r"area-mean speed $Q/A$ (m/s)."),
-            ]
-        )
+    render_derivation(
+        r"the kinetic-energy correction $\alpha$, and why it is exactly $2$ for a laminar pipe",
+        [
+            (
+                "Energy rides on mass, so the flux must be integrated, not averaged",
+                r"""
+                Look at one small patch $dA$ of the cross-section. The mass crossing it each
+                second is $\rho u\,dA$, and **each kilogram of that mass** carries $u^{2}/2$
+                joules of kinetic energy. Multiply, then add up the patches:
+                $$\dot{E}_k=\int_A \tfrac{1}{2}\rho u^{2}\,(u\,dA)=\int_A \tfrac{1}{2}\rho u^{3}\,dA$$
+                The cube is not a typo. One power of $u$ comes from *how much mass* passes,
+                two from *how fast that mass is moving*.
+                """,
+            ),
+            (
+                "The one-dimensional balance we want to write cannot see the profile",
+                r"""
+                Tab 1's energy equation carries a single number per section, so it wants to
+                say $\tfrac{1}{2}\rho\bar{u}^{3}A$ with $\bar{u}=Q/A$. That is a different
+                quantity: the mean of a cube exceeds the cube of the mean unless the profile
+                is perfectly flat. Fast fluid at the centre contributes to $\dot{E}_k$ in
+                proportion to $u^{3}$ while contributing to $\bar{u}$ only in proportion to
+                $u$, so a peaked profile always carries **more** kinetic energy than its mean
+                speed suggests.
+                """,
+            ),
+            (
+                "Name the discrepancy instead of hiding it",
+                r"""
+                Define $\alpha$ as exactly the factor that repairs the substitution:
+                $$\dot{E}_k=\alpha\left(\tfrac{1}{2}\rho\bar{u}^{3}A\right),
+                \qquad \alpha\equiv\frac{1}{A}\int_A\left(\frac{u}{\bar{u}}\right)^{3}dA$$
+                This is a definition, so it is exact for any profile. Because $u\mapsto u^{3}$
+                is convex, $\alpha\ge 1$ always, with equality only for plug flow. Dropping
+                $\alpha$ therefore never errs on the safe side — it always understates the
+                velocity head.
+                """,
+            ),
+            (
+                "Evaluate it on the parabola the force balance already gave us",
+                r"""
+                Section 4.1b integrated the shear balance to $u(r)=u_{\max}(1-r^{2}/R^{2})$ with
+                $u_{\max}=2\bar{u}$; nothing new is assumed here. The area element of a round
+                pipe is a thin annulus, $dA=2\pi r\,dr$ — the geometric step people skip.
+                Put $\eta=r/R$ so $dA=2\pi R^{2}\eta\,d\eta$ and $A=\pi R^{2}$:
+                $$\alpha=\left(\frac{u_{\max}}{\bar{u}}\right)^{3}\cdot 2\int_{0}^{1}(1-\eta^{2})^{3}\,\eta\,d\eta$$
+                Substituting $s=\eta^{2}$ turns that integral into
+                $\tfrac{1}{2}\int_{0}^{1}(1-s)^{3}ds=\tfrac{1}{8}$, so the bracket is
+                $2\times\tfrac{1}{8}=\tfrac{1}{4}$, while $(u_{\max}/\bar{u})^{3}=2^{3}=8$:
+                $$\alpha_{\text{laminar}}=8\times\tfrac{1}{4}=2\quad\text{exactly}$$
+                The $2$ is a property of the parabola, not a measured coefficient.
+                """,
+            ),
+            (
+                "Repeat on the blunt turbulent profile and watch it collapse toward 1",
+                r"""
+                With the empirical $u/u_{\max}=(1-r/R)^{1/7}$, the same annular integral
+                (substitute $s=1-\eta$) gives $\bar{u}/u_{\max}=2(\tfrac{7}{8}-\tfrac{7}{15})=\tfrac{49}{60}$ and
+                $$\alpha_{\text{turbulent}}=\left(\frac{60}{49}\right)^{3}\cdot 2\left(\tfrac{7}{10}-\tfrac{7}{17}\right)
+                =\left(\frac{60}{49}\right)^{3}\frac{49}{85}\approx 1.06$$
+                The metric above reports both numbers from the app's own profile integration,
+                so you can watch $\alpha$ move as you change $\mathrm{Re}$.
+                """,
+            ),
+            (
+                "The same argument, applied to momentum instead of energy",
+                r"""
+                A momentum balance transports $u$ per kilogram rather than $u^{2}/2$, so the
+                identical reasoning gives the **momentum** correction
+                $\beta=(1/A)\int(u/\bar{u})^{2}dA$, which works out to $4/3$ for the parabola.
+                Energy and momentum need *different* corrections because they weight the
+                profile by different powers. Never reuse one for the other.
+                """,
+            ),
+            (
+                "What this costs in practice",
+                r"""
+                In a laminar line — polymer melt, heavy crude, a capillary — writing
+                $\alpha=1$ halves the velocity head, a $100\%$ error in that term. In a
+                turbulent line $\alpha\approx1.05$ is usually buried inside the uncertainty
+                of $h_f$, which is why the shortcut became a habit. Both statements are
+                **circular-pipe** results: a plane slit has $\bar{u}/u_{\max}=2/3$ and
+                $\alpha=54/35\approx1.54$ (Tab 7).
+                """,
+            ),
+        ],
+        symbols=[
+            (
+                r"\alpha",
+                r"kinetic-energy correction $\alpha=(1/A)\int(u/\bar{u})^3\,dA$. "
+                "Not an angle, not thermal diffusivity, not Tab 6's angular acceleration $\\alpha_z$. "
+                "Circular pipe: $\\alpha=2$ laminar, $\\alpha\\approx 1.05$ turbulent.",
+            ),
+            (r"\beta", r"momentum correction $(1/A)\int(u/\bar{u})^2\,dA$; $4/3$ for the laminar parabola."),
+            (r"\dot{E}_k", r"true kinetic-energy flux through the cross-section (W)."),
+            (r"\bar{u}", r"area-mean speed $Q/A$ (m/s)."),
+            (r"dA=2\pi r\,dr", "annular area element — the right ruler for a round pipe."),
+        ],
+    )
 
     # -------------------------------------------------------------------------
     # PART 3: Law of the Wall
@@ -215,7 +359,105 @@ def render_tab_turbulence():
     )
     
     render_svg(diagram_law_of_the_wall())
-    
+
+    render_derivation(
+        r"why the near-wall profile must be a straight line, then a logarithm",
+        [
+            (
+                "The near-wall stress is constant — and that is geometry, not modelling",
+                r"""
+                The cylindrical force balance of §4.1b already gave the shear at any radius,
+                $\tau(r)=(r/2)(\Delta p/L)$, with no assumption about laminar or turbulent.
+                Measure distance from the wall instead, $y=R-r$:
+                $$\tau(y)=\tau_w\left(1-\frac{y}{R}\right),\qquad \tau_w=\frac{R}{2}\frac{\Delta p}{L}$$
+                For $y/R<0.05$ the stress is within $5\%$ of $\tau_w$. So a thin skin at the
+                wall lives in an environment of **constant** shear stress, whatever the core
+                is doing. That is what lets the wall layer have a universal life of its own.
+                """,
+            ),
+            (
+                "Constant stress supplies exactly one velocity scale",
+                r"""
+                Inside that skin the fluid knows only $\tau_w$, $\rho$, $\nu$ and how far it is
+                from the wall. Of these, $\tau_w/\rho$ is the only combination with units of
+                $(\text{m/s})^{2}$, so
+                $$u_\tau\equiv\sqrt{\tau_w/\rho}$$
+                is not a definition of convenience: it is the *only* speed the wall can build.
+                Read it physically as the rate at which the wall drains momentum from the
+                stream — a fast-eating wall makes a big $u_\tau$.
+                """,
+            ),
+            (
+                "Two variables, two dimensions, one universal curve",
+                r"""
+                The list $u,\;y,\;u_\tau,\;\nu$ has four quantities and two dimensions
+                (length, time), so Buckingham (Tab 3) leaves $4-2=2$ groups:
+                $$u^{+}=\frac{u}{u_\tau},\qquad y^{+}=\frac{y\,u_\tau}{\nu}$$
+                and therefore $u^{+}=F(y^{+})$ — *one* curve for every pipe, fluid and flow
+                rate. Notice that $y^{+}$ is itself a Reynolds number, built on the distance
+                to the wall: it says how far out you are in units of the viscous thickness.
+                """,
+            ),
+            (
+                "Very close in, viscosity carries all of the stress",
+                r"""
+                An eddy at height $y$ cannot be larger than $y$ — the wall is in the way — and
+                below a few viscous units such an eddy is damped out before it can turn over.
+                So for $y^{+}\lesssim5$ the whole of the (constant) stress is molecular:
+                $$\mu\frac{du}{dy}=\tau_w
+                \;\Longrightarrow\; u=\frac{\tau_w}{\mu}y=\frac{u_\tau^{2}}{\nu}y
+                \;\Longrightarrow\; \boxed{u^{+}=y^{+}}$$
+                A straight line of unit slope, forced by no-slip at $y=0$ plus constant stress.
+                No empirical constant enters.
+                """,
+            ),
+            (
+                "Far enough out, viscosity is irrelevant and only $y$ itself is left",
+                r"""
+                For $y^{+}\gtrsim30$ the same $\tau_w$ is carried by eddies rather than
+                molecules, so $\nu$ drops out of the problem. But $y$ is then the **only**
+                length available, and the largest eddy that fits at height $y$ has size
+                proportional to $y$. That is Prandtl's mixing length, $\ell=\kappa y$. Such an
+                eddy exchanges fluid over a distance $\ell$, so it carries a velocity
+                difference $\ell\,du/dy$, and the momentum flux it produces is
+                $$\tau=\rho\left(\ell\frac{du}{dy}\right)^{2}=\tau_w
+                \;\Longrightarrow\;\frac{du}{dy}=\frac{u_\tau}{\kappa y}$$
+                """,
+            ),
+            (
+                "Integrate: a layer with no length scale of its own must give a logarithm",
+                r"""
+                $$\int du=\frac{u_\tau}{\kappa}\int\frac{dy}{y}
+                \;\Longrightarrow\; u=\frac{u_\tau}{\kappa}\ln y+C
+                \;\Longrightarrow\; \boxed{u^{+}=\frac{1}{\kappa}\ln y^{+}+B}$$
+                The logarithm is not a curve fit. $du/dy\propto1/y$ is the only gradient a
+                region with no intrinsic length can have, and $1/y$ integrates to $\ln y$.
+                What *is* empirical is $\kappa\approx0.41$, read off the measured slope, and
+                $B\approx5.0$, the integration constant fixed by matching this line back down
+                through the buffer layer to $u^{+}=y^{+}$.
+                """,
+            ),
+            (
+                "The buffer layer is a blend, not a third law",
+                r"""
+                Between $y^{+}=5$ and $30$ neither limit is legitimate: molecular and eddy
+                stress are comparable, so the two derivations above each drop a term that is
+                not small. The plot bridges them; no separate physics is being claimed.
+                """,
+            ),
+        ],
+        closing=r"""
+        **Where the $1/7$ power law of §4.2 came from.** $u/u_{\max}=(1-r/R)^{1/7}$ is an
+        algebraic *fit* that tracks the logarithm over about a decade of $y^{+}$ and, unlike
+        the log, integrates in closed form — which is why §4.2 could get $\bar{u}/u_{\max}=49/60$
+        from it. It is the same approximation that underlies Blasius' $f_D=0.316\,\mathrm{Re}^{-1/4}$,
+        and like Blasius it fails above roughly $\mathrm{Re}=10^{5}$. It is not a derivation,
+        and it is wrong at both ends: differentiating it gives an *infinite* shear at the wall
+        (where the real profile is the linear $u^{+}=y^{+}$) and a non-zero slope on the
+        centreline (where symmetry demands zero).
+        """,
+    )
+
     st.caption(
         "κ ≈ 0.41 and B ≈ 5.0 are **empirical constants** for a smooth wall, not operating "
         "conditions like Re. Moving them redraws the log law; it does not change the flow you specified."
@@ -268,6 +510,77 @@ def render_tab_turbulence():
             """
         )
 
+    render_derivation(
+        r"where the exponents $1.75$, $2$ and $3$ actually come from",
+        [
+            (
+                "Everything hangs on Darcy, which has $u$ in two places",
+                r"""
+                Tab 2 defines the friction factor by
+                $$\Delta p=f_D\frac{L}{D}\frac{\rho u^{2}}{2}$$
+                and this is a *definition*, so it cannot by itself predict an exponent. The
+                velocity enters twice: explicitly as $u^{2}$, and hidden inside
+                $f_D(\mathrm{Re})$, because $\mathrm{Re}=\rho u D/\mu$ moves when $u$ moves.
+                The observed exponent is the sum of the two.
+                """,
+            ),
+            (
+                "Laminar: the hidden dependence cancels one power exactly",
+                r"""
+                §4.1b derived $f_D=64/\mathrm{Re}=64\mu/(\rho u D)$. Substitute it and watch
+                the $\rho$ and one power of $u$ disappear:
+                $$\Delta p=\frac{64\mu}{\rho u D}\cdot\frac{L}{D}\cdot\frac{\rho u^{2}}{2}
+                =\frac{32\,\mu L u}{D^{2}}\ \propto\ u^{1}$$
+                Linear in velocity, and independent of density — which is the signature of a
+                flow where inertia plays no role at all. It is also Hagen–Poiseuille written
+                a second way, so the two routes agree, as they must.
+                """,
+            ),
+            (
+                "Turbulent smooth: Blasius supplies a fractional power",
+                r"""
+                For a smooth wall up to about $\mathrm{Re}=10^{5}$, measurement gives
+                $f_D\approx0.316\,\mathrm{Re}^{-1/4}$, so $f_D\propto u^{-1/4}$ and
+                $$\Delta p\propto u^{-1/4}\cdot u^{2}=u^{7/4}=u^{1.75}$$
+                The exponent is $2$ *reduced* by a quarter, because faster flow is slightly
+                more slippery per unit velocity head. It is empirical, not derived: the
+                $-1/4$ comes from the same power-law profile fit as §4.3's closing note.
+                """,
+            ),
+            (
+                "Fully rough: the hidden dependence vanishes, and you get a clean square",
+                r"""
+                At high $\mathrm{Re}$ on a rough wall the Moody curves flatten,
+                $f_D\to f_D(\varepsilon/D)$ with no $\mathrm{Re}$ left in it. Then nothing
+                is hidden and $\Delta p\propto u^{2}$ exactly. Physically: the drag is now set
+                by pressure forces on roughness elements, and form drag scales with dynamic
+                pressure. This is the upper end of the quoted $1.75$–$2.0$ range.
+                """,
+            ),
+            (
+                "Power multiplies by one more power of $u$",
+                r"""
+                Hydraulic power is $P=Q\,\Delta p$ and, at fixed pipe size, $Q=uA\propto u$:
+                $$P\propto u\cdot u^{1.75\text{–}2}=u^{2.75\text{–}3}$$
+                Doubling the velocity in an existing turbulent line therefore costs
+                $2^{2.75}\approx6.7$ to $2^{3}=8$ times the pumping power. The familiar
+                "$8\times$" is the rough-wall end of that band.
+                """,
+            ),
+            (
+                "State what was held fixed, or the scaling misleads",
+                r"""
+                Every exponent above assumes **the same pipe and the same fluid**, with only
+                the velocity changed. Debottleneck by enlarging the pipe instead and the
+                accounting inverts: at fixed $Q$, $u\propto D^{-2}$ and turbulent
+                $\Delta p\propto D^{-5}$ approximately, so a modest diameter increase is
+                usually far cheaper than any amount of pump. That comparison, not the
+                exponent alone, is the design decision.
+                """,
+            ),
+        ],
+    )
+
     render_self_check(
         "turb_self_check_colburn",
         "Chilton–Colburn is j = f/2. Which f is that?",
@@ -291,6 +604,100 @@ def render_tab_turbulence():
         $$\Delta p = \frac{128\mu L (Q/N)}{\pi d^4} \propto \frac{N}{\phi^2}$$
         Shrinking $d$ hurts as $d^4$ in the denominator. Staying laminar is not free.
         """
+    )
+    render_derivation(
+        r"the bundle penalty $\Delta p\propto N/\phi^{2}$, from Hagen–Poiseuille and packing geometry",
+        [
+            (
+                r"Rewrite §4.1b in terms of flow rate, and see where $d^{4}$ comes from",
+                r"""
+                The force balance gave a mean speed, $\bar{u}=(d^{2}/32\mu)(\Delta p/L)$.
+                A pump is asked for a *flow rate*, so multiply by the bore area
+                $A=\pi d^{2}/4$:
+                $$Q=\bar{u}A=\frac{\pi d^{4}}{128\,\mu L}\Delta p
+                \qquad\Longleftrightarrow\qquad
+                \Delta p=\frac{128\,\mu L\,Q}{\pi d^{4}}$$
+                The fourth power is two effects multiplied. **Two powers from the area:**
+                a narrower tube must run the same $Q$ faster, as $1/d^{2}$. **Two more from
+                the gradient:** that higher speed has to fall to zero across a shorter gap,
+                so the shear $\mu\,du/dy$ rises again as $1/d^{2}$.
+                """,
+            ),
+            (
+                "Pack the shell — geometry fixes the bore you are allowed",
+                r"""
+                Let $\phi$ be the fraction of the shell cross-section that is open lumen
+                (hexagonal close packing of thin-walled circles tops out near $0.91$).
+                Equating open area to packed area:
+                $$N\frac{\pi d^{2}}{4}=\phi\frac{\pi D^{2}}{4}
+                \;\Longrightarrow\; N d^{2}=\phi D^{2}
+                \;\Longrightarrow\; d=D\sqrt{\phi/N}$$
+                So the bore falls only as $1/\sqrt{N}$ — reassuringly slow, until you
+                remember Step 1 raises it to the fourth power.
+                """,
+            ),
+            (
+                "Split the duty between identical parallel paths",
+                r"""
+                Every straw spans the same two headers, so every straw sees the *same*
+                $\Delta p$; being identical, each therefore carries the same share
+                $Q/N$. (This is the parallel-branch rule of Tab 2's network chapter:
+                equal pressure difference, flow divides by conductance.)
+                """,
+            ),
+            (
+                "Substitute and let the powers of $N$ fight",
+                r"""
+                $d^{4}=D^{4}\phi^{2}/N^{2}$, so
+                $$\Delta p=\frac{128\mu L (Q/N)}{\pi d^{4}}
+                =\frac{128\mu L Q}{\pi}\cdot\frac{1}{N}\cdot\frac{N^{2}}{D^{4}\phi^{2}}
+                =\frac{128\,\mu L Q}{\pi D^{4}}\cdot\frac{N}{\phi^{2}}$$
+                One factor of $N$ works **for** you (each straw carries less flow) and two
+                work **against** you (through $d^{4}$). Two beats one, and a single net
+                factor of $N$ is left in the numerator. Poor packing is punished twice over,
+                as $1/\phi^{2}$.
+                """,
+            ),
+            (
+                "Convert to the quantity that appears on the electricity bill",
+                r"""
+                Hydraulic power is pressure rise times volumetric rate,
+                $P=Q\,\Delta p$ (Tab 1). At fixed duty $Q$ this inherits the scaling
+                directly:
+                $$P_{\text{bundle}}\propto N$$
+                Doubling the straw count to push $\mathrm{Re}_d$ further into the laminar
+                range roughly doubles the pump power. The plot below is that straight line
+                on log axes, with the open-pipe (turbulent) power as the horizontal
+                reference.
+                """,
+            ),
+            (
+                "The same result stated as a physical picture",
+                r"""
+                Friction happens at walls. The total wetted wall area of the bundle is
+                $$N\,\pi d\,L=N\pi L\,D\sqrt{\phi/N}=\pi L D\sqrt{N\phi}$$
+                which grows without limit as $\sqrt{N}$. Subdividing the flow buys laminar
+                order by manufacturing enormous quantities of wall for the fluid to rub
+                against. Turbulence is expensive, but so is the surface you install to
+                avoid it — and here the surface wins.
+                """,
+            ),
+            (
+                "When engineers do it anyway",
+                r"""
+                A shell-and-tube exchanger is exactly this bundle, and it is built precisely
+                for the $\sqrt{N}$ growth in wall area — because that area is *heat transfer
+                area*. The hydraulic penalty derived above is not an oversight; it is the
+                price knowingly paid for the transport enhancement of §4.4.
+                """,
+            ),
+        ],
+        symbols=[
+            (r"N", "number of parallel capillary lumens."),
+            (r"d", r"bore of one lumen (m), $d=D\sqrt{\phi/N}$."),
+            (r"\phi", "open-lumen fraction of the shell cross-section (packing fraction)."),
+            (r"P", r"hydraulic power $Q\,\Delta p$ (W), before pump efficiency."),
+        ],
     )
     render_predict(
         "straw_predict",
