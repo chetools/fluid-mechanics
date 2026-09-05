@@ -60,6 +60,19 @@ def test_switching_chapter_renders_that_chapter():
     )
 
 
+@pytest.mark.parametrize("chapter", EXPECTED_TABS)
+def test_every_chapter_renders_without_exception(chapter):
+    """One chapter at a time, because only the selected one executes.
+
+    The two spot-checks above left ten panels unexercised, which is exactly
+    where a bad expander, a missing import or a malformed f-string hides.
+    """
+    at = AppTest.from_file(APP, default_timeout=300)
+    at.run()
+    at.radio(key="chapter_nav").set_value(chapter).run()
+    assert not at.exception, f"{chapter}: {at.exception}"
+
+
 def test_reload_list_matches_the_source_tree():
     """A module missing from _MODULE_RELOAD_ORDER is never reloaded or fingerprinted."""
     root = Path(app_module.__file__).resolve().parent

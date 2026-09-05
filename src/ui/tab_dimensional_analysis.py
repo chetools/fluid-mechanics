@@ -25,7 +25,14 @@ from src.physics.dimensional_analysis import (
     compute_null_space_pi_groups,
     get_cheme_preset
 )
-from src.ui.pedagogy import render_objectives, render_what_to_notice, render_self_check, render_prose_and_latex, render_callout
+from src.ui.pedagogy import (
+    render_callout,
+    render_derivation,
+    render_objectives,
+    render_prose_and_latex,
+    render_self_check,
+    render_what_to_notice,
+)
 
 def render_tab_dimensional_analysis():
     """Render comprehensive educational panel for Dimensional Analysis."""
@@ -114,6 +121,92 @@ def render_tab_dimensional_analysis():
             A large Reynolds number does not justify dropping viscosity everywhere.
             """
         )
+
+    render_derivation(
+        r"scaling Navier–Stokes, so that $\mathrm{Re}$, $\mathrm{Fr}$ and $\mathrm{Eu}$ appear by themselves",
+        [
+            (
+                "Choose a ruler for every variable",
+                r"""
+                A problem with one geometry and one imposed speed offers exactly one length
+                $L$ and one velocity $U$. Everything else must be built from them. Starred
+                symbols are pure numbers of order one:
+                $$\mathbf x^{*}=\frac{\mathbf x}{L},\quad
+                \mathbf u^{*}=\frac{\mathbf u}{U},\quad
+                t^{*}=\frac{tU}{L},\quad
+                \nabla^{*}=L\nabla$$
+                The time scale is not an extra choice: $L/U$ is how long the flow takes to
+                cross the object, the only clock the problem has.
+                """,
+            ),
+            (
+                "Substitute into each term and see what falls out in front",
+                r"""
+                Putting these into the incompressible momentum equation and using
+                $\partial/\partial t=(U/L)\partial/\partial t^{*}$:
+                $$\underbrace{\frac{\rho U^{2}}{L}}_{\text{inertia}}
+                \left[\frac{\partial\mathbf u^{*}}{\partial t^{*}}
+                +(\mathbf u^{*}\cdot\nabla^{*})\mathbf u^{*}\right]
+                =-\frac{\Delta p}{L}\nabla^{*}p^{*}
+                +\underbrace{\frac{\mu U}{L^{2}}}_{\text{viscous}}\nabla^{*2}\mathbf u^{*}
+                -\underbrace{\rho g}_{\text{gravity}}\,\hat{\mathbf z}$$
+                Each bracket is now a pure number of order one, so **the prefactors carry all
+                the physics of relative importance**. This is the same estimate used in Tab 4
+                to get $\mathrm{Re}$, done to the whole equation at once.
+                """,
+            ),
+            (
+                "Divide by the inertia scale, and name what is left",
+                r"""
+                Dividing through by $\rho U^{2}/L$:
+                $$\frac{\partial\mathbf u^{*}}{\partial t^{*}}
+                +(\mathbf u^{*}\cdot\nabla^{*})\mathbf u^{*}
+                =-\underbrace{\frac{\Delta p}{\rho U^{2}}}_{\mathrm{Eu}}\nabla^{*}p^{*}
+                +\underbrace{\frac{\mu}{\rho U L}}_{1/\mathrm{Re}}\nabla^{*2}\mathbf u^{*}
+                -\underbrace{\frac{gL}{U^{2}}}_{1/\mathrm{Fr}^{2}}\hat{\mathbf z}$$
+                Three named groups, each the ratio of one term to inertia, and **no others** —
+                because there were no other terms. Dimensional analysis of the variable list
+                (§3.2) must give the same answer, since it is the same information counted a
+                different way.
+                """,
+            ),
+            (
+                "The pressure scale is a modelling decision, not an accident",
+                r"""
+                $\Delta p$ has no independent definition, so we must choose it. Taking
+                $\Delta p=\rho U^{2}$ makes $\mathrm{Eu}=1$ and asserts that pressure balances
+                **inertia** — right for a Venturi or a nozzle. Taking $\Delta p=\mu U/L$
+                instead puts $\mathrm{Re}$ in front of the *inertia* term and asserts pressure
+                balances **viscosity** — which is exactly the scaling used to derive Stokes
+                flow in Tab 8, and the reason that derivation could delete inertia rather than
+                the pressure. Same equation; the choice of ruler declares which balance you
+                expect.
+                """,
+            ),
+            (
+                "What this buys: two flows are the same flow",
+                r"""
+                The starred equation contains **no dimensional quantity at all** — only
+                $\mathrm{Re}$, $\mathrm{Fr}$ and the dimensionless geometry and boundary
+                conditions. So two flows that match in those match everywhere, and a model
+                test predicts the full-scale machine. It also states the limit honestly:
+                matching $\mathrm{Re}$ *and* $\mathrm{Fr}$ at reduced scale usually requires a
+                fluid nobody has, which is why ship-model testing splits the drag into a
+                Froude-scaled part and a Reynolds-scaled part rather than matching both.
+                """,
+            ),
+            (
+                "And one warning the algebra makes precise",
+                r"""
+                Large $\mathrm{Re}$ makes $1/\mathrm{Re}$ small, but it multiplies
+                $\nabla^{*2}\mathbf u^{*}$, which is *not* order one near a wall — that is the
+                whole content of the boundary layer in Tab 7. A small coefficient only permits
+                dropping a term when the term it multiplies is genuinely order one. This is
+                the single most common misuse of a scaling argument.
+                """,
+            ),
+        ],
+    )
 
     # -------------------------------------------------------------------------
     # PART 2: Classical Buckingham Pi Method

@@ -21,6 +21,28 @@ def test_velocity_profiles_laminar_vs_turbulent():
     # Turbulent alpha ~ 1.05
     assert 1.0 < res["alpha_turb"] < 1.15
 
+def test_correction_factors_are_the_profile_integrals():
+    """The panel derives these by integrating u^3 over annuli, so they must be that.
+
+    The parabola gives alpha = 2 and beta = 4/3 exactly; the 1/7 power law gives
+    the closed-form values below. An earlier approximation, 1 + 3/(2 n^2),
+    returned 1.031 instead of 1.058 -- a 50% error in the correction itself.
+    """
+    res = velocity_profile_comparison(u_avg=1.5, reynolds=50000.0)
+    n = res["n_exp"]
+    assert np.isclose(res["alpha_lam"], 2.0, rtol=1e-6)
+    assert np.isclose(res["beta_lam"], 4.0 / 3.0, rtol=1e-6)
+
+    exact_alpha = (n + 1) ** 3 * (2 * n + 1) ** 3 / (4 * n**4 * (3 + n) * (3 + 2 * n))
+    exact_beta = (n + 1) ** 2 * (2 * n + 1) ** 2 / (2 * n**2 * (2 + n) * (2 + 2 * n))
+    assert np.isclose(res["alpha_turb"], exact_alpha, rtol=1e-4)
+    assert np.isclose(res["beta_turb"], exact_beta, rtol=1e-4)
+
+    # Blunter profile, smaller correction: the ordering must survive any refit.
+    assert res["alpha_turb"] < res["alpha_lam"]
+    assert res["beta_turb"] < res["beta_lam"]
+
+
 def test_law_of_the_wall_sublayers():
     """Verify viscous sublayer linear slope and log-law logarithmic behavior."""
     res = law_of_the_wall(kappa=0.41, B=5.0)

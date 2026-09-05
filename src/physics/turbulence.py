@@ -43,16 +43,31 @@ def velocity_profile_comparison(
     u_max_turb = u_avg / ratio_avg_max
     u_turbulent = u_max_turb * ((1.0 - r_norm)**(1.0 / n_exp))
     
-    # Kinetic energy flux correction factor alpha
-    # Laminar alpha = 2.0 exactly
-    # Turbulent alpha ~ 1.04 to 1.08
-    alpha_lam = 2.00
-    alpha_turb = 1.0 + 3.0 / (2.0 * n_exp**2)  # approximate
-    
-    # Momentum flux correction factor beta
-    beta_lam = 4.0 / 3.0
-    beta_turb = 1.0 + 1.0 / (2.0 * n_exp**2)
-    
+    # Kinetic-energy (alpha) and momentum (beta) correction factors, integrated
+    # over the annular area element from the *same* profiles that are plotted:
+    #   alpha = (1/A) int (u/ubar)^3 dA,  beta = (1/A) int (u/ubar)^2 dA,
+    #   dA = 2 pi r dr  ->  (1/A) int ... dA = 2 int_0^1 ... eta d(eta)
+    # The panel derives alpha = 2 for the parabola and ~1.06 for the 1/7 law and
+    # says these numbers come from integrating the profile, so they must.
+    # Closed-form approximations such as 1 + 3/(2 n^2) understate the turbulent
+    # correction by nearly half at n = 7 (1.031 against the true 1.058).
+    # Integrate on a grid of its own: the turbulent profile has an infinite
+    # slope at the wall, so the ~150 points that draw a smooth curve leave a
+    # visible error in the third moment.
+    eta = np.linspace(0.0, 1.0, 20001)
+    shapes = {
+        "lam": 2.0 * (1.0 - eta**2),                      # u/u_avg, parabola
+        "turb": (1.0 - eta) ** (1.0 / n_exp) / ratio_avg_max,
+    }
+
+    def _flux_correction(shape: np.ndarray, power: int) -> float:
+        return float(2.0 * np.trapezoid(shape**power * eta, eta))
+
+    alpha_lam = _flux_correction(shapes["lam"], 3)
+    beta_lam = _flux_correction(shapes["lam"], 2)
+    alpha_turb = _flux_correction(shapes["turb"], 3)
+    beta_turb = _flux_correction(shapes["turb"], 2)
+
     return {
         "r": r,
         "r_norm": r_norm,
