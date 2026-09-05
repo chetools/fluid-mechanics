@@ -8,7 +8,7 @@ from src.ui.state import persistent_editor, persistent_input
 from src.units import get_fluid_state
 from src.physics.pipe_network import SCHEDULES, PIPE_DATA_SOURCE, resolve_pipe, pipe_headloss, example_network, solve_network
 from src.physics.pipe_flow import PIPE_ROUGHNESS, friction_factor_churchill
-from src.ui.pedagogy import render_prose_and_latex as prose, render_plot
+from src.ui.pedagogy import render_derivation, render_prose_and_latex as prose, render_plot
 from src.theme import apply_plotly_theme
 
 
@@ -75,6 +75,94 @@ $$\sum Q_{\mathrm{out},i}-\sum Q_{\mathrm{in},i}+d_i=0$$
 $$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{Q_{ij}|Q_{ij}|}{2gA^2}$$
 **3 · Iterate unknown heads.** Guess junction heads, invert each monotone pipe relation to obtain signed flows, calculate each junction imbalance, and adjust heads until those residuals vanish. Friction is recomputed at every flow. Summing head differences around a loop gives zero automatically.
 **4 · Verify.** Inspect continuity residuals, edge energy residuals and pressure plausibility. Every connected component needs a prescribed-pressure node. This is a steady, single-phase incompressible model with no pump curves or automatic valve logic.''')
+    render_derivation(
+        r"the two network equations, from the energy balance and continuity",
+        [
+            (
+                "Piezometric head is the potential a manometer reads",
+                r"""
+                Write the mechanical energy equation of §1.2 between two junctions, with no
+                pump between them and the velocity heads treated as common to the junction:
+                $$\left(z_i+\frac{p_i}{\rho g}\right)-\left(z_j+\frac{p_j}{\rho g}\right)
+                =h_f+h_{\text{minor}}$$
+                Define $H\equiv z+p/(\rho g)$. Elevation and pressure appear only in this
+                combination, so a pipe cannot tell them apart: lifting a node by one metre is
+                hydraulically identical to lowering its pressure by $\rho g$. That is exactly
+                why long pipelines are drawn as head profiles rather than pressure profiles.
+                """,
+            ),
+            (
+                "Convert the loss to the variable the network is solved in",
+                r"""
+                The solver's unknowns are flows, not velocities, so substitute $u=Q/A$ into
+                Darcy–Weisbach plus the minor-loss sum of §2.1:
+                $$H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{u^{2}}{2g}
+                =\left(f_D\frac{L}{D}+K\right)\frac{Q^{2}}{2gA^{2}}$$
+                Note $f_D$ is **not** a constant here: it depends on $\mathrm{Re}$, hence on
+                $Q$, through Churchill. That is what makes the network problem non-linear.
+                """,
+            ),
+            (
+                r"Why $Q|Q|$ and not $Q^{2}$",
+                r"""
+                Physically, reversing the flow must reverse the head loss — friction always
+                opposes motion. But $Q^{2}$ is **even**: it gives the same loss in both
+                directions, which would let the solver drive fluid uphill. Replacing it with
+                $Q|Q|$ is the minimal repair, and it is the right one: the result is odd,
+                continuous, strictly increasing through zero, and still differentiable there
+                (its derivative $2|Q|$ vanishes rather than jumping). Any solver that inverts
+                this relation needs all four of those properties.
+                """,
+            ),
+            (
+                "Continuity at a junction is Kirchhoff's current law",
+                r"""
+                A junction stores nothing, so what arrives must leave, allowing for any
+                external draw-off $d_i$:
+                $$\sum Q_{\text{out},i}-\sum Q_{\text{in},i}+d_i=0$$
+                The electrical analogy is exact rather than decorative: $Q$ is conserved like
+                current, $H$ is a potential like voltage, and the pipe relation is a non-linear
+                resistor obeying $\Delta H\propto Q|Q|$ instead of Ohm's linear law.
+                """,
+            ),
+            (
+                "The loop law comes for free in this formulation",
+                r"""
+                Because each pipe's loss is written as a **difference of nodal potentials**,
+                summing around any closed loop telescopes:
+                $$\sum_{\text{loop}}(H_i-H_j)=0$$
+                identically, whatever the flows are. That is the advantage of a nodal method
+                over Hardy Cross, which carries loop corrections explicitly: here the second
+                Kirchhoff law cannot be violated even by a badly converged iterate.
+                """,
+            ),
+            (
+                "Solving: invert each pipe, then correct the heads",
+                r"""
+                Guess the junction heads. Each pipe relation is monotone in $\Delta H$, so it
+                can be inverted for a signed flow,
+                $$Q_{ij}=\operatorname{sign}(\Delta H)\,A
+                \sqrt{\frac{2g\,|\Delta H|}{f_D L/D+K}}$$
+                with $f_D$ re-evaluated at the resulting $\mathrm{Re}$. Substituting those
+                flows into Step 4 gives one residual per junction, and the residuals are smooth
+                and monotone in the heads, so a Newton correction converges quickly. The
+                reported *mass residual* is how close Step 4 came to zero; the *energy
+                residual* is how close Step 2 came.
+                """,
+            ),
+            (
+                "Why every component needs one pressure node",
+                r"""
+                Only head **differences** appear in the pipe equation, so adding a constant to
+                every head in a connected component leaves all flows unchanged — the system is
+                singular without a reference. Fixing one node's pressure pins the level. This
+                is the same degeneracy as the all-Neumann pressure problem in the CFD chapter,
+                and it has the same cure.
+                """,
+            ),
+        ],
+    )
+
     nodes, pipes = example_network()
     st.caption('Edit cells or add/delete rows. Use exact node names in the pipe table. Pressure entries at Junction nodes are ignored; demands at Pressure nodes must be zero. All table units are SI as labeled.')
     node_table = persistent_editor(pd.DataFrame(nodes), key='network_nodes', num_rows='dynamic', hide_index=True, width='stretch', column_config={

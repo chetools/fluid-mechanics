@@ -9,6 +9,7 @@ from src.svg_diagrams import diagram_chorin_projection, render_svg
 from src.physics.numerical_solver import run_lid_driven_cavity, suggested_timestep
 from src.plotting import plot_cavity_cfd
 from src.ui.pedagogy import (
+    render_derivation,
     render_objectives,
     render_what_to_notice,
     render_self_check,
@@ -108,6 +109,126 @@ def render_tab_cfd():
             $$\mathbf{u}^{n+1} = \mathbf{u}^* - \frac{\Delta t}{\rho} \nabla p^{n+1}$$
             """
         )
+
+    render_derivation(
+        r"the finite differences, and the two limits that set $\Delta t$",
+        [
+            (
+                "A derivative becomes a difference by Taylor series, and the error is visible",
+                r"""
+                Expand the neighbours of a grid point in both directions:
+                $$u_{i\pm1}=u_i\pm\Delta x\,u'_i+\frac{\Delta x^{2}}{2}u''_i
+                \pm\frac{\Delta x^{3}}{6}u'''_i+\dots$$
+                **Subtract** them and the even-order terms cancel:
+                $$\frac{u_{i+1}-u_{i-1}}{2\Delta x}=u'_i+\frac{\Delta x^{2}}{6}u'''_i+\dots$$
+                so a centred first difference is second-order accurate. **Add** them and the
+                odd terms cancel:
+                $$\frac{u_{i+1}-2u_i+u_{i-1}}{\Delta x^{2}}=u''_i+\frac{\Delta x^{2}}{12}u''''_i+\dots$$
+                Those two stencils are the whole spatial discretisation of this solver. Halving
+                $\Delta x$ should therefore quarter the truncation error — which is the test to
+                run when the grid selector is changed.
+                """,
+            ),
+            (
+                "Limit 1 — advection may not outrun the stencil",
+                r"""
+                The explicit update at node $i$ can only see its immediate neighbours, so in
+                one step information can travel at most one cell. Fluid carries information at
+                speed $u$, hence
+                $$\mathrm{CFL}=\frac{u\,\Delta t}{\Delta x}\le C
+                \;\Longrightarrow\;\Delta t\le C\frac{\Delta x}{u}$$
+                Violate it and the scheme is asked to reconstruct fluid that came from outside
+                its own stencil; it produces oscillations that double each step. This solver
+                uses $C=0.25$, well inside the limit, and reports the resulting CFL as a metric
+                below.
+                """,
+            ),
+            (
+                "Limit 2 — explicit diffusion has its own, harsher, ceiling",
+                r"""
+                Von Neumann analysis of $\partial u/\partial t=\nu\nabla^{2}u$ with these
+                stencils gives, in two dimensions,
+                $$\Delta t\le\frac{\Delta x^{2}}{4\nu}$$
+                Read it physically: $\Delta x^{2}/\nu$ is the time viscosity needs to diffuse
+                across one cell, and an explicit step may not outrun the process it models.
+                The **square** is what hurts — halving the grid spacing costs four times as
+                many steps — and it is why implicit treatments of the viscous term exist. At
+                low $\mathrm{Re}$ this limit binds; at high $\mathrm{Re}$ the CFL one does.
+                The app takes the smaller of the two, with a safety factor.
+                """,
+            ),
+            (
+                "The consequence you can see in the metrics",
+                r"""
+                Both limits shrink $\Delta t$ as the grid refines, while the physical time
+                needed to reach steady state does **not** shrink. That is why the panel warns
+                that a few hundred steps reach $t^{*}=tU/L\ll\mathrm{Re}$: the run is limited
+                by stability, not by physics, and comparing it with a steady benchmark is a
+                category error.
+                """,
+            ),
+        ],
+    )
+
+    render_derivation(
+        r"why the Poisson source must have its mean removed",
+        [
+            (
+                "Integrate the pressure equation over the whole cavity",
+                r"""
+                The projection step requires $\nabla^{2}p=(\rho/\Delta t)\nabla\cdot\mathbf u^{*}$
+                on a box whose walls are all impermeable. Integrate both sides over the domain
+                and apply the divergence theorem to the left:
+                $$\int_V\nabla^{2}p\,dV=\oint_S\nabla p\cdot\mathbf n\,dS$$
+                """,
+            ),
+            (
+                "The boundary condition forces that surface integral to vanish",
+                r"""
+                At an impermeable wall the projection may not move fluid through the boundary,
+                which requires $\partial p/\partial n=0$ — the homogeneous Neumann condition
+                the solver imposes. Hence the whole surface integral is zero, and therefore
+                $$\int_V\frac{\rho}{\Delta t}\nabla\cdot\mathbf u^{*}\,dV=0$$
+                **must** hold or the equation has no solution at all. This is the compatibility
+                (solvability) condition: with pure Neumann data you may specify the *fluxes*
+                or the *source*, but not both independently.
+                """,
+            ),
+            (
+                "Discretely it is violated, by a small amount, every step",
+                r"""
+                The predictor $\mathbf u^{*}$ is built from finite differences and boundary
+                values that do not conserve mass exactly, so the discrete sum of
+                $\nabla\cdot\mathbf u^{*}$ is close to zero but not equal to it. Asking the
+                relaxation to solve an incompatible system makes the mean of $p$ drift without
+                bound while the residual stalls. The fix is to subtract the mean before
+                solving:
+                $$\text{rhs}\;\leftarrow\;\text{rhs}-\overline{\text{rhs}}$$
+                which projects the source onto the space where a solution exists.
+                """,
+            ),
+            (
+                "Report the correction separately, because it means something different",
+                r"""
+                The metric labelled *source mean removed* is exactly $\overline{\text{rhs}}$,
+                and the *Poisson residual* is the error against the compatible source that was
+                actually solved. Adding them together would hide the distinction: one measures
+                **how far the predictor is from conserving mass**, the other **how well the
+                relaxation converged**. A small residual with a large correction means the
+                solver worked perfectly on a slightly wrong problem.
+                """,
+            ),
+            (
+                "One more consequence: pressure is only defined up to a constant",
+                r"""
+                With Neumann conditions everywhere, if $p$ solves the problem then so does
+                $p+\text{const}$ — nothing pins the level. The solver subtracts the mean at the
+                end so the reported field does not wander between runs. This changes no
+                velocity whatsoever, because only $\nabla p$ enters the correction step.
+                """,
+            ),
+        ],
+    )
 
     st.markdown("---")
     st.markdown("### 11.3 Live 2D CFD: Lid-Driven Cavity (transient demo)")

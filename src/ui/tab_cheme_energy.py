@@ -5,6 +5,7 @@ import streamlit as st
 from src.units import get_fluid_state
 from src.svg_diagrams import diagram_energy_budget, render_svg
 from src.ui.pedagogy import (
+    render_derivation,
     render_objectives,
     render_what_to_notice,
     render_checklist,
@@ -241,6 +242,91 @@ Viscosity is not an extra force we forgot: it is the mechanism that
         render_latex(
             r"p + \tfrac12\rho u^2 + \rho g z = \text{constant along the tube.}"
         )
+
+    render_derivation(
+        r"where $\Phi=2\mu\,\mathbf D:\mathbf D$ comes from, and why $e_f$ cannot be negative",
+        [
+            (
+                "Make an energy equation out of the momentum equation",
+                r"""
+                Nothing new needs to be postulated: take Cauchy's momentum equation (Tab 6)
+                and form its scalar product with the velocity itself.
+                $$\mathbf u\cdot\left(\rho\frac{D\mathbf u}{Dt}\right)
+                =\rho\frac{D}{Dt}\left(\tfrac12u^{2}\right)$$
+                because $\mathbf u\cdot d\mathbf u=d(\tfrac12u^{2})$. The left-hand side is
+                now the rate of change of **kinetic energy per unit volume** following the
+                fluid — force dotted with velocity is power, which is the whole trick.
+                """,
+            ),
+            (
+                "Split the stress work into transport and conversion",
+                r"""
+                The right-hand side carries $\mathbf u\cdot(\nabla\cdot\boldsymbol\sigma)$,
+                and the product rule for tensors separates it into two physically different
+                things:
+                $$\mathbf u\cdot(\nabla\cdot\boldsymbol\sigma)
+                =\underbrace{\nabla\cdot(\boldsymbol\sigma\cdot\mathbf u)}_{\text{work carried across the boundary}}
+                -\underbrace{\boldsymbol\sigma:\nabla\mathbf u}_{\text{converted inside}}$$
+                The first term is a divergence, so over a control volume it becomes a surface
+                integral: energy handed **through** the boundary by pressure and shear. It
+                moves energy around and creates none. Everything irreversible must therefore
+                live in the second term.
+                """,
+            ),
+            (
+                "Insert the Newtonian stress and discard what incompressibility kills",
+                r"""
+                With $\boldsymbol\sigma=-p\mathbf I+\boldsymbol\tau$:
+                $$\boldsymbol\sigma:\nabla\mathbf u
+                =-p\,(\nabla\cdot\mathbf u)+\boldsymbol\tau:\nabla\mathbf u$$
+                The first piece is reversible compression work — squeeze a gas and you can get
+                the work back — and for an incompressible fluid it is identically zero. What
+                survives is the viscous part alone.
+                """,
+            ),
+            (
+                r"Only $\mathbf D$ contributes, which is Tab 6's claim in energy form",
+                r"""
+                Substituting $\boldsymbol\tau=2\mu\mathbf D$ and splitting the velocity
+                gradient into its symmetric and antisymmetric parts:
+                $$\boldsymbol\tau:\nabla\mathbf u
+                =2\mu\,\mathbf D:(\mathbf D+\boldsymbol\Omega)
+                =2\mu\,\mathbf D:\mathbf D$$
+                because the double contraction of a **symmetric** tensor with an
+                **antisymmetric** one is always zero: every term $D_{ij}\Omega_{ij}$ is
+                cancelled by $D_{ji}\Omega_{ji}=-D_{ij}\Omega_{ij}$. So rigid rotation does no
+                viscous work — the energetic statement of the geometric argument in §6.2, and
+                the two must agree.
+                """,
+            ),
+            (
+                "Read the sign, and notice the second law arriving unannounced",
+                r"""
+                $$\Phi=2\mu\,\mathbf D:\mathbf D=2\mu\sum_{i,j}D_{ij}^{2}\;\ge\;0$$
+                It is a sum of **squares** times a positive viscosity, so it cannot be
+                negative for any flow whatsoever. Mechanical energy can be converted into
+                internal energy but never recovered from it. That one-way arrow was not
+                assumed anywhere in this derivation; it fell out of the constitutive law, and
+                it is why $e_f\ge0$ and why a "negative friction loss" in a calculation is
+                always an error rather than a discovery.
+                """,
+            ),
+            (
+                "Integrate over the pipe and recover the term the plant engineer books",
+                r"""
+                Integrating $\Phi$ over the volume between the two stations gives the total
+                rate at which the line destroys mechanical energy, which is precisely what
+                Step 3 defined:
+                $$\int_V\Phi\,dV=\dot m\,e_f=\dot m\,g\left(h_f+h_{\text{minor}}\right)
+                = Q\,\Delta p_f$$
+                Set $\mu=0$ and every term vanishes at once: $\Phi=0$, $e_f=0$, and the
+                mechanical energy equation collapses to classical Bernoulli. Viscosity is not
+                a force somebody forgot to include — it is the mechanism that moves energy
+                from the organised column ($p/\rho$, $u^{2}/2$, $gz$) into the disorganised one.
+                """,
+            ),
+        ],
+    )
 
     render_checklist(
         "When the plant Bernoulli applies",
