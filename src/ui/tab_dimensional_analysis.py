@@ -14,7 +14,7 @@ from src.ui.pedagogy import render_objectives, render_what_to_notice, render_sel
 
 def render_tab_dimensional_analysis():
     """Render comprehensive educational panel for Dimensional Analysis."""
-    st.markdown("## 2. Dimensional Analysis: Why, Buckingham Π & The Null-Space Method")
+    st.markdown("## 3. Dimensional Analysis: Experiments, Π Groups & Information")
     st.markdown(
         """
         Dimensional analysis is one of the most powerful analytical weapons in engineering.
@@ -22,8 +22,10 @@ def render_tab_dimensional_analysis():
         **without solving the Navier–Stokes partial differential equations**, collapse thousands
         of experiments onto single universal master curves, and scale up lab pilot plants to full industrial scale.
 
-        Read this panel **before** trusting every Re on the KPI strip. The sidebar Re is
-        $\\rho U_0 L/\\mu$ — one Π group, not a complete description of the flow.
+        After the energy and pipe labs, this panel is **how you design the experiment**
+        that produces a Moody chart: collapse $\\Delta p = f(D,L,u,\\rho,\\mu,\\varepsilon)$
+        onto $\\mathrm{Eu}=\\Phi(\\mathrm{Re},\\varepsilon/D,L/D)$, then rotate the SVD
+        kernel until those named groups appear. The sidebar Re is one Π group, not the whole story.
         """
     )
     render_objectives(
@@ -37,7 +39,7 @@ def render_tab_dimensional_analysis():
     # -------------------------------------------------------------------------
     # PART 1: Why Dimensional Analysis?
     # -------------------------------------------------------------------------
-    st.markdown("### 2.1 Why Dimensional Analysis? The Five Major Advantages")
+    st.markdown("### 3.1 Why Dimensional Analysis? The Five Major Advantages")
     
     col_adv1, col_adv2 = st.columns(2)
     with col_adv1:
@@ -96,7 +98,7 @@ def render_tab_dimensional_analysis():
     # PART 2: Classical Buckingham Pi Method
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 2.2 Solution Method 1: The Classical Buckingham Π Theorem")
+    st.markdown("### 3.2 Solution Method 1: The Classical Buckingham Π Theorem")
     st.markdown(
         """
         Formulated by Edgar Buckingham in 1914, the theorem states that if an equation involving 
@@ -150,7 +152,7 @@ def render_tab_dimensional_analysis():
     # PART 3: Modern Null-Space (Kernel) Linear Algebra Approach
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 2.3 Solution Method 2: The Modern Linear Algebra Null-Space (Kernel) Approach")
+    st.markdown("### 3.3 Solution Method 2: The Modern Linear Algebra Null-Space (Kernel) Approach")
     st.markdown(
         """
         While Buckingham's repeating variables method is traditional, it relies on trial-and-error 
@@ -193,7 +195,7 @@ def render_tab_dimensional_analysis():
     # PART 4: Interactive Dimensional Analysis Solver
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 2.4 Interactive Dimensional Analysis Solver")
+    st.markdown("### 3.4 Interactive Dimensional Analysis Solver")
     st.markdown(
         """
         Choose a classic Chemical Engineering preset or pick your own custom physical variables. 
@@ -264,6 +266,38 @@ def render_tab_dimensional_analysis():
             st.latex(rf"\Pi_{{{i+1}}} = {pi['formula_latex']}")
             st.caption(f"Exponent vector $\\mathbf{{x}}_{{{i+1}}} = {list(pi['vector'])}$")
 
+    st.markdown("#### Rotate the SVD kernel onto the named groups")
+    st.markdown(
+        r"""
+        SVD returns *an* orthonormal basis $N$ of $\ker(A)$. Named ChemE groups
+        $C = [\mathrm{Eu},\,\mathrm{Re},\,\varepsilon/D,\,L/D]$ are another basis of the
+        **same** subspace. A $p\times p$ rotation (really a change of basis)
+        $R$ satisfies $N R \approx C$:
+        """
+    )
+    rot = res_dim.get("rotation")
+    if rot is not None:
+        st.latex(r"R = \arg\min_X \|N X - C\|_F \qquad\text{(least squares)}")
+        st.markdown("**Mixing: each named group as a combination of SVD columns $N_j$**")
+        for mix in rot["mixes"]:
+            st.markdown(f"- **{mix['name']}** $= {mix['mix']}$")
+        st.caption(
+            f"Relative reconstruction error ||NR - C|| / ||C|| = {rot['reconstruction_error']:.2e}. "
+            "If this is tiny, the SVD kernel *already contained* Re and Eu; we only rotated the labels."
+        )
+        r_df = pd.DataFrame(
+            np.round(rot["R"], 3),
+            index=[f"N_{i+1}" for i in range(rot["R"].shape[0])],
+            columns=[m["name"].split("=")[0].strip()[:24] for m in rot["mixes"]],
+        )
+        st.dataframe(r_df, width="stretch")
+        render_what_to_notice(
+            "Raw SVD groups look like random products. After R they are the Moody variables. "
+            "Do not treat an unrotated SVD column as Re."
+        )
+    else:
+        st.caption("Rotation needs a square match between SVD columns and named groups.")
+
     with st.expander("Raw SVD kernel (unrotated — usually not Re or Eu)"):
         st.markdown(
             "These columns of $\\ker(A)$ from SVD are orthonormal in $\\mathbb{R}^n$ "
@@ -279,4 +313,62 @@ def render_tab_dimensional_analysis():
         ["7", "4  (n − rank A = 7 − 3)", "3  (one per base dimension)"],
         "4  (n − rank A = 7 − 3)",
         "Buckingham: p = n − k with k = rank(A) = 3, so four groups: Eu, Re, ε/D, L/D.",
+    )
+
+    st.markdown("---")
+    st.markdown("### 3.5 Maximum information from experiments (IT-π)")
+    st.markdown(
+        r"""
+        Buckingham tells you *a* set of dimensionless inputs, not *which mix*
+        of them carries the data. Yuan & Lozano-Durán (2025) close that gap.
+
+        **Paper.** Yuan, Y. & Lozano-Durán, A. *Dimensionless learning based on information.*
+        *Nature Communications* **16** (2025). [doi:10.1038/s41467-025-64425-8](https://doi.org/10.1038/s41467-025-64425-8)
+        ([arXiv:2504.03927](https://arxiv.org/abs/2504.03927)).
+        """
+    )
+    with st.container(border=True):
+        st.markdown("**Intuition (no information theory required)**")
+        st.markdown(
+            r"""
+1. Any candidate Π-set is just a rotation of the SVD kernel above. Some rotations
+   make the Moody plot a *single* curve; others smear it.
+2. **Mutual information** $I(\Pi_{\mathrm{out}}; \Pi_{\mathrm{in}})$ measures how
+   much of the output (say $f_D$ or $C_f$) is already determined by those inputs.
+   If $I$ is infinite, an exact law exists (Hagen–Poiseuille). If $I$ is finite,
+   some physics is missing from the variable list.
+3. IT-π **searches the kernel** for the rotation that maximises $I$ (equivalently,
+   minimises an *irreducible* prediction error $\epsilon_{LB}$ that no model —
+   linear regression or a deep net — can beat). That is the Carnot bound of
+   dimensionless laws.
+4. Extra Π groups that do not raise $I$ are **wasted experiments**. Buckingham
+   may list $l = n - k$ groups; the data may need only $l^\* \le l$ of them.
+            """
+        )
+    st.markdown(
+        r"""
+        **Why a ChemE should care.** In their rough-wall heat-flux example, Buckingham
+        asked for **seven** dimensionless inputs. Three levels each would be
+        $3^7 = 2187$ runs. IT-π found **two** groups already give ~92% of the
+        extractable information — $3^2 = 9$ runs. The Moody chart is the 19th-century
+        version of the same idea: once $f_D = \Phi(\mathrm{Re},\,\varepsilon/D)$,
+        you never again test water and oil as separate universes.
+
+        **What to do in the lab.** After you have the kernel (this tab), you still
+        choose *which* combination to hold constant in a pilot plant. Prefer the
+        rotation that (i) matches named groups when they collapse data, and
+        (ii) drops Π's that do not change $I$. That is experimental design, not
+        extra algebra.
+        """
+    )
+    render_self_check(
+        "dim_self_check_itpi",
+        "IT-π's main experimental message is…",
+        [
+            "Always measure all n − k Buckingham groups at a full factorial",
+            "Search the kernel for the fewest Π's that share the most information with the output",
+            "SVD columns are already the optimal experiment",
+        ],
+        "Search the kernel for the fewest Π's that share the most information with the output",
+        "Buckingham is an upper bound on the number of groups. Information tells you which mix is worth measuring.",
     )

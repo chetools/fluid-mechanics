@@ -22,10 +22,10 @@ def _cached_cavity_simulation(reynolds: float, nx: int, n_steps: int, dt: float,
 
 def render_tab_cfd():
     """Chorin's projection method and a lid-driven cavity demo."""
-    st.markdown("## 7. Numerical CFD: Chorin's Projection & the Lid-Driven Cavity")
+    st.markdown("## 8. Numerical CFD: Chorin's Projection & the Lid-Driven Cavity")
     st.markdown(
         """
-        Tabs 4–6 gave exact solutions, regimes, and pipe design. When geometry is
+        Tabs 2, 4 and 7 gave pipe design, regimes, and exact solutions. When geometry is
         not a straight duct, $(\\mathbf{u}\\cdot\\nabla)\\mathbf{u}$ cannot be dropped and
         pressure has no equation of state — that is the CFD problem.
         """
@@ -38,7 +38,7 @@ def render_tab_cfd():
         ]
     )
 
-    st.markdown("### 7.1 The Two Fundamental Mathematical Roadblocks")
+    st.markdown("### 8.1 The Two Fundamental Mathematical Roadblocks")
     col_rb1, col_rb2 = st.columns(2)
     with col_rb1:
         st.info(
@@ -65,7 +65,7 @@ def render_tab_cfd():
         )
 
     st.markdown("---")
-    st.markdown("### 7.2 Chorin's Projection (Fractional Step) Method")
+    st.markdown("### 8.2 Chorin's Projection (Fractional Step) Method")
     st.markdown(
         """
         In 1968 Alexandre Chorin invented the **Projection Method**, still the
@@ -104,7 +104,7 @@ def render_tab_cfd():
         )
 
     st.markdown("---")
-    st.markdown("### 7.3 Live 2D CFD: Lid-Driven Cavity (transient demo)")
+    st.markdown("### 8.3 Live 2D CFD: Lid-Driven Cavity (transient demo)")
     st.markdown(
         """
         A unit square has three no-slip walls and a lid at $u = 1$. This is the canonical

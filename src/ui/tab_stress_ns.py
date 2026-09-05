@@ -33,7 +33,7 @@ KINEMATIC_PRESETS = {
 def render_tab_stress_ns():
     """Render detailed step-by-step stress tensor and Navier-Stokes derivations."""
     fluid = get_fluid_state()
-    st.markdown("## 3. Incorporating Stress, Constitutive Equations & Navier–Stokes")
+    st.markdown("## 6. Incorporating Stress, Constitutive Equations & Navier–Stokes")
     st.markdown(
         """
         Euler's equation assumed fluids could sustain **only isotropic normal pressure**
@@ -58,7 +58,7 @@ def render_tab_stress_ns():
     # -------------------------------------------------------------------------
     # PART 1: The Infinitesimal Stress Cube & Cauchy Momentum
     # -------------------------------------------------------------------------
-    st.markdown("### 3.1 The Infinitesimal Stress Cube & Cauchy Momentum Equation")
+    st.markdown("### 6.1 The Infinitesimal Stress Cube & Cauchy Momentum Equation")
     st.markdown(
         """
         When fluid layers slide past one another, forces act both perpendicular (normal)
@@ -68,22 +68,24 @@ def render_tab_stress_ns():
 
     render_svg(diagram_stress_tensor_cube())
 
-    st.info(
-        r"""
-        **Stress Tensor Index Nomenclature: $\sigma_{ij}$**
-
-        The stress tensor is a second-order tensor represented by a 3×3 matrix:
-        $$\boldsymbol{\sigma} = \begin{bmatrix}
-        \sigma_{xx} & \tau_{xy} & \tau_{xz} \\
-        \tau_{yx} & \sigma_{yy} & \tau_{yz} \\
-        \tau_{zx} & \tau_{zy} & \sigma_{zz}
-        \end{bmatrix}$$
-        * **First index $i$:** Identifies the *orientation of the face* (the unit outward normal vector to that surface).
-        * **Second index $j$:** Identifies the *direction of the force traction* acting on that face.
-        * **Normal Stresses ($i = j$):** $\sigma_{xx}, \sigma_{yy}, \sigma_{zz}$ act perpendicular to faces (compression / tension).
-        * **Shear Stresses ($i \neq j$):** $\tau_{xy}, \tau_{xz}, \dots$ act parallel to faces (frictional sliding).
-        """
-    )
+    with st.container(border=True):
+        st.markdown("**Stress tensor index nomenclature $\\sigma_{ij}$**")
+        st.markdown("The Cauchy stress is a $3\\times 3$ matrix. Streamlit does not render KaTeX inside `st.info` / raw HTML.")
+        st.latex(
+            r"\boldsymbol{\sigma} = \begin{bmatrix}"
+            r"\sigma_{xx} & \tau_{xy} & \tau_{xz} \\"
+            r"\tau_{yx} & \sigma_{yy} & \tau_{yz} \\"
+            r"\tau_{zx} & \tau_{zy} & \sigma_{zz}"
+            r"\end{bmatrix}"
+        )
+        st.markdown(
+            r"""
+- **First index $i$:** orientation of the face (outward normal).
+- **Second index $j$:** direction of the traction on that face.
+- **Normal stresses** ($i=j$): $\sigma_{xx},\sigma_{yy},\sigma_{zz}$.
+- **Shear stresses** ($i\neq j$): $\tau_{xy},\tau_{xz},\ldots$ (friction).
+            """
+        )
 
     with st.expander("🔍 Step-by-Step Proof: Stress Tensor Symmetry via Angular Momentum Conservation", expanded=True):
         st.markdown(
@@ -127,7 +129,7 @@ def render_tab_stress_ns():
     # PART 2: Kinematic Decomposition
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.2 Kinematic Decomposition: Deformation vs. Rigid Rotation")
+    st.markdown("### 6.2 Kinematic Decomposition: Deformation vs. Rigid Rotation")
     st.markdown(
         """
         Why does a solid undergo stress proportional to **displacement** $\\mathbf{x}$,
@@ -162,7 +164,7 @@ def render_tab_stress_ns():
     # PART 3: The Newtonian Constitutive Law
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.3 The Newtonian Constitutive Law & Stokes' Hypothesis")
+    st.markdown("### 6.3 The Newtonian Constitutive Law & Stokes' Hypothesis")
     st.markdown(
         """
         Sir Isaac Newton posited in 1687 that the shear resistance in a fluid is linearly
@@ -199,7 +201,7 @@ def render_tab_stress_ns():
     # PART 4: Arriving at Navier–Stokes
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.4 The Incompressible Navier–Stokes Equations")
+    st.markdown("### 6.4 The Incompressible Navier–Stokes Equations")
     st.markdown(
         r"""
         Substituting the Newtonian constitutive law $\boldsymbol{\sigma} = -p\mathbf{I} + 2\mu \mathbf{D}$
@@ -240,7 +242,7 @@ def render_tab_stress_ns():
     # PART 5: Interactive Fluid Element Deformation Lab
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.5 Interactive Fluid Element Deformation Lab")
+    st.markdown("### 6.5 Interactive Fluid Element Deformation Lab")
     st.markdown(
         """
         Start from a kinematic **preset**, then inspect $\\mathbf{D}$, $\\boldsymbol{\\Omega}$,
@@ -338,7 +340,7 @@ def render_tab_stress_ns():
     # PART 6: Power-law constitutive
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.6 Non-Newtonian Constitutive Law: Power-Law Pipe Flow")
+    st.markdown("### 6.6 Non-Newtonian Constitutive Law: Power-Law Pipe Flow")
     st.markdown(
         r"""
         Newtonian stress is $\boldsymbol{\tau} = 2\mu\mathbf{D}$ with $\mu$ constant.
@@ -384,7 +386,7 @@ def render_tab_stress_ns():
         "thickening (n>1) sharpens the apex."
     )
     render_what_to_notice(
-        "n = 1 and K = μ must sit on the Newtonian parabola. n < 1 is flatter (plug-like). Tab 6 can use this Δp for laminar polymer lines."
+        "n = 1 and K = μ must sit on the Newtonian parabola. n < 1 is flatter (plug-like). Tab 2 can use this Δp for laminar polymer lines."
     )
     fig_pl = plot_power_law_pipe(pl_res, newt)
     st.plotly_chart(fig_pl, width="stretch")

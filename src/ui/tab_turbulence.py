@@ -10,12 +10,19 @@ from src.svg_diagrams import (
     render_svg
 )
 from src.physics.turbulence import velocity_profile_comparison, law_of_the_wall
-from src.plotting import plot_laminar_turbulent_profiles, plot_law_of_the_wall
-from src.ui.pedagogy import render_objectives, render_what_to_notice, render_self_check
+from src.physics.pipe_flow import (
+    friction_factor_churchill,
+    laminar_darcy_from_force_balance,
+    straw_bundle_comparison,
+)
+from src.plotting import plot_laminar_turbulent_profiles, plot_law_of_the_wall, plot_straw_bundle
+from src.units import get_fluid_state
+from src.ui.pedagogy import render_objectives, render_what_to_notice, render_predict, render_self_check
 
 def render_tab_turbulence():
     """Render comprehensive panel comparing laminar and turbulent flows."""
-    st.markdown("## 5. Laminar vs. Turbulent Flows: Physics, Profiles & Practical Implications")
+    fluid = get_fluid_state()
+    st.markdown("## 4. Laminar Force Balance, Turbulence & the Straw Question")
     st.markdown(
         """
         Flow regimes govern everything in fluid transport.
@@ -31,16 +38,16 @@ def render_tab_turbulence():
     render_objectives(
         [
             "State that 2300 is a pipe threshold, not a universal law.",
-            "Use α = 2 in laminar *pipe* Bernoulli; α ≈ 1.05 when turbulent.",
-            "Read y⁺ sublayers; treat κ and B as literature constants.",
-            "Write Chilton–Colburn with the Fanning factor: j = f_F/2 = f_D/8.",
+            "Derive $f_D = 64/\\mathrm{Re}$ from a cylindrical force balance and compare it to Moody.",
+            "Decide whether packing a pipe with straws to stay laminar actually saves pump kW.",
+            "Write Chilton–Colburn with the Fanning factor: $j = f_F/2 = f_D/8$.",
         ]
     )
     
     # -------------------------------------------------------------------------
     # PART 1: The Transition Experiment
     # -------------------------------------------------------------------------
-    st.markdown("### 5.1 The Physics of Transition: Osborne Reynolds (1883)")
+    st.markdown("### 4.1 The Physics of Transition: Osborne Reynolds (1883)")
     st.markdown(
         """
         In his historic 1883 Manchester experiments, Osborne Reynolds injected a thin filament 
@@ -63,11 +70,59 @@ def render_tab_turbulence():
         """
     )
 
+    st.markdown("### 4.1b Laminar force balance → $f_D = 64/\\mathrm{Re}$")
+    st.markdown(
+        r"""
+        Tab 1 booked friction as lost mechanical energy. Here we *compute* it
+        for fully developed laminar flow in a round pipe, then compare to the
+        Moody laminar line (Tab 2).
+        """
+    )
+    with st.expander("🔍 Force balance on a cylindrical fluid core (no skipped algebra)", expanded=True):
+        st.markdown(
+            r"""
+            Take a coaxial plug of radius $r$ and length $L$. Steady axial flow,
+            no acceleration, so $\sum F_z = 0$:
+            $$\underbrace{\Delta p \cdot \pi r^2}_{\text{net pressure}}
+            = \underbrace{\tau(r)\cdot 2\pi r L}_{\text{shear on the jacket}}$$
+            $$\tau(r) = \frac{r}{2}\frac{\Delta p}{L}$$
+            At the wall $r = R = D/2$, $\tau_w = (D/4)(\Delta p/L)$.
+            Newtonian constitutive law $\tau = \mu (-du/dr)$:
+            $$-\mu \frac{du}{dr} = \frac{r}{2}\frac{\Delta p}{L}$$
+            Integrate with $u(R)=0$:
+            $$u(r) = \frac{1}{4\mu}\frac{\Delta p}{L}(R^2 - r^2)$$
+            Mean speed $u_{\mathrm{avg}} = u_{\max}/2 = (D^2/32\mu)(\Delta p/L)$
+            (Hagen–Poiseuille). Solve for $\Delta p$ and substitute the **Darcy**
+            definition $\Delta p = f_D (L/D)(\rho u^2/2)$:
+            $$f_D = \frac{2\Delta p D}{L\rho u^2} = \frac{64\mu}{\rho u D} = \frac{64}{\mathrm{Re}}$$
+            Fanning is $f_F = 16/\mathrm{Re} = f_D/4$. Same physics, factor of four.
+            """
+        )
+    re_cmp = st.select_slider(
+        "Compare f_D(Re) at",
+        options=[200, 500, 1000, 1500, 2000, 2300, 4000, 1e4],
+        value=1000,
+        key="lam_f_re",
+    )
+    f_force = laminar_darcy_from_force_balance(float(re_cmp))
+    f_moody = friction_factor_churchill(float(re_cmp), 0.0)
+    col_f1, col_f2, col_f3 = st.columns(3)
+    col_f1.metric("Force-balance f_D = 64/Re", f"{f_force:.4f}")
+    col_f2.metric("Churchill / Moody f_D", f"{f_moody:.4f}")
+    col_f3.metric("Relative difference", f"{abs(f_moody - f_force)/f_force*100:.2f} %")
+    if re_cmp <= 2300:
+        st.success("Below Re = 2300 the two expressions agree: Moody's laminar line *is* the force balance.")
+    else:
+        st.warning(
+            "Above transition the force balance assumed a parabolic, laminar τ(r). "
+            "Turbulent eddy stress raises f_D well above 64/Re."
+        )
+
     # -------------------------------------------------------------------------
     # PART 2: Velocity Profile Comparison
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 5.2 Velocity Profile Comparison: Parabolic vs. 1/7th Power Law")
+    st.markdown("### 4.2 Velocity Profile Comparison: Parabolic vs. 1/7th Power Law")
     st.markdown(
         """
         Turbulent momentum exchange by fluctuating eddy eddies ($\\overline{u'v'}$) dramatically 
@@ -96,7 +151,7 @@ def render_tab_turbulence():
     col_pr3.metric("Pipe kinetic-energy factor α", f"Laminar: {prof_res['alpha_lam']:.2f} | Turb: {prof_res['alpha_turb']:.2f}")
     st.caption(
         "α = 2 and u_avg/u_max = 1/2 are **circular pipe**. A plane channel has "
-        "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.54 (see Tab 4 Couette–Poiseuille)."
+        "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.54 (see Tab 7 Couette–Poiseuille)."
     )
     render_what_to_notice("Equal mean velocity: the turbulent profile is blunter, so the wall gradient (and τ_w) is steeper.")
     
@@ -120,7 +175,7 @@ def render_tab_turbulence():
     # PART 3: Law of the Wall
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 5.3 The Universal Law of the Wall")
+    st.markdown("### 4.3 The Universal Law of the Wall")
     st.markdown(
         """
         The flow near any solid boundary is governed by inner wall variables scaled by the 
@@ -154,7 +209,7 @@ def render_tab_turbulence():
     # PART 4: Practical ChemE Trade-off
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 5.4 Chemical Engineering Practical Trade-Off: Heat/Mass Transfer vs. Pumping Penalty")
+    st.markdown("### 4.4 Chemical Engineering Practical Trade-Off: Heat/Mass Transfer vs. Pumping Penalty")
     
     col_to1, col_to2 = st.columns(2)
     with col_to1:
@@ -166,7 +221,7 @@ def render_tab_turbulence():
             - **Heat Transfer:** Laminar pipe heat transfer is strictly conduction-limited (Nusselt number $\\text{Nu} = 3.66$). Turbulent heat transfer scales as $\\text{Nu} \\sim \\text{Re}^{0.8} \\cdot \\text{Pr}^{1/3}$ (Dittus–Boelter), increasing heat transfer rates by **10 to 100-fold**!
             - **Mass Transfer:** Turbulent eddy diffusivity $\\epsilon_M$ is 1,000 to 100,000 times larger than molecular diffusion coefficients.
             - **Chilton–Colburn Analogy:** $j_H = j_D = f_F / 2 = f_D / 8$.
-              Use the **Fanning** factor here (Tab 6). Writing $f/2$ with a Moody (Darcy) $f$ is a factor-of-four error.
+              Use the **Fanning** factor here (Tab 2). Writing $f/2$ with a Moody (Darcy) $f$ is a factor-of-four error.
             """
         )
     with col_to2:
@@ -189,4 +244,102 @@ def render_tab_turbulence():
         ["Darcy f_D (Moody chart)", "Fanning f_F = f_D/4", "Either, they differ only by Re"],
         "Fanning f_F = f_D/4",
         "j_H = f_F/2 = f_D/8. Moody plots Darcy; BSL often uses Fanning.",
+    )
+
+    st.markdown("---")
+    st.markdown("### 4.5 The straw-pipe question")
+    st.markdown(
+        r"""
+        Turbulence raises $f_D$ and $\Delta p \propto u^{1.75\text{–}2}$. A natural
+        thought: **fill the pipe with $N$ capillary “straws”** so each lumen stays
+        laminar ($\mathrm{Re}_d < 2300$), at the **same total** $Q$ and the same
+        outer diameter $D$.
+
+        Geometry: packing fraction $\phi$ (hexagonal $\approx 0.91$; we default 0.85),
+        $N d^2 = \phi D^2$, so $d = D\sqrt{\phi/N}$. Each straw carries $Q/N$.
+        Laminar Hagen–Poiseuille on each lumen:
+        $$\Delta p = \frac{128\mu L (Q/N)}{\pi d^4} \propto \frac{N}{\phi^2}$$
+        Shrinking $d$ hurts as $d^4$ in the denominator. Staying laminar is not free.
+        """
+    )
+    render_predict(
+        "straw_predict",
+        "At fixed Q and outer D, adding more straws to keep Re_d laminar will typically…",
+        ["cut pump power because f_D = 64/Re is smaller",
+         "raise pump power because d⁴ in the denominator beats the laminar f",
+         "leave Δp unchanged by dimensional analysis"],
+        "raise pump power because d⁴ in the denominator beats the laminar f",
+        "Δp_bundle ∝ N/φ² for laminar capillaries. Open-pipe turbulence is expensive, but so is making many tiny tubes.",
+    )
+    col_s1, col_s2, col_s3 = st.columns(3)
+    with col_s1:
+        straw_Q = st.slider("Total Q [m³/h]", min_value=5.0, max_value=80.0, value=25.0, step=1.0, key="straw_Q")
+        straw_D = st.slider("Outer D [mm]", min_value=40.0, max_value=200.0, value=75.0, step=5.0, key="straw_D")
+    with col_s2:
+        straw_L = st.slider("Length L [m]", min_value=10.0, max_value=200.0, value=60.0, step=5.0, key="straw_L")
+        straw_phi = st.slider("Packing fraction φ", min_value=0.5, max_value=0.91, value=0.85, step=0.01, key="straw_phi")
+    with col_s3:
+        straw_N = st.select_slider(
+            "Number of straws N",
+            options=[1, 4, 7, 19, 37, 61, 100, 200, 400],
+            value=19,
+            key="straw_N",
+        )
+    one = straw_bundle_comparison(
+        flow_rate=straw_Q / 3600.0,
+        outer_diameter=straw_D / 1000.0,
+        length=straw_L,
+        density=float(fluid["rho"]),
+        viscosity=float(fluid["mu"]),
+        n_straws=int(straw_N),
+        packing_fraction=float(straw_phi),
+    )
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    col_m1.metric("Open-pipe Re_D", f"{one['re_open']:.0f}")
+    col_m2.metric("Straw Re_d", f"{one['re_straw']:.0f}")
+    col_m3.metric("Open-pipe power", f"{one['power_open']/1000:.2f} kW")
+    col_m4.metric("Bundle power", f"{one['power_bundle']/1000:.2f} kW",
+                  delta=f"{one['power_ratio']:.2f} × open")
+    if one["straw_laminar"] and one["power_ratio"] > 1:
+        st.warning(
+            "The straws are laminar — and still more expensive. You bought extra wall area "
+            "(more τ_w × perimeter) to suppress eddies."
+        )
+    elif not one["straw_laminar"]:
+        st.info("These straws are still turbulent. Increase N or lower Q.")
+    n_sweep = [1, 4, 7, 19, 37, 61, 100, 200, 400]
+    sweep = [
+        straw_bundle_comparison(
+            flow_rate=straw_Q / 3600.0,
+            outer_diameter=straw_D / 1000.0,
+            length=straw_L,
+            density=float(fluid["rho"]),
+            viscosity=float(fluid["mu"]),
+            n_straws=n,
+            packing_fraction=float(straw_phi),
+        )
+        for n in n_sweep
+    ]
+    render_what_to_notice(
+        "Left: bundle power vs N (log). Horizontal = open pipe. Right: Re_d falls through 2300 "
+        "while power is already rising. A shell-and-tube exchanger uses many tubes for *area*, "
+        "not to dodge turbulence; the hydraulic penalty is paid for heat transfer."
+    )
+    fig_st = plot_straw_bundle(
+        n_sweep,
+        sweep[0]["power_open"],
+        [s["power_bundle"] for s in sweep],
+        [s["re_straw"] for s in sweep],
+    )
+    st.plotly_chart(fig_st, width="stretch")
+    render_self_check(
+        "straw_self_check",
+        "Why doesn’t “keep it laminar with straws” win on pump kW at fixed Q and outer D?",
+        [
+            "Because laminar f_D is always larger than turbulent f_D",
+            "Because Δp ~ μ Q L / d⁴ and d shrinks as 1/√N, so Δp grows with N",
+            "Because packing fraction φ cannot exceed 0.5",
+        ],
+        "Because Δp ~ μ Q L / d⁴ and d shrinks as 1/√N, so Δp grows with N",
+        "Hagen–Poiseuille on each lumen: d⁴ in the denominator. More walls, more shear area.",
     )

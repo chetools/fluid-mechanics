@@ -31,12 +31,13 @@ _MODULE_RELOAD_ORDER = (
     "src.plotting",
     "src.ui.pedagogy",
     "src.ui.top_bar",
-    "src.ui.tab_euler",
+    "src.ui.tab_cheme_energy",
+    "src.ui.tab_pipe_flow",
     "src.ui.tab_dimensional_analysis",
+    "src.ui.tab_turbulence",
+    "src.ui.tab_euler",
     "src.ui.tab_stress_ns",
     "src.ui.tab_solving_ns",
-    "src.ui.tab_turbulence",
-    "src.ui.tab_pipe_flow",
     "src.ui.tab_cfd",
     "src.ui.tab_reference",
 )
@@ -73,12 +74,13 @@ import src.theme as theme
 import src.units as units
 from src.ui.top_bar import render_top_bar
 from src.ui.pedagogy import render_concept_map
-from src.ui.tab_euler import render_tab_euler
+from src.ui.tab_cheme_energy import render_tab_cheme_energy
+from src.ui.tab_pipe_flow import render_tab_pipe_flow
 from src.ui.tab_dimensional_analysis import render_tab_dimensional_analysis
+from src.ui.tab_turbulence import render_tab_turbulence
+from src.ui.tab_euler import render_tab_euler
 from src.ui.tab_stress_ns import render_tab_stress_ns
 from src.ui.tab_solving_ns import render_tab_solving_ns
-from src.ui.tab_turbulence import render_tab_turbulence
-from src.ui.tab_pipe_flow import render_tab_pipe_flow
 from src.ui.tab_cfd import render_tab_cfd
 from src.ui.tab_reference import render_tab_reference
 
@@ -165,35 +167,41 @@ with st.sidebar:
 # Render persistent top KPI strip
 render_top_bar(u_ref=u_ref, l_ref=l_ref, rho_ref=rho_ref, mu_ref=mu_ref)
 
-# Main Navigation Tabs — pedagogical order
-tab_euler, tab_dim, tab_stress, tab_exact, tab_turb, tab_pipe, tab_cfd, tab_ref = st.tabs([
-    "⚗️ 1. Euler (1D → 3D)",
-    "📐 2. Dimensional Analysis (Π & Null-Space)",
-    "🧱 3. Stress & Navier–Stokes",
-    "📏 4. Exact Solutions & Boundary Layers",
-    "🌪️ 5. Laminar vs. Turbulent Flows",
-    "🚰 6. Pipe Flow & ChemE Design",
-    "💻 7. CFD (Projection)",
-    "📖 8. Reference & Audit",
+# Difficulty order that still tells a plant story:
+# energy → pipe design → experiments/Π → laminar f & straws → Euler → tensors → BL → CFD
+tab_energy, tab_pipe, tab_dim, tab_turb, tab_euler, tab_stress, tab_exact, tab_cfd, tab_ref = st.tabs([
+    "🏭 1. ChemE Energy & Bernoulli",
+    "🚰 2. Pipe Flow & Pumping",
+    "📐 3. Dimensional Analysis",
+    "🌪️ 4. Laminar f, Turbulence & Straws",
+    "⚗️ 5. Euler (1D → 3D)",
+    "🧱 6. Stress & Navier–Stokes",
+    "📏 7. Exact Solutions & BL",
+    "💻 8. CFD (Projection)",
+    "📖 9. Reference & Audit",
 ])
 
-with tab_euler:
-    render_tab_euler()
+with tab_energy:
+    if hasattr(render_tab_cheme_energy, "__call__"):
+        render_tab_cheme_energy()
+
+with tab_pipe:
+    render_tab_pipe_flow()
 
 with tab_dim:
     render_tab_dimensional_analysis()
+
+with tab_turb:
+    render_tab_turbulence()
+
+with tab_euler:
+    render_tab_euler()
 
 with tab_stress:
     render_tab_stress_ns()
 
 with tab_exact:
     render_tab_solving_ns()
-
-with tab_turb:
-    render_tab_turbulence()
-
-with tab_pipe:
-    render_tab_pipe_flow()
 
 with tab_cfd:
     render_tab_cfd()

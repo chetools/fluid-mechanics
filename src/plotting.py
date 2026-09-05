@@ -946,3 +946,42 @@ def plot_npsh_station(npsh_a: float, npsh_r: float, parts: Dict) -> go.Figure:
         height=380,
     )
     return apply_plotly_theme(fig)
+
+
+def plot_straw_bundle(n_list, power_open, power_bundle, re_straw) -> go.Figure:
+    """Pumping power vs straw count at fixed Q and outer diameter."""
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("Pumping power at fixed Q", "Straw Reynolds number"),
+        horizontal_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=n_list, y=np.array(power_bundle) / 1000.0,
+            mode="lines+markers", line=dict(color=PRESSURE, width=3),
+            name="Bundle (N straws)",
+        ),
+        row=1, col=1,
+    )
+    fig.add_hline(
+        y=float(power_open) / 1000.0,
+        line=dict(color=SUCCESS, width=2, dash="dash"),
+        annotation_text="open pipe",
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=n_list, y=re_straw,
+            mode="lines+markers", line=dict(color=ACCENT, width=3),
+            name="Re_d",
+        ),
+        row=1, col=2,
+    )
+    fig.add_hline(y=2300.0, line=dict(color=WARNING, width=1.5, dash="dash"),
+                  annotation_text="pipe laminar limit", row=1, col=2)
+    fig.update_xaxes(title_text="Number of straws N", type="log", row=1, col=1)
+    fig.update_yaxes(title_text="Pump power Q·Δp [kW]", row=1, col=1)
+    fig.update_xaxes(title_text="Number of straws N", type="log", row=1, col=2)
+    fig.update_yaxes(title_text="Re_d (each straw)", type="log", row=1, col=2)
+    fig.update_layout(height=420)
+    return apply_plotly_theme(fig)

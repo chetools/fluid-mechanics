@@ -24,7 +24,7 @@ from src.ui.pedagogy import (
 def render_tab_euler():
     """Render comprehensive educational panel for Euler's Equation."""
     fluid = get_fluid_state()
-    st.markdown("## 1. Euler's Equation of Motion: From 1D to 3D Vector Form")
+    st.markdown("## 5. Euler's Equation of Motion: From 1D to 3D Vector Form")
     st.markdown(
         """
         Euler’s equation is the momentum balance for an **inviscid fluid**
@@ -45,7 +45,7 @@ def render_tab_euler():
     # -------------------------------------------------------------------------
     # PART 0: Continuity
     # -------------------------------------------------------------------------
-    st.markdown("### 1.1 Mass Conservation (Continuity) Comes First")
+    st.markdown("### 5.1 Mass Conservation (Continuity) Comes First")
     st.markdown(
         r"""
         Momentum without mass conservation is incomplete. For a **steady** streamtube,
@@ -73,7 +73,7 @@ def render_tab_euler():
     # -------------------------------------------------------------------------
     # PART 1: 1D Elementary Derivation
     # -------------------------------------------------------------------------
-    st.markdown("### 1.2 Elementary 1D Derivation from First Principles")
+    st.markdown("### 5.2 Elementary 1D Derivation from First Principles")
     st.markdown(
         """
         Consider an infinitesimal fluid parcel of length $dx$ and cross-sectional area $A$
@@ -130,7 +130,7 @@ def render_tab_euler():
     # PART 2: The Material Derivative
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 1.3 The Material (Substantial) Derivative $\\frac{D}{Dt}$")
+    st.markdown("### 5.3 The Material (Substantial) Derivative $\\frac{D}{Dt}$")
     st.markdown(
         """
         Why can we not simply write $a_x = \\frac{\\partial u}{\\partial t}$?
@@ -187,7 +187,7 @@ def render_tab_euler():
     # PART 3: 3D Vector Euler Equation
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 1.4 Generalization to the 3D Vector Euler Equation")
+    st.markdown("### 5.4 Generalization to the 3D Vector Euler Equation")
     st.markdown(
         r"""
         Applying the momentum balance independently along all three Cartesian axes $(x, y, z)$
@@ -204,7 +204,7 @@ def render_tab_euler():
     # PART 4: Connection to Bernoulli & Streamline Theory
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 1.5 Connection to Bernoulli: Integration along a Streamline")
+    st.markdown("### 5.5 Connection to Bernoulli: Integration along a Streamline")
     st.markdown(
         """
         What is a **streamline**? A streamline is an instantaneous curve that is everywhere
@@ -247,7 +247,7 @@ def render_tab_euler():
             ("Inviscid ($\\mu = 0$)", True, "No frictional recovery loss in the diffuser. Real Venturis lose some $H$."),
             ("Incompressible", True, "Uses sidebar $\\rho$. Cavitation is the lab's way of leaving this assumption."),
             ("Along a streamline (or irrotational)", True, "1D streamtube; potential flow around the cylinder."),
-            ("No shaft work / no heat as work", True, "Pumps appear in Tab 6 via the mechanical energy equation."),
+            ("No shaft work / no heat as work", True, "Pumps appear in Tab 2; friction as heat is Tab 1."),
         ],
     )
 
@@ -267,7 +267,7 @@ def render_tab_euler():
     # PART 5: Interactive Visualizations (Both Demos)
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 1.6 Interactive Physical Laboratories")
+    st.markdown("### 5.6 Interactive Physical Laboratories")
     st.caption(
         f"Both labs use the sidebar fluid **{fluid['name']}** "
         f"(ρ = {fluid['rho']:.4g} kg/m³). Sliders remain in SI."
@@ -366,7 +366,7 @@ def render_tab_euler():
 
         render_what_to_notice(
             "Fore–aft $C_p$ is symmetric: $C_p(0°)=C_p(180°)=+1$. No wake, no separation. "
-            "That is why the integral is theoretically zero — viscosity is missing (Tab 3)."
+            "That is why the integral is theoretically zero — viscosity is missing (Tab 6)."
         )
         fig_cyl = plot_cylinder_potential_flow(res_cyl)
         st.plotly_chart(fig_cyl, width="stretch")
@@ -380,6 +380,6 @@ def render_tab_euler():
             * The flow negotiates the rear of the cylinder with perfect fore-and-aft symmetry without boundary layer separation.
             * High pressure at the front stagnation point ($C_p = +1$) is perfectly balanced by high pressure at the rear stagnation point ($C_p = +1$), yielding **zero net drag**.
 
-            To capture realistic drag, separation, and a wake, we **must incorporate viscous stresses** — Navier–Stokes in Tab 3, and a boundary-layer story in Tab 4.
+            To capture realistic drag, separation, and a wake, we **must incorporate viscous stresses** — Navier–Stokes in Tab 6, and a boundary-layer story in Tab 7.
             """
         )

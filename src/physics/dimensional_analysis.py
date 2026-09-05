@@ -203,6 +203,8 @@ def compute_null_space_pi_groups(var_keys: List[str]) -> Dict:
     if not pi_groups:
         pi_groups = svd_groups
 
+    rotation = rotate_svd_to_named(A, ns, pi_groups, symbols) if ns.size and pi_groups else None
+
     return {
         "A": A,
         "symbols": symbols,
@@ -211,8 +213,56 @@ def compute_null_space_pi_groups(var_keys: List[str]) -> Dict:
         "nullity": nullity,
         "pi_groups": pi_groups,
         "svd_groups": svd_groups,
+        "svd_basis": ns,
+        "rotation": rotation,
         "repeating_symbols": [symbols[i] for i in repeating_idx],
         "var_keys": list(var_keys),
+    }
+
+
+def rotate_svd_to_named(
+    A: np.ndarray,
+    svd_basis: np.ndarray,
+    named_groups: List[Dict],
+    symbols: List[str],
+) -> Optional[Dict]:
+    """Least-squares rotation that takes the orthonormal SVD kernel onto named Π groups.
+
+    If N is n×p (SVD null-space) and C is n×p (integer named groups),
+    R = argmin || N R − C ||  so each standard group is a mix of SVD columns.
+    """
+    if svd_basis is None or svd_basis.size == 0 or not named_groups:
+        return None
+    C = np.column_stack([np.array(g["vector"], dtype=float) for g in named_groups])
+    if C.shape[0] != svd_basis.shape[0] or C.shape[1] != svd_basis.shape[1]:
+        return None
+    R, residuals, rank, _ = np.linalg.lstsq(svd_basis, C, rcond=None)
+    rotated = svd_basis @ R
+    recon_err = float(np.linalg.norm(rotated - C) / max(np.linalg.norm(C), 1e-12))
+    mixes = []
+    for j, g in enumerate(named_groups):
+        coeff = R[:, j]
+        parts = []
+        for i, c in enumerate(coeff):
+            if abs(c) < 0.03:
+                continue
+            parts.append(f"{c:+.2f} N_{i+1}")
+        mixes.append(
+            {
+                "name": g.get("canonical_name") or f"Π_{j+1}",
+                "formula_latex": g["formula_latex"],
+                "coefficients": coeff,
+                "mix": " ".join(parts) if parts else "0",
+            }
+        )
+    return {
+        "R": R,
+        "rotated": rotated,
+        "C": C,
+        "reconstruction_error": recon_err,
+        "mixes": mixes,
+        "rank": int(rank),
+        "residual_norm": float(np.sqrt(np.sum(residuals))) if len(residuals) else recon_err,
     }
 
 

@@ -71,6 +71,17 @@ def test_pipe_flow_named_conventional_groups():
         assert np.allclose(res["A"] @ np.array(g["vector"], dtype=float), 0.0, atol=1e-8)
 
 
+def test_svd_rotation_recovers_named_pipe_groups():
+    res = compute_null_space_pi_groups(get_cheme_preset("Pipe Flow Pressure Drop"))
+    rot = res["rotation"]
+    assert rot is not None
+    assert rot["R"].shape == (4, 4)
+    assert rot["reconstruction_error"] < 1e-6
+    names = " | ".join(m["name"] for m in rot["mixes"])
+    assert "Euler" in names
+    assert "Reynolds" in names
+
+
 def test_stirred_tank_named_groups():
     res = compute_null_space_pi_groups(get_cheme_preset("Stirred Tank Mixing Power"))
     blob = " | ".join(g.get("canonical_name") or "" for g in res["pi_groups"])

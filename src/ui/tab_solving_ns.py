@@ -28,14 +28,14 @@ from src.ui.pedagogy import (
 def render_tab_solving_ns():
     """Exact solutions plus Blasius / cylinder separation."""
     fluid = get_fluid_state()
-    st.markdown("## 4. Exact Solutions & Laminar Boundary Layers")
+    st.markdown("## 7. Exact Solutions & Laminar Boundary Layers")
     st.markdown(
         """
         Except for a handful of highly symmetric cases, **no general closed-form
         Navier–Stokes solution exists**. Here the convective term vanishes or is
         absorbed into a similarity variable. The Blasius plate is the payoff of
-        d'Alembert's paradox from Tab 1: viscosity lives in a thin layer, and
-        an adverse outer gradient separates it. Projection CFD is Tab 7.
+        d'Alembert's paradox from Tab 5: viscosity lives in a thin layer, and
+        an adverse outer gradient separates it. Projection CFD is Tab 8.
         """
     )
     render_objectives(
@@ -47,7 +47,7 @@ def render_tab_solving_ns():
         ]
     )
 
-    st.markdown("### 4.1 Exact Analytical Solutions (When Non-Linearity Vanishes)")
+    st.markdown("### 7.1 Exact Analytical Solutions (When Non-Linearity Vanishes)")
     st.markdown(
         """
         When flow geometry forces streamlines to be straight and parallel ($v = w = 0$),
@@ -233,7 +233,7 @@ def render_tab_solving_ns():
     # PART 2: Blasius
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 4.2 Blasius Flat-Plate Boundary Layer")
+    st.markdown("### 7.2 Blasius Flat-Plate Boundary Layer")
     st.markdown(
         r"""
         A uniform stream $U_\infty$ meets a thin plate at $x = 0$. Far from the wall the
@@ -296,10 +296,10 @@ def render_tab_solving_ns():
     # PART 3: Cylinder separation
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 4.3 Cylinder: Adverse Gradient and Laminar Separation")
+    st.markdown("### 7.3 Cylinder: Adverse Gradient and Laminar Separation")
     st.markdown(
         r"""
-        Tab 1's potential cylinder has $U_e = 2 U_\infty \sin\theta$ and $C_p = 1-4\sin^2\theta$.
+        Tab 5's potential cylinder has $U_e = 2 U_\infty \sin\theta$ and $C_p = 1-4\sin^2\theta$.
         Speed *falls* after the shoulder, so $dp/ds = -\rho U_e dU_e/ds$ is **adverse**
         for $\theta > 90^\circ$. A real laminar boundary layer cannot climb that hill
         and separates near $104.5^\circ$ (Schlichting). The wake destroys fore–aft

@@ -5,7 +5,7 @@ import pandas as pd
 
 def render_tab_reference():
     """Render reference, tensor guide, and assumption validity matrix."""
-    st.markdown("## 8. Reference: Nomenclature, Tensor Primer & Physical Validity")
+    st.markdown("## 9. Reference: Nomenclature, Tensor Primer & Physical Validity")
     
     ref_tab1, ref_tab2, ref_tab3 = st.tabs([
         "📖 1. Nomenclature & Units",
@@ -129,6 +129,7 @@ def render_tab_reference():
             * **Crane Co.** (1988). *Flow of Fluids Through Valves, Fittings, and Pipe* (Technical Paper No. 410).
             * **Churchill, S. W.** (1977). *Friction-factor equation spans all fluid-flow regimes*. Chemical Engineering, 84(24), 91-92.
             * **Chorin, A. J.** (1968). *Numerical solution of the Navier-Stokes equations*. Mathematics of Computation, 22(104), 745-762.
+            * **Yuan, Y., & Lozano-Durán, A.** (2025). *Dimensionless learning based on information.* Nature Communications. [doi:10.1038/s41467-025-64425-8](https://doi.org/10.1038/s41467-025-64425-8) (IT-π: which Π groups carry the data).
             * **Schlichting, H., & Gersten, K.** (2017). *Boundary-Layer Theory* (9th ed.). Springer. (Blasius; laminar cylinder separation ~105°.)
             * **Ghia, U., Ghia, K. N., & Shin, C. T.** (1982). *High-Re solutions for incompressible flow using the Navier-Stokes equations and a multigrid method*. Journal of Computational Physics, 48(3), 387-411.
             """

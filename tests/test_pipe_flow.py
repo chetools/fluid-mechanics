@@ -9,6 +9,8 @@ from src.physics.pipe_flow import (
     hydraulic_diameter,
     entrance_length,
     npsh_available,
+    laminar_darcy_from_force_balance,
+    straw_bundle_comparison,
 )
 
 def test_churchill_laminar_asymptote():
@@ -81,6 +83,30 @@ def test_entrance_length_laminar_and_turbulent():
     turb = entrance_length(0.05, 1.0e5)
     assert turb["regime"] == "turbulent"
     assert turb["L_e_over_D"] < lam["L_e_over_D"]
+
+
+def test_laminar_darcy_matches_churchill_below_2300():
+    re = 800.0
+    f_bal = laminar_darcy_from_force_balance(re)
+    f_ch = friction_factor_churchill(re, 0.0)
+    assert np.isclose(f_bal, 64.0 / re)
+    assert np.isclose(f_bal, f_ch, rtol=1e-3)
+
+
+def test_straw_bundle_n1_phi1_matches_open_pipe():
+    kwargs = dict(
+        flow_rate=0.01,
+        outer_diameter=0.08,
+        length=50.0,
+        density=1000.0,
+        viscosity=1e-3,
+        roughness=0.0,
+    )
+    open1 = straw_bundle_comparison(n_straws=1, packing_fraction=1.0, **kwargs)
+    many = straw_bundle_comparison(n_straws=100, packing_fraction=0.85, **kwargs)
+    assert np.isclose(open1["dp_open"], open1["dp_bundle"], rtol=0.02)
+    assert many["d_straw"] < open1["d_straw"]
+    assert many["power_ratio"] > 1.0
 
 
 def test_npsh_flooded_versus_lift():

@@ -89,15 +89,16 @@ def render_self_check(
 def render_concept_map() -> None:
     """Tab order is the pedagogical path."""
     steps: List[Tuple[str, str]] = [
-        ("1. Euler", "Continuity, inviscid momentum, Bernoulli"),
-        ("2. Dimensional analysis", "Why Re, Eu, Fr exist before they appear on axes"),
-        ("3. Stress & NS", "Viscosity, then power-law when Newton fails"),
-        ("4. Exact solutions & BL", "Couette, Hagen, Stokes, Blasius, cylinder separation"),
-        ("5. Laminar / turbulent", "Pipe regimes, α, wall law — circular pipe only"),
-        ("6. Pipe design", "Darcy, mechanical energy, NPSH, entrance length"),
-        ("7. CFD", "Projection method after you know what 'steady' means"),
-        ("8. Reference", "Nomenclature and validity matrix"),
+        ("1. ChemE energy", "Plant Δp/pumps; Bernoulli from the first law; friction as heat"),
+        ("2. Pipe & pumping", "Darcy, Moody, NPSH, entrance length"),
+        ("3. Dimensional analysis", "Experiments, SVD rotation onto Re/Eu, IT-π information"),
+        ("4. Laminar f & straws", "Force balance → 64/Re; packing capillaries vs turbulence cost"),
+        ("5. Euler", "Differential momentum; d'Alembert"),
+        ("6. Stress & NS", "Tensors and constitutive laws"),
+        ("7. Exact solutions & BL", "Couette, Hagen, Stokes, Blasius, separation"),
+        ("8. CFD", "Projection after you know what 'steady' means"),
+        ("9. Reference", "Nomenclature and validity matrix"),
     ]
-    st.markdown("**Path (tab order)**")
+    st.markdown("**Path (easier plant story → harder mathematics)**")
     for title, blurb in steps:
         st.caption(f"{title} — {blurb}")

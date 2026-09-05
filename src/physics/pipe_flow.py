@@ -289,3 +289,71 @@ def npsh_available(
         "p_tank_abs": p_tank_abs,
         "p_vapor": p_vapor,
     }
+
+
+def laminar_darcy_from_force_balance(reynolds: float) -> float:
+    """Darcy f_D = 64/Re from a cylindrical force balance + Newton’s law.
+
+    Δp π r² = τ 2π r L  ⇒  τ = (r/2)(−dp/dx).
+    τ = μ (−du/dr) integrates to Hagen–Poiseuille, then
+    f_D ≡ 2 Δp D / (L ρ u²) = 64/Re.
+    """
+    if reynolds <= 0:
+        return float("nan")
+    return 64.0 / reynolds
+
+
+def straw_bundle_comparison(
+    flow_rate: float,
+    outer_diameter: float,
+    length: float,
+    density: float,
+    viscosity: float,
+    n_straws: int,
+    packing_fraction: float = 0.85,
+    roughness: float = 0.0,
+) -> Dict:
+    """Open pipe vs N parallel capillaries that fill the same envelope.
+
+    Same total Q and outer diameter D. Each straw has
+    d = D sqrt(φ / N). Δp of a laminar bundle scales ~ N / φ²,
+    so packing straws to stay laminar usually *raises* pumping power.
+    """
+    D = float(max(outer_diameter, 1e-6))
+    L = float(max(length, 1e-6))
+    Q = float(abs(flow_rate))
+    N = int(max(n_straws, 1))
+    phi = float(np.clip(packing_fraction, 0.05, 1.0))
+    area_open = 0.25 * np.pi * D * D
+    u_open = Q / area_open if area_open > 0 else 0.0
+    re_open = (density * u_open * D) / viscosity if viscosity > 0 else float("inf")
+    f_open = friction_factor_churchill(re_open, roughness / D)
+    dp_open = f_open * (L / D) * 0.5 * density * u_open * u_open
+
+    d = D * np.sqrt(phi / N)
+    q_i = Q / N
+    area_i = 0.25 * np.pi * d * d
+    u_i = q_i / area_i if area_i > 0 else 0.0
+    re_i = (density * u_i * d) / viscosity if viscosity > 0 else float("inf")
+    f_i = friction_factor_churchill(re_i, 0.0)
+    dp_bundle = f_i * (L / d) * 0.5 * density * u_i * u_i
+    dp_lam_exact = (128.0 * viscosity * L * q_i) / (np.pi * d**4) if d > 0 else float("inf")
+    return {
+        "n_straws": N,
+        "packing_fraction": phi,
+        "d_straw": d,
+        "u_open": u_open,
+        "re_open": re_open,
+        "f_open": f_open,
+        "dp_open": dp_open,
+        "power_open": Q * dp_open,
+        "u_straw": u_i,
+        "re_straw": re_i,
+        "f_straw": f_i,
+        "dp_bundle": dp_bundle,
+        "dp_laminar_exact": dp_lam_exact,
+        "power_bundle": Q * dp_bundle,
+        "power_ratio": (Q * dp_bundle) / (Q * dp_open) if dp_open > 0 else float("inf"),
+        "open_laminar": re_open < 2300,
+        "straw_laminar": re_i < 2300,
+    }

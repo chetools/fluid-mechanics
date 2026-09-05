@@ -25,7 +25,7 @@ from src.ui.pedagogy import (
 def render_tab_pipe_flow():
     """Render practical pipe flow, Moody chart, and ChemE piping lab."""
     fluid = get_fluid_state()
-    st.markdown("## 6. Pipe Flow & Practical Chemical Engineering Applications")
+    st.markdown("## 2. Pipe Flow & Practical Chemical Engineering Applications")
     st.markdown(
         """
         In industrial chemical plants, piping networks transport liquids and gases across
@@ -33,7 +33,7 @@ def render_tab_pipe_flow():
         sets OPEX, and (with NPSH) protects against cavitation.
 
         This panel uses the **sidebar fluid** ({name}, ρ = {rho:.4g} kg/m³, μ = {mu:.3e} Pa·s).
-        Tab 5 explains why Re = 2300 is a *pipe* threshold; Tab 1's Bernoulli is the
+        Tab 4 explains why Re = 2300 is a *pipe* threshold; Tab 1's Bernoulli is the
         inviscid core of the mechanical energy equation used here.
         """.format(name=fluid["name"], rho=fluid["rho"], mu=fluid["mu"])
     )
@@ -51,7 +51,7 @@ def render_tab_pipe_flow():
     # -------------------------------------------------------------------------
     # PART 1: The Darcy-Weisbach Equation & Friction Factors
     # -------------------------------------------------------------------------
-    st.markdown("### 6.1 Frictional Head Loss: Darcy vs. Fanning")
+    st.markdown("### 2.1 Frictional Head Loss: Darcy vs. Fanning")
     st.markdown(
         """
         The fundamental equation for frictional pressure drop in a circular pipe is the
@@ -75,11 +75,11 @@ def render_tab_pipe_flow():
               * Relation: $f_D = 4 f_F$.
             * Always check whether your design equation has a factor of 4 or not!
 
-            The Chilton–Colburn analogy in Tab 5 is $j_H = j_D = f_F/2 = f_D/8$, **not** $f_D/2$.
+            The Chilton–Colburn analogy in Tab 4 is $j_H = j_D = f_F/2 = f_D/8$, **not** $f_D/2$.
             """
         )
 
-    st.markdown("### 6.1b Mechanical energy (extended Bernoulli)")
+    st.markdown("### 2.1b Mechanical energy (extended Bernoulli)")
     st.markdown(
         r"""
         Integrating the steady momentum equation along a streamline *and then adding*
@@ -87,7 +87,7 @@ def render_tab_pipe_flow():
         between stations 1 and 2:
         $$\frac{p_1}{\rho g} + \alpha_1\frac{u_1^2}{2g} + z_1 + h_{\mathrm{shaft}}
         = \frac{p_2}{\rho g} + \alpha_2\frac{u_2^2}{2g} + z_2 + h_f + h_{\mathrm{minor}}$$
-        * $\alpha = 2$ exactly in laminar pipe flow; $\alpha \approx 1.05$ when turbulent (Tab 5).
+        * $\alpha = 2$ exactly in laminar pipe flow; $\alpha \approx 1.05$ when turbulent (Tab 4).
         * $h_{\mathrm{shaft}}$ is the pump head this lab solves for.
         * $h_f$ is Darcy–Weisbach; $h_{\mathrm{minor}} = \sum K_L\, u^2/(2g)$.
         * For two large tanks, $u_1 \approx u_2 \approx 0$ and an outlet $K_L = 1$ already dumps the exit kinetic head — do not add $\alpha u^2/2g$ on top of that $K_L$.
@@ -98,7 +98,7 @@ def render_tab_pipe_flow():
     # PART 2: The Interactive Moody Chart
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 6.2 The Moody Diagram & Colebrook–White Correlation")
+    st.markdown("### 2.2 The Moody Diagram & Colebrook–White Correlation")
     st.markdown(
         """
         In 1944, Lewis Ferry Moody plotted the **Darcy** friction factor as a function of Reynolds number
@@ -147,7 +147,7 @@ def render_tab_pipe_flow():
     # PART 3: Practical ChemE Piping Network & Pump Sizing Lab
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 6.3 Practical ChemE Piping Network & Pump Sizing Lab")
+    st.markdown("### 2.3 Practical ChemE Piping Network & Pump Sizing Lab")
     st.markdown(
         """
         Design an industrial transfer line between two chemical process units.
@@ -255,10 +255,10 @@ def render_tab_pipe_flow():
     # NPSH station
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 6.3b NPSH Station (pump suction)")
+    st.markdown("### 2.3b NPSH Station (pump suction)")
     st.markdown(
         r"""
-        Tab 1's cavitation warning at a Venturi throat is the same physics at a pump eye.
+        Tab 5's cavitation warning at a Venturi throat is the same physics at a pump eye.
         From a free-surface tank, **available** net positive suction head is
         $$\mathrm{NPSH}_A = \frac{P_{\mathrm{tank}} - P_v}{\rho g} + z - h_f$$
         $z>0$ flooded suction, $z<0$ suction lift. Impeller-eye velocity head is charged
@@ -340,7 +340,7 @@ def render_tab_pipe_flow():
 
     st.markdown("#### Laminar power-law Δp (same Q, D, L)")
     st.caption(
-        "From Tab 3's Ostwald–de Waele lab. Only valid while Re_MR is laminar; "
+        "From Tab 6's Ostwald–de Waele lab. Only valid while Re_MR is laminar; "
         "Churchill/Moody stay Newtonian."
     )
     use_pl = st.checkbox("Compare power-law Δp_major to Newtonian", value=False, key="pipe_pl_toggle")
@@ -362,7 +362,7 @@ def render_tab_pipe_flow():
     # PART 4: Hydraulic Diameter for Non-Circular Geometries
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 6.4 Non-Circular Ducts & Heat Exchanger Annuli")
+    st.markdown("### 2.4 Non-Circular Ducts & Heat Exchanger Annuli")
     st.markdown(
         r"""
         For non-circular cross sections (e.g., shell-and-tube or double-pipe heat exchanger annuli,

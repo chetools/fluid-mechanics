@@ -10,18 +10,19 @@ The application guides students and engineers from first-principles momentum con
 
 ## What It Does
 
-The interface features a persistent physical KPI strip above eight panels, in pedagogical order:
+The interface features a persistent physical KPI strip above nine panels, ordered from plant energy to harder mathematics:
 
 | Tab | Contents |
 |---|---|
-| **⚗️ 1. Euler (1D → 3D)** | Continuity, 1D→3D Euler, Bernoulli assumptions, Venturi lab, cylinder potential flow (d'Alembert) |
-| **📐 2. Dimensional Analysis** | Buckingham Π, rank-nullity, named groups (Re, Eu, ε/D) from a conventional kernel basis |
-| **🧱 3. Stress & Navier–Stokes** | Cauchy stress, $\mathbf{D}+\boldsymbol{\Omega}$, Newtonian NS, deformation lab, Ostwald–de Waele power-law pipe |
-| **📏 4. Exact Solutions & Boundary Layers** | Couette–Poiseuille, Hagen–Poiseuille, Stokes' first problem, Blasius plate, cylinder adverse gradient / laminar separation |
-| **🌪️ 5. Laminar vs. Turbulent** | Reynolds' pipe experiment, $\alpha$, law of the wall, Chilton–Colburn with Fanning $f_F$ |
-| **🚰 6. Pipe Flow & ChemE Design** | Darcy vs Fanning, Moody, mechanical energy, pump OPEX, entrance length, NPSH station, $D_H$ |
-| **💻 7. CFD (Projection)** | Why NS is hard, Chorin's method, lid-driven cavity with $t^*$ and Ghia overlay only at Re = 100 |
-| **📖 8. Reference & Audit** | Nomenclature, tensor primer, assumption / failure-mode matrix |
+| **🏭 1. ChemE Energy & Bernoulli** | Why $\Delta p$, pumps, and NPSH matter; Bernoulli from a steady energy balance; viscosity as frictional heating |
+| **🚰 2. Pipe Flow & Pumping** | Darcy vs Fanning, Moody, pump OPEX, entrance length, NPSH station, $D_H$ |
+| **📐 3. Dimensional Analysis** | Experimental collapse, SVD kernel **rotated** onto Re/Eu/$\varepsilon/D$, IT-π (maximum information) |
+| **🌪️ 4. Laminar $f$, Turbulence & Straws** | Force balance $\Rightarrow f_D=64/\mathrm{Re}$ vs Moody; straw-packing vs open-pipe pump kW |
+| **⚗️ 5. Euler (1D → 3D)** | Continuity, differential Euler, Venturi, d'Alembert |
+| **🧱 6. Stress & Navier–Stokes** | Cauchy stress, $\mathbf{D}+\boldsymbol{\Omega}$, Newtonian NS, power-law pipe |
+| **📏 7. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, Blasius, cylinder separation |
+| **💻 8. CFD (Projection)** | Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
+| **📖 9. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
 
 ---
 
