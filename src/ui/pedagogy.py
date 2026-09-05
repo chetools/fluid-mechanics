@@ -11,6 +11,7 @@ fine.
 from __future__ import annotations
 
 import re
+import textwrap
 from typing import Iterator, List, Optional, Sequence, Tuple
 
 import streamlit as st
@@ -30,8 +31,37 @@ def flatten_display_latex(tex: str) -> str:
     return " ".join(tex.strip().split())
 
 
+def dedent_markdown(md: str) -> str:
+    """Strip the Python source indentation from a triple-quoted markdown block.
+
+    This is not cosmetic. In CommonMark a line indented by four or more spaces
+    *after a blank line* opens an indented code block, so an un-dedented block
+    like::
+
+        \"\"\"
+        **Work it by hand.**
+
+        1. **Geometry.** $A = y(b+zy)$
+        \"\"\"
+
+    renders the list, the bold and the ``$...$`` all literally, in monospace,
+    and KaTeX never runs on it.
+
+    A single-paragraph block survives without dedenting, because its later
+    lines are lazy continuations of the first paragraph and their indentation
+    is ignored -- which is exactly why this bug hid for so long and then
+    appeared only in blocks containing a blank line.
+
+    `textwrap.dedent` removes the common prefix only, so a list continuation
+    indented three spaces deeper stays three spaces deeper, which is what
+    markdown needs to keep it inside the list item.
+    """
+    return textwrap.dedent(md.replace("	", "    "))
+
+
 def iter_prose_and_math(md: str) -> Iterator[Tuple[str, str]]:
     """Yield ``("prose", text)`` / ``("math", flattened_latex)`` chunks."""
+    md = dedent_markdown(md)
     pos = 0
     for match in DISPLAY_MATH_RE.finditer(md):
         prose = md[pos : match.start()].strip()

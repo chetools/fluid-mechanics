@@ -159,42 +159,123 @@ def render_tab_dimensional_analysis():
     # PART 3: Modern Null-Space (Kernel) Linear Algebra Approach
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 3.3 Solution Method 2: The Modern Linear Algebra Null-Space (Kernel) Approach")
+    st.markdown("### 3.3 Solution Method 2: One theorem, and everything follows")
     render_prose_and_latex(
-        """
-        While Buckingham's repeating variables method is traditional, it relies on trial-and-error 
-        and can fail when variables have degenerate rank. 
-        
-        The **Null-Space approach** is the rigorous linear algebra generalization:
-        Any set of dimensionless exponents $\\mathbf{x} = [a_1, a_2, \\dots, a_n]^T$ 
-        must satisfy the homogeneous matrix equation:
-        $$\\mathbf{A} \\mathbf{x} = \\mathbf{0}$$
-        where $\\mathbf{A}$ is the $m \\times n$ **dimensional matrix**. 
-        The dimensionless groups are nothing more than the **basis vectors of the null space** $\\ker(\\mathbf{A})$!
+        r"""
+        Buckingham's repeating-variable method works, but it is trial and error, and it
+        miscounts when the variables have degenerate rank. There is a cleaner foundation.
+        Everything this chapter needs — *how many* dimensionless groups exist, *which*
+        products are dimensionless, and *why the answer is never unique* — follows from a
+        single theorem of linear algebra, which we state and use without proving.
+
+        **The singular value decomposition.** Every real matrix $\mathbf{A}$, of any shape,
+        can be written
+        $$\mathbf{A} = \mathbf{U}\,\boldsymbol{\Sigma}\,\mathbf{V}^{T}$$
+        where $\mathbf{U}$ and $\mathbf{V}$ are **orthogonal** (their columns are unit
+        vectors at right angles, so they rotate and reflect without stretching), and
+        $\boldsymbol{\Sigma}$ is **diagonal** with non-negative entries
+        $\sigma_1 \ge \sigma_2 \ge \dots \ge 0$, the **singular values**.
+
+        No exceptions, no conditions: square or not, invertible or not, every matrix has one.
         """
     )
-    
+    render_callout(
+        """
+        **What it says geometrically.** A matrix is a linear map, and a linear map can look
+        complicated — it can rotate, stretch, squash and flip all at once. The SVD says every
+        such map is really just three simple moves in a row:
+
+        1. $\\mathbf{V}^{T}$ — **rotate** the input so that a particular set of perpendicular
+           directions lines up with the axes.
+        2. $\\boldsymbol{\\Sigma}$ — **stretch along those axes**, each by its own factor
+           $\\sigma_i$. This is the only step that changes lengths.
+        3. $\\mathbf{U}$ — **rotate** the result into its final orientation.
+
+        Rotate, stretch, rotate. A unit sphere goes to an ellipsoid whose semi-axis lengths
+        are the singular values. Nothing else can happen.
+        """,
+        title="Rotate, stretch, rotate",
+    )
+    render_prose_and_latex(
+        r"""
+        **The one consequence that matters here.** A stretch factor of *zero* collapses a
+        direction: whatever went in along that axis comes out as $\mathbf{0}$. So the input
+        directions that $\mathbf{A}$ annihilates are exactly the columns of $\mathbf{V}$
+        whose singular value is zero. Read off the decomposition:
+
+        * The number of **non-zero** singular values is the $\operatorname{rank}$ — the number
+          of directions that survive.
+        * The columns of $\mathbf{V}$ with $\sigma = 0$ are an **orthonormal basis of the null
+          space** $\ker(\mathbf{A})$ — the directions that are crushed.
+        * Counting the columns of $\mathbf{V}$ two ways gives rank–nullity for free:
+        $$\operatorname{rank}(\mathbf{A}) + \dim\ker(\mathbf{A}) = n$$
+
+        We never had to prove any of this; it is visible in the decomposition once the
+        decomposition is granted.
+        """
+    )
+    render_prose_and_latex(
+        r"""
+        **Now point it at dimensional analysis.** Build the $m \times n$ **dimensional
+        matrix** $\mathbf{A}$: row $i$ is a base dimension ($M$, $L$, $T$), column $j$ is a
+        variable $q_j$, and $A_{ij}$ is the power of that dimension in that variable. A
+        product
+        $$\Pi = q_1^{x_1} q_2^{x_2} \cdots q_n^{x_n}$$
+        has dimensions $\prod_i (\text{dimension } i)^{\sum_j A_{ij}x_j}$, so it is
+        **dimensionless exactly when every one of those exponents vanishes**:
+        $$\mathbf{A}\mathbf{x} = \mathbf{0}$$
+
+        That is the whole translation. *Finding dimensionless groups is finding the null space
+        of the dimensional matrix*, and the SVD hands it over:
+
+        | Question about scaling | Answer from the SVD of $\mathbf{A}$ |
+        |---|---|
+        | How many independent $\Pi$ groups? | $p = n - \operatorname{rank}(\mathbf{A})$, and the rank is the count of non-zero $\sigma$ |
+        | Which products are dimensionless? | the columns of $\mathbf{V}$ with $\sigma = 0$, read as exponent vectors |
+        | Why isn't the answer unique? | any basis of a subspace may be rotated; every choice is equally valid |
+        | Are my groups independent? | a basis is linearly independent by construction |
+
+        Buckingham's theorem is the third row of that table plus a counting argument. The SVD
+        gives all four rows at once, and gives them numerically, for any set of variables you
+        care to type in.
+        """
+    )
+    render_what_to_notice(
+        "The non-uniqueness is not a defect and not a licence for sloppiness. The kernel is a "
+        "subspace, so it has infinitely many bases; Re, Eu and ε/D are one conventional "
+        "choice, and the raw SVD basis is another. §3.4 below computes the raw basis and then "
+        "rotates it onto the named groups, so you can watch the same subspace wear two "
+        "different sets of labels."
+    )
+
     render_svg(diagram_null_space_matrix())
-    
-    with st.expander("🔍 Mathematical Foundation: The Rank-Nullity Theorem"):
+
+    with st.expander("🔍 Why a zero singular value means a dimensionless group"):
         render_prose_and_latex(
             r"""
-            Let $\mathbf{A} \in \mathbb{R}^{m \times n}$ be the dimensional matrix where:
-            * Row $i$ corresponds to base dimension $i$ ($M, L, T$).
-            * Column $j$ corresponds to variable $q_j$.
-            * Entry $A_{ij}$ is the power of base dimension $i$ in variable $q_j$.
+            Take $\mathbf{v}$, a column of $\mathbf{V}$ with singular value $0$. Because
+            $\mathbf{V}$ is orthogonal, $\mathbf{V}^{T}\mathbf{v} = \mathbf{e}$, the standard
+            basis vector picking out that column's slot. Then
+            $$\mathbf{A}\mathbf{v} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^{T}\mathbf{v}
+            = \mathbf{U}\boldsymbol{\Sigma}\mathbf{e} = \mathbf{U}(\sigma\,\mathbf{e}) = \mathbf{0}$$
+            since $\sigma = 0$. The middle step is the only one doing work: $\boldsymbol{\Sigma}$
+            is diagonal, so it just multiplies that slot by its own singular value.
 
-            A product $\Pi = q_1^{x_1} q_2^{x_2} \cdots q_n^{x_n}$ is dimensionless if and only if for each base dimension $i$:
-            $$\sum_{j=1}^n A_{ij} x_j = 0 \iff \mathbf{A} \mathbf{x} = \mathbf{0}$$
+            Reading $\mathbf{v}$ as a list of exponents, $\mathbf{A}\mathbf{v} = \mathbf{0}$
+            says every base dimension cancels in
+            $q_1^{v_1}q_2^{v_2}\cdots q_n^{v_n}$ — a dimensionless group.
 
-            By the **Fundamental Rank-Nullity Theorem of Linear Algebra**:
-            $$\dim(\operatorname{null}(\mathbf{A})) + \operatorname{rank}(\mathbf{A}) = n$$
-            $$\text{Nullity } p = \dim(\ker(\mathbf{A})) = n - \operatorname{rank}(\mathbf{A})$$
+            **A caution the algebra makes obvious.** These exponents are components of a unit
+            vector, so they are generally irrational and the products look nothing like the
+            named groups. Rounding them to neat integers leaves the null space and stops being
+            dimensionless. If you want integers, rotate the basis deliberately, as §3.4 does;
+            do not round.
 
-            **What linear algebra actually buys you, versus Buckingham:**
-            1. **Rank, not folklore:** $p = n - \operatorname{rank}(A)$, so degenerate dimensions are not miscounted.
-            2. **A basis, not the basis:** SVD returns *an* orthonormal kernel. Those vectors are linear combinations of Re, Eu, $\varepsilon/D$ — they are not themselves Re. This app rotates onto a repeating-variable basis and names the groups.
-            3. **Independence:** any kernel basis is linearly independent; integer rounding of SVD vectors is *not* orthonormal.
+            **Where floating point enters.** A singular value is never exactly zero
+            numerically. Rank is decided by counting $\sigma_i$ above a tolerance, so a matrix
+            that is nearly degenerate can have its rank — and therefore its number of $\Pi$
+            groups — reported differently by different tolerances. That is a real limitation
+            of doing this on a computer, not an artefact of this app.
             """
         )
 

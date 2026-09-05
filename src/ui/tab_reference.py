@@ -145,7 +145,7 @@ def render_tab_reference():
         
         st.markdown("---")
         st.markdown("### Authoritative Textbook References")
-        st.markdown(
+        render_prose_and_latex(
             """
             * **Batchelor, G. K.** (1967). *An Introduction to Fluid Dynamics*. Cambridge University Press.
             * **Bird, R. B., Stewart, W. E., & Lightfoot, E. N.** (2002). *Transport Phenomena* (2nd ed.). John Wiley & Sons. (Fanning $f_F$, BSL notation.)

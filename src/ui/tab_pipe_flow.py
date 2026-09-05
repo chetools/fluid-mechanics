@@ -142,7 +142,7 @@ def render_tab_pipe_flow():
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 2.2 The Moody Diagram & Churchill (1977) Correlation")
-    st.markdown(
+    render_prose_and_latex(
         r"""
         In 1944, Lewis Ferry Moody plotted the **Darcy** friction factor as a function of Reynolds number
         and relative roughness $\varepsilon/D$.

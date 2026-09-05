@@ -172,7 +172,7 @@ def diagram_blade_angles(
     """
     geom = impeller_geometry(r1=r1, r2=r2, beta1_deg=beta1_deg, beta2_deg=beta2_deg,
                              b1=b1, b2=b2, n_blades=n_blades, n_points=90)
-    width, height = 880, 500
+    width, height = 880, 522
     cx, cy, scale = 232.0, 208.0, 120.0 / r2
 
     def screen(x, y, z):
@@ -242,7 +242,7 @@ def diagram_blade_angles(
     # A blade angle is then pure geometry: the angle at one point between the
     # tangent to the circle and the tangent to the blade camberline. Both rays
     # are real curves on the wheel, so both are drawn.
-    plan_cx, plan_cy = 598.0, 206.0
+    plan_cx, plan_cy = 604.0, 216.0
     plan_scale = 116.0 / r2
     # A plan view of an axisymmetric wheel may be spun freely, so spin it until
     # the annotated blade's trailing edge sits at the lower right, where the
@@ -274,20 +274,31 @@ def diagram_blade_angles(
     # Rotation sense. The camberline integrates to increasing theta with
     # increasing radius, so the wheel must turn towards DECREASING theta for the
     # blades to trail backwards -- which is what "backswept" means.
-    # Rotation sense, drawn in screen space at the lower left of the plan circle
-    # so it cannot collide with the panel heading. The camberline integrates to
-    # increasing theta with increasing radius, so the wheel must turn towards
-    # DECREASING theta for the blades to trail backwards -- which is what
-    # "backswept" means, and it is the sense the true-shape triangle assumes.
-    arc_px = plan_scale * r2 * 1.2
-    a0, a1 = math.radians(212.0), math.radians(148.0)
-    ax0, ay0 = plan_cx + arc_px * math.cos(a0), plan_cy + arc_px * math.sin(a0)
-    ax1, ay1 = plan_cx + arc_px * math.cos(a1), plan_cy + arc_px * math.sin(a1)
-    plan_parts.append(f'<path d="M {_f(ax0)} {_f(ay0)} A {_f(arc_px)} {_f(arc_px)} 0 0 1 '
-                      f'{_f(ax1)} {_f(ay1)}" fill="none" stroke="{TEXT_MUTED}" '
-                      f'stroke-width="2" marker-end="url(#imp-dim)"/>')
-    plan_parts.append(f'<text x="{_f(ax0 - 4)}" y="{_f(ay0 + 16)}" fill="{TEXT_MUTED}" '
-                      f'font-size="11.5" text-anchor="middle">rotation &#969;</text>')
+    # Rotation sense. This has to be unambiguous, because every angle in the
+    # figure is measured against it. The camberline integrates to increasing
+    # theta with increasing radius, so the wheel must turn towards DECREASING
+    # theta for the blades to trail -- which is what "backswept" means. The
+    # plan view flips y, so decreasing theta reads CLOCKWISE on the page.
+    #
+    # Drawn by sampling the arc rather than with an SVG arc command: the
+    # large-arc and sweep flags are easy to get subtly wrong, and a polyline
+    # with marker-end orients its own arrowhead from the last segment, so the
+    # arrow cannot disagree with the path.
+    theta_tip_world = float(geom["blades"][0]["theta"][0, -1])
+    sweep = np.linspace(theta_tip_world + math.radians(214.0),
+                        theta_tip_world + math.radians(140.0), 40)
+    spin_r = r2 * 1.05
+    su, sv = plan(spin_r * np.cos(sweep), spin_r * np.sin(sweep))
+    plan_parts.append(f'<polyline points="{_points(su, sv)}" fill="none" '
+                      f'stroke="{TEXT_MUTED}" stroke-width="2.4" '
+                      f'marker-end="url(#imp-dim)"/>')
+    mid_u, mid_v = plan(spin_r * 1.20 * math.cos(sweep[len(sweep) // 2]),
+                        spin_r * 1.20 * math.sin(sweep[len(sweep) // 2]))
+    plan_parts.append(f'<text x="{_f(mid_u)}" y="{_f(mid_v)}" fill="{TEXT_MUTED}" '
+                      f'font-size="12" font-weight="700" text-anchor="middle" '
+                      f'dominant-baseline="middle">&#969;</text>')
+    plan_parts.append(f'<text x="{_f(mid_u)}" y="{_f(mid_v + 15)}" fill="{TEXT_MUTED}" '
+                      f'font-size="10.5" text-anchor="middle">wheel turns this way</text>')
 
     def plan_edge(theta_edge, radius, beta_deg, colour, name, ray_px, label_gap):
         """Circle tangent, blade tangent, and beta between them -- at true size."""
@@ -334,7 +345,26 @@ def diagram_blade_angles(
     plan_parts.extend(tip_marks)
     plan_parts.extend(eye_marks)
     plan_parts.append(f'<text x="{_f(tip_tan[0] + 6)}" y="{_f(tip_tan[1] + 4)}" '
-                      f'fill="{TEXT_MUTED}" font-size="10.5">tangent to the tip circle</text>')
+                      f'fill="{TEXT_MUTED}" font-size="10.5">tangent to the tip circle,</text>')
+    plan_parts.append(f'<text x="{_f(tip_tan[0] + 6)}" y="{_f(tip_tan[1] + 17)}" '
+                      f'fill="{TEXT_MUTED}" font-size="10.5">against the motion</text>')
+
+    # The blade speed itself, drawn at the tip. beta_2 is measured from the
+    # tangential direction OPPOSING U_2, which is the same reference the
+    # true-shape triangle uses -- showing U_2 here is what makes that visible
+    # instead of merely stated.
+    theta_t = float(blade0["theta"][0, -1])
+    t_hat_tip = (-math.sin(theta_t), math.cos(theta_t))
+    u_world = 62.0 / plan_scale
+    ux0, uy0 = plan(r2 * math.cos(theta_t), r2 * math.sin(theta_t))
+    ux1, uy1 = plan(r2 * math.cos(theta_t) - t_hat_tip[0] * u_world,
+                    r2 * math.sin(theta_t) - t_hat_tip[1] * u_world)
+    plan_parts.append(f'<line x1="{_f(ux0)}" y1="{_f(uy0)}" x2="{_f(ux1)}" y2="{_f(uy1)}" '
+                      f'stroke="{WARNING}" stroke-width="3" marker-end="url(#imp-orange)"/>')
+    plan_parts.append(f'<text x="{_f(ux1 - 6)}" y="{_f(uy1 + 14)}" fill="{WARNING}" '
+                      f'font-size="12" font-weight="700" text-anchor="end">U&#8322;</text>')
+    plan_parts.append(f'<text x="{_f(ux1 - 6)}" y="{_f(uy1 + 27)}" fill="{WARNING}" '
+                      f'font-size="10.5" text-anchor="end">blade motion</text>')
     plan_parts.append(f'<text x="{_f(tip_blade_end[0] + 8)}" y="{_f(tip_blade_end[1] + 14)}" '
                       f'fill="{SHEAR}" font-size="10.5">tangent to the blade</text>')
     plan_parts.append(f'<text x="{_f(eye_blade_end[0] - 6)}" y="{_f(eye_blade_end[1] - 8)}" '
@@ -346,7 +376,7 @@ def diagram_blade_angles(
     ]
     legend = []
     for index, (colour, text) in enumerate(legend_rows):
-        y = 414 + index * 22
+        y = 434 + index * 22
         legend.append(f'<rect x="34" y="{y - 9}" width="18" height="4" rx="2" fill="{colour}"/>')
         legend.append(f'<text x="60" y="{y}" fill="{TEXT_MUTED}" font-size="11.5">{text}</text>')
 
@@ -365,7 +395,7 @@ def diagram_blade_angles(
         {"".join(parts)}
         {"".join(plan_parts)}
         <line x1="24" y1="372" x2="{width - 24}" y2="372" stroke="{BORDER}" stroke-width="1"/>
-        <text x="34" y="392" fill="{TEXT}" font-size="12.5" font-weight="600">A blade angle is pure geometry: two tangents at one point on the wheel</text>
+        <text x="34" y="392" fill="{TEXT}" font-size="12.5" font-weight="600">A blade angle is pure geometry: two tangents at one point on the wheel</text><text x="34" y="410" fill="{TEXT_DIM}" font-size="11.5">The blades trail backwards against the rotation &#8212; that is what &#8220;backswept&#8221; means, and it is why &#946; is measured from the tangent opposing U&#8322;.</text>
         {"".join(legend)}
         <text x="24" y="{height - 30}" fill="{TEXT_DIM}" font-size="11.5">Left: axonometric projection of the computed blade surface, axial scale exaggerated {z_exaggeration:.1f}&#215; so the passage is visible. It shows the shape, not the angles.</text>
         <text x="24" y="{height - 12}" fill="{TEXT_DIM}" font-size="11.5">The velocity triangle is a separate matter and is drawn below in true shape, where U&#8322;, W&#8322; and C&#8322; close head to tail and &#945;&#8322; can be measured.</text>
