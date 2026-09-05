@@ -68,6 +68,11 @@ def _source_fingerprint() -> str:
 
 @st.cache_resource
 def _refresh_source_modules(fingerprint: str) -> int:
+    # This body runs only when the on-disk sources changed. Cached *data* is
+    # keyed on each function's own arguments and body, so a payload whose
+    # producer changed shape in another module stays cached across the reload
+    # and reaches new UI code missing its new keys. Drop it with the reload.
+    st.cache_data.clear()
     reloaded = 0
     for name in _MODULE_RELOAD_ORDER:
         try:
