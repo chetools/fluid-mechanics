@@ -30,6 +30,7 @@ from src.ui.pedagogy import (
     render_predict,
     render_self_check,
     render_callout,
+    render_derivation,
     render_prose_and_latex,
 )
 
@@ -161,6 +162,80 @@ def render_tab_solving_ns():
             $\alpha=(1/A)\int(u/\bar{u})^3\,dA$ is the kinetic-energy correction (Tab 1),
             not an angle: the parabola forces $\alpha=2$ in a circular pipe.
             """
+        )
+        render_derivation(
+            r"Hagen–Poiseuille straight out of Navier–Stokes in cylindrical coordinates",
+            [
+                (
+                    "Say what the flow is, and let the assumptions kill terms",
+                    r"""
+                    Fully developed, steady, axisymmetric, no swirl: the velocity is
+                    $\mathbf u=(0,0,u_z(r))$. Continuity in cylindrical coordinates then
+                    reduces to $\partial u_z/\partial z=0$, confirming the profile cannot
+                    change downstream. The convective term is
+                    $$(\mathbf u\cdot\nabla)\mathbf u
+                    = u_z\frac{\partial u_z}{\partial z}\mathbf e_z=\mathbf 0$$
+                    — identically zero, because the only non-zero velocity component varies
+                    only in the one direction it does *not* point. This is the whole reason an
+                    exact solution exists: the nonlinearity is not approximated away, it is
+                    genuinely absent.
+                    """,
+                ),
+                (
+                    "What is left is an ordinary differential equation",
+                    r"""
+                    The axial component of the viscous term in cylindrical coordinates is
+                    $\nu\frac{1}{r}\frac{d}{dr}\left(r\frac{du_z}{dr}\right)$, and the
+                    remaining balance is
+                    $$\frac{1}{r}\frac{d}{dr}\left(r\frac{du_z}{dr}\right)
+                    =\frac{1}{\mu}\frac{dp}{dz}$$
+                    The left side depends only on $r$ and the right only on $z$, so both must
+                    equal the **same constant** — which is why a fully developed pipe has a
+                    uniform pressure gradient, rather than an assumption that it does. The
+                    $\frac{1}{r}\frac{d}{dr}(r\cdot)$ form is not decoration: it is the
+                    divergence in a geometry where the area of a shell grows with radius.
+                    """,
+                ),
+                (
+                    "Integrate twice, and reject one constant on physical grounds",
+                    r"""
+                    With $G=-dp/dz>0$:
+                    $$r\frac{du_z}{dr}=-\frac{G}{2\mu}r^{2}+C_1
+                    \;\Longrightarrow\;
+                    u_z=-\frac{G}{4\mu}r^{2}+C_1\ln r+C_2$$
+                    $C_1$ must vanish: $\ln r\to-\infty$ on the axis, and an infinite
+                    centreline velocity is not physical. Equivalently, symmetry demands
+                    $du_z/dr=0$ at $r=0$. No-slip $u_z(R)=0$ then fixes $C_2$:
+                    $$\boxed{u_z(r)=\frac{G}{4\mu}\left(R^{2}-r^{2}\right)}$$
+                    the same parabola Tab 4 obtained from a force balance on a plug — two
+                    independent routes to one answer, which is the check that both are right.
+                    """,
+                ),
+                (
+                    "Integrate the profile over annuli for the flow rate",
+                    r"""
+                    $$Q=\int_0^R u_z(r)\,2\pi r\,dr
+                    =\frac{2\pi G}{4\mu}\int_0^R\left(R^{2}r-r^{3}\right)dr
+                    =\frac{\pi G}{2\mu}\left(\frac{R^{4}}{2}-\frac{R^{4}}{4}\right)
+                    =\frac{\pi R^{4}}{8\mu}G$$
+                    The **fourth power** of radius is the single most consequential result in
+                    this course: halving a capillary's bore cuts its throughput sixteenfold at
+                    the same driving pressure. It is why arteries narrow catastrophically
+                    rather than gracefully, and why Tab 4's straw bundle loses.
+                    """,
+                ),
+                (
+                    "Read off the two ratios the metrics report",
+                    r"""
+                    $\bar u=Q/(\pi R^{2})=GR^{2}/(8\mu)$ while $u_{\max}=GR^{2}/(4\mu)$, so
+                    $\bar u/u_{\max}=1/2$ exactly — a property of the parabola, not a
+                    measurement. Feeding the same parabola through the kinetic-energy integral
+                    of Tab 4 gives $\alpha=2$. Both numbers are **circular-pipe** results: the
+                    plane channel of the previous sub-tab has $2/3$ and $54/35$ instead,
+                    because its area element is $dy$ rather than $2\pi r\,dr$.
+                    """,
+                ),
+            ],
         )
         col_hp1, col_hp2 = st.columns(2)
         with col_hp1:
@@ -488,8 +563,18 @@ def render_tab_solving_ns():
     st.caption(
         f"ν = {nu_bl:.3e} m²/s ({fluid['name']}). "
         f"f''(0) = {sim['fpp0']:.5f} (Howarth), f'(η_max) = {sim['fp_inf']:.4f} → 1. "
-        f"Wall shear at the trailing edge τ_w = {0.332 * float(fluid['rho']) * bl_u**2 / plate['re_L']**0.5:.4g} Pa. "
+        f"Wall shear at the trailing edge τ_w = "
+        f"{sim['fpp0'] * float(fluid['rho']) * bl_u**2 / plate['re_L']**0.5:.4g} Pa. "
         "Laminar theory only: transition on a smooth plate begins near Re_x ≈ 5×10⁵."
+    )
+    st.caption(
+        f"The integral thicknesses are **integrated from the profile above**, not quoted: "
+        f"δ*/x·√Re = ∫(1−f′)dη = {sim['delta_star_coeff']:.4f}, "
+        f"θ/x·√Re = ∫f′(1−f′)dη = {sim['theta_coeff']:.4f}, "
+        f"shape factor H = {sim['shape_factor']:.3f}. "
+        f"The momentum integral demands c_f·√Re = 2f''(0) = {sim['cf_coeff']:.4f} equal that "
+        f"θ coefficient; the two agree to {abs(sim['cf_coeff'] - sim['theta_coeff']):.1e}, "
+        "which is a check on the whole solve rather than a coincidence."
     )
     if plate["re_L"] > 5e5:
         st.warning(
@@ -564,6 +649,74 @@ def render_tab_solving_ns():
         resistant to separation, which is the whole point of chapter 8's drag crisis.
         """
     )
+    render_derivation(
+        r"the von Kármán momentum integral: drag from a control volume, with no profile at all",
+        [
+            (
+                "Draw a box that contains the whole layer",
+                r"""
+                Take a control volume of unit width from the leading edge to station $x$,
+                and from the plate up to a height $h>\delta(x)$ where the flow is still
+                undisturbed. Steady, incompressible, and — for a flat plate — pressure is
+                uniform everywhere, so pressure exerts **no net force** on the box. The only
+                horizontal force acting on the fluid is the plate's shear, and the only thing
+                to compute is what momentum does.
+                """,
+            ),
+            (
+                "Mass conservation: fluid must escape through the top",
+                r"""
+                In through the left face: $\rho U_\infty h$. Out through the right face:
+                $\int_0^h\rho u\,dy$, which is **less**, because the layer has slowed some of
+                it. The difference has to leave through the top:
+                $$\dot m_{\text{top}}=\rho\int_0^h\left(U_\infty-u\right)dy$$
+                This is the same mass-flow deficit that $\delta^{*}$ measures, and it is
+                physically the outward push a growing boundary layer gives the outer flow.
+                """,
+            ),
+            (
+                "Momentum balance, remembering what the escaping fluid carries",
+                r"""
+                Fluid leaving through the top is outside the layer, so it carries streamwise
+                velocity $U_\infty$. With $D$ the drag the plate exerts on the fluid
+                (backwards, hence the minus sign):
+                $$-D=\underbrace{\int_0^h\rho u^{2}dy}_{\text{out, right}}
+                +\underbrace{U_\infty\dot m_{\text{top}}}_{\text{out, top}}
+                -\underbrace{\rho U_\infty^{2}h}_{\text{in, left}}$$
+                Substituting $\dot m_{\text{top}}$, the $\rho U_\infty^{2}h$ terms cancel and
+                what remains collapses into a single integral:
+                $$-D=\rho\int_0^h u\left(u-U_\infty\right)dy
+                \;\Longrightarrow\;
+                \boxed{D(x)=\rho\int_0^\infty u\left(U_\infty-u\right)dy=\rho U_\infty^{2}\,\theta(x)}$$
+                """,
+            ),
+            (
+                "Differentiate to recover the local shear",
+                r"""
+                $D(x)$ is the accumulated drag up to $x$, so its derivative is the local wall
+                stress:
+                $$\tau_w=\frac{dD}{dx}=\rho U_\infty^{2}\frac{d\theta}{dx}$$
+                Nothing in this derivation used the Blasius solution, the similarity variable,
+                or even the assumption that the layer is laminar. It is a control-volume
+                identity, valid for a turbulent layer too — which is exactly why $\theta$, not
+                $\delta_{99}$, is the thickness engineers track.
+                """,
+            ),
+            (
+                "Check it against the solution we already have",
+                r"""
+                Blasius gives $\theta=0.664\,x/\sqrt{\mathrm{Re}_x}$, so
+                $d\theta/dx=0.332/\sqrt{\mathrm{Re}_x}$ and
+                $\tau_w=0.332\rho U_\infty^{2}\mathrm{Re}_x^{-1/2}$ — identical to Step 7's
+                result from $\mu\,\partial u/\partial y$ at the wall. The apparent coincidence
+                $\theta/x=c_f$ is this identity, not a numerological accident. The
+                coefficients $1.721$ and $0.664$ themselves are numerical integrals of the
+                computed $f'(\eta)$; the app integrates them rather than quoting them.
+                """,
+            ),
+        ],
+    )
+
     render_self_check(
         "blasius_self_check_theta",
         "A plate's laminar boundary layer has θ = 0.4 mm at the trailing edge, in water "

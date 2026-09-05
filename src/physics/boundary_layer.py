@@ -15,6 +15,9 @@ from scipy.integrate import solve_ivp
 BLASIUS_FPP0 = 0.3320573362151963
 # η where u/U ≈ 0.99 for the Blasius profile
 BLASIUS_ETA_99 = 4.91
+# Literature values of the integral thicknesses. These are the *reference* the
+# computed integrals below are checked against, not the source the lesson quotes:
+# the panel claims these numbers come from integrating the profile, so they do.
 BLASIUS_DELTA_STAR_COEFF = 1.7208  # δ*/x * sqrt(Re_x)
 BLASIUS_THETA_COEFF = 0.664       # θ/x * sqrt(Re_x) = cf * sqrt(Re_x)
 LAMINAR_CYLINDER_SEP_DEG = 104.5
@@ -43,6 +46,14 @@ def blasius_similarity_profile(eta_max: float = 8.0, n_points: int = 250) -> Dic
     eta = sol.t
     f, fp, fpp = sol.y
     idx_99 = int(np.argmax(fp >= 0.99)) if np.any(fp >= 0.99) else len(fp) - 1
+    # The integral thicknesses, non-dimensionalised on sqrt(nu x / U), are just
+    # integrals of the profile just computed:
+    #   delta*/x sqrt(Re_x) = ∫ (1 - f') dη      (mass-flow deficit)
+    #   theta/x  sqrt(Re_x) = ∫ f'(1 - f') dη    (momentum deficit)
+    # Integrating them here, rather than quoting 1.7208 and 0.664, keeps the
+    # lesson's claim honest and makes the numbers move if the ODE solve changes.
+    delta_star_coeff = float(np.trapezoid(1.0 - fp, eta))
+    theta_coeff = float(np.trapezoid(fp * (1.0 - fp), eta))
     return {
         "eta": eta,
         "f": f,
@@ -51,7 +62,33 @@ def blasius_similarity_profile(eta_max: float = 8.0, n_points: int = 250) -> Dic
         "eta_99": float(eta[idx_99]),
         "fpp0": float(fpp[0]),
         "fp_inf": float(fp[-1]),
+        "delta_star_coeff": delta_star_coeff,
+        "theta_coeff": theta_coeff,
+        # c_f sqrt(Re_x) = 2 f''(0); equal to theta_coeff by the momentum integral.
+        "cf_coeff": float(2.0 * fpp[0]),
+        "shape_factor": float(delta_star_coeff / theta_coeff),
     }
+
+
+_SIMILARITY_CACHE: Dict[str, float] = {}
+
+
+def blasius_integral_coefficients() -> Dict[str, float]:
+    """δ*, θ and c_f coefficients, integrated from the similarity solution once.
+
+    Solving the ODE on every rerun would be wasteful, and hard-coding the
+    numbers would make the lesson's claim that they are integrated untrue.
+    """
+    if not _SIMILARITY_CACHE:
+        sim = blasius_similarity_profile()
+        _SIMILARITY_CACHE.update(
+            delta_star_coeff=sim["delta_star_coeff"],
+            theta_coeff=sim["theta_coeff"],
+            cf_coeff=sim["cf_coeff"],
+            eta_99=sim["eta_99"],
+            shape_factor=sim["shape_factor"],
+        )
+    return dict(_SIMILARITY_CACHE)
 
 
 def blasius_plate(
@@ -70,12 +107,15 @@ def blasius_plate(
     x_arr = np.linspace(x / n_x, x, n_x)
     re_x = u_inf * x_arr / nu
     sqrt_re = np.sqrt(re_x)
-    delta = BLASIUS_ETA_99 * x_arr / sqrt_re
-    delta_star = BLASIUS_DELTA_STAR_COEFF * x_arr / sqrt_re
-    theta = BLASIUS_THETA_COEFF * x_arr / sqrt_re
-    cf = BLASIUS_THETA_COEFF / sqrt_re  # local c_f = 0.664 / sqrt(Re_x)
+    coeffs = blasius_integral_coefficients()
+    delta = coeffs["eta_99"] * x_arr / sqrt_re
+    delta_star = coeffs["delta_star_coeff"] * x_arr / sqrt_re
+    theta = coeffs["theta_coeff"] * x_arr / sqrt_re
+    # Local c_f = 2 f''(0) / sqrt(Re_x). Integrating tau_w over 0..L doubles it,
+    # because x^{-1/2} integrates to 2 x^{1/2}.
+    cf = coeffs["cf_coeff"] / sqrt_re
     re_l = u_inf * x / nu
-    cf_mean = 1.328 / np.sqrt(re_l)
+    cf_mean = 2.0 * coeffs["cf_coeff"] / np.sqrt(re_l)
     drag_per_width = 0.5 * (1.0) * u_inf**2 * x * cf_mean  # per unit depth, ρ later
     return {
         "x": x_arr,

@@ -7,7 +7,24 @@ from src.physics.boundary_layer import (
     blasius_plate,
     cylinder_outer_flow_and_separation,
     BLASIUS_FPP0,
+    BLASIUS_DELTA_STAR_COEFF,
+    BLASIUS_THETA_COEFF,
 )
+
+
+def test_integral_thicknesses_are_integrated_not_quoted():
+    """The panel claims 1.7208 and 0.664 come from integrating f'.
+
+    They must therefore *be* those integrals, and land on the literature values
+    without being told them.
+    """
+    sim = blasius_similarity_profile()
+    assert np.isclose(sim["delta_star_coeff"], BLASIUS_DELTA_STAR_COEFF, rtol=2e-3)
+    assert np.isclose(sim["theta_coeff"], BLASIUS_THETA_COEFF, rtol=2e-3)
+    # The von Karman momentum integral says c_f sqrt(Re_x) = 2 f''(0) equals the
+    # theta coefficient exactly. That identity is a check on the whole solve.
+    assert np.isclose(sim["cf_coeff"], sim["theta_coeff"], rtol=1e-3)
+    assert np.isclose(sim["shape_factor"], 2.59, rtol=5e-3)
 
 
 def test_blasius_wall_and_freestream():
