@@ -6,7 +6,7 @@ Contains:
 3. 2D Potential flow past a cylinder & d'Alembert's paradox calculation
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 
 def venturi_profile(
@@ -131,7 +131,6 @@ def cylinder_potential_flow(
     # Surface pressure profile around cylinder (theta from 0 to 2*pi)
     theta_surf = np.linspace(0, 2 * np.pi, 360, endpoint=False)
     # At r = R: ur = 0, utheta = -2 * U_inf * sin(theta)
-    u_surf = 2.0 * u_inf * np.sin(theta_surf)
     cp_surf = 1.0 - 4.0 * (np.sin(theta_surf)**2)
     p_surf = p_inf + 0.5 * rho * u_inf**2 * cp_surf
     

@@ -1,10 +1,8 @@
 """Unit tests for exact analytical solutions to the Navier-Stokes equations."""
 
 import numpy as np
-import pytest
 from src.physics.exact_solutions import (
     couette_poiseuille_channel,
-    hagen_poiseuille_pipe,
     stokes_first_problem
 )
 

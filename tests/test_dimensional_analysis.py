@@ -1,7 +1,6 @@
 """Unit tests for Dimensional Analysis Buckingham Pi and Null-Space solver."""
 
 import numpy as np
-import pytest
 from src.physics.dimensional_analysis import (
     build_dimensional_matrix,
     compute_null_space_pi_groups,

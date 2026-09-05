@@ -9,7 +9,7 @@ Contains canonical laminar flows where non-linear convective terms vanish identi
 
 from typing import Dict
 import numpy as np
-from scipy.special import erf, erfc
+from scipy.special import erfc
 
 def couette_poiseuille_channel(
     h: float = 0.05,            # Channel height (m)

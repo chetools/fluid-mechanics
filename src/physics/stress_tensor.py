@@ -8,7 +8,7 @@ Computes:
 4. 2D fluid parcel kinematic deformation and Mohr's circle of stress
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 
 def decompose_velocity_gradient_2d(

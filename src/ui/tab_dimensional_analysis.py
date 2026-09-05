@@ -10,17 +10,16 @@ from src.physics.dimensional_analysis import (
     compute_null_space_pi_groups,
     get_cheme_preset
 )
-from src.ui.pedagogy import render_objectives, render_what_to_notice, render_self_check
+from src.ui.pedagogy import render_objectives, render_what_to_notice, render_self_check, render_prose_and_latex, render_callout
 
 def render_tab_dimensional_analysis():
     """Render comprehensive educational panel for Dimensional Analysis."""
-    st.markdown("## 3. Dimensional Analysis: Experiments, Π Groups & Information")
     st.markdown(
         """
-        Dimensional analysis is one of the most powerful analytical weapons in engineering.
-        It allows us to deduce the functional relationships governing complex physical systems
-        **without solving the Navier–Stokes partial differential equations**, collapse thousands
-        of experiments onto single universal master curves, and scale up lab pilot plants to full industrial scale.
+        Dimensional analysis organizes a physical problem into ratios that do not depend
+        on the choice of units. It tells us which combinations of variables can matter.
+        It does **not** determine the correlation, its coefficients, or whether the
+        starting list of physical variables is complete.
 
         After the energy and pipe labs, this panel is **how you design the experiment**
         that produces a Moody chart: collapse $\\Delta p = f(D,L,u,\\rho,\\mu,\\varepsilon)$
@@ -30,7 +29,7 @@ def render_tab_dimensional_analysis():
     )
     render_objectives(
         [
-            "Cut an experimental matrix with Π groups (n − rank(A) experiments, not n).",
+            "Count independent dimensionless groups as n − rank(A), then distinguish response groups from input groups.",
             "Carry out Buckingham's five steps for pipe Δp.",
             "See that SVD gives *a* kernel; ChemE names (Re, Eu, ε/D) come from a conventional basis.",
         ]
@@ -43,18 +42,21 @@ def render_tab_dimensional_analysis():
     
     col_adv1, col_adv2 = st.columns(2)
     with col_adv1:
-        st.info(
+        render_callout(
             """
             **1. Dramatic Reduction in Experimental Complexity**
             
             Suppose pipe pressure drop depends on 6 variables: $\\Delta p = f(D, L, u, \\rho, \\mu, \\epsilon)$.
             Testing 5 values for each variable would require:
             $$5^6 = 15,625 \\text{ experiments!}$$
-            Dimensional analysis reduces this to 3 dimensionless groups: $\\text{Eu} = \\Phi(\\text{Re}, \\epsilon/D, L/D)$.
-            Testing 5 values now requires only $5^3 = 125$ experiments—a **99.2% reduction in experimental effort and cost**!
+            Including the response, there are 7 variables and 4 dimensionless groups:
+            $\\text{Eu} = \\Phi(\\text{Re}, \\epsilon/D, L/D)$.
+            A five-level grid over the **three independent inputs** has $5^3 = 125$ points.
+            This illustrates potential savings; it is not a guaranteed experiment count.
+            The groups must be independently controllable, and repeats and validation still matter.
             """
         )
-        st.info(
+        render_callout(
             """
             **2. Pilot Plant Scale-Up & True Similitude**
             
@@ -66,13 +68,16 @@ def render_tab_dimensional_analysis():
             """
         )
     with col_adv2:
-        st.info(
+        render_callout(
             """
             **3. Creation of Universal Master Correlations**
             
             Dimensional analysis is what makes the **Moody Chart** possible. 
             Instead of needing separate graphs for water, crude oil, air, and gasoline across every pipe diameter, 
-            a single plot of $f$ vs. $\\text{Re}$ and $\\epsilon/D$ governs **all Newtonian fluids in all pipes forever**.
+            one relationship between $f_D$, $\\text{Re}$, and $\\epsilon/D$ describes
+            **fully developed, single-phase Newtonian flow in circular pipes** within
+            the correlation's range. Entrance effects, strong compressibility, non-Newtonian
+            behavior, and other geometries require additional checks or models.
             """
         )
         st.info(
@@ -84,13 +89,14 @@ def render_tab_dimensional_analysis():
             must balance dimensions on both sides (**Fourier's Principle of Dimensional Homogeneity**).
             """
         )
-        st.info(
+        render_callout(
             """
             **5. Nondimensional PDEs reveal dominant balances**
 
             Scaling Navier–Stokes with $U$ and $L$ produces Re, Fr, Eu in front of each term.
-            Taking Re → 0 recovers Stokes flow; Re → ∞ recovers Euler — the story of Tabs 1 and 3–4 —
-            *without solving anything*.
+            At small Re, viscous effects dominate inertia. At large Re, inviscid outer-flow
+            approximations may be useful, but thin wall layers can remain essential.
+            A large Reynolds number does not justify dropping viscosity everywhere.
             """
         )
 
@@ -104,12 +110,13 @@ def render_tab_dimensional_analysis():
         Formulated by Edgar Buckingham in 1914, the theorem states that if an equation involving 
         $n$ physical variables is dimensionally homogeneous, it can be reduced to a relationship 
         among $p = n - k$ independent dimensionless groups ($\\Pi_1, \\Pi_2, \\dots, \\Pi_p$), 
-        where $k$ is the number of fundamental dimensions.
+        where $k$ is the **rank of the dimensional matrix**. It equals the number of
+        listed base dimensions only when their rows are independent.
         """
     )
     
     with st.expander("🔍 Step-by-Step Walkthrough: The 5 Standard Steps of Buckingham Π"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             **Step 1: List all $n$ physical variables affecting the phenomenon**
             Example: Pressure drop in a pipe $\Delta p_f$:
@@ -153,7 +160,7 @@ def render_tab_dimensional_analysis():
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 3.3 Solution Method 2: The Modern Linear Algebra Null-Space (Kernel) Approach")
-    st.markdown(
+    render_prose_and_latex(
         """
         While Buckingham's repeating variables method is traditional, it relies on trial-and-error 
         and can fail when variables have degenerate rank. 
@@ -170,7 +177,7 @@ def render_tab_dimensional_analysis():
     render_svg(diagram_null_space_matrix())
     
     with st.expander("🔍 Mathematical Foundation: The Rank-Nullity Theorem"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             Let $\mathbf{A} \in \mathbb{R}^{m \times n}$ be the dimensional matrix where:
             * Row $i$ corresponds to base dimension $i$ ($M, L, T$).

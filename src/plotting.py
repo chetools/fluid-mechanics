@@ -9,9 +9,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 from src.theme import (
-    apply_plotly_theme, SURFACE, SURFACE_RAISED, BORDER, BORDER_STRONG,
-    TEXT, TEXT_MUTED, TEXT_DIM, ACCENT, ACCENT_DEEP,
-    PRESSURE, SHEAR, VORTICITY, SUCCESS, WARNING, INERTIA, VISCOUS, SERIES, rgba
+    apply_plotly_theme, SURFACE, SURFACE_RAISED, BORDER_STRONG,
+    TEXT, TEXT_MUTED, TEXT_DIM, ACCENT, PRESSURE, SHEAR, VORTICITY, SUCCESS, WARNING, INERTIA, SERIES, rgba
 )
 from src.units import unit_label, is_nondimensional
 
@@ -491,16 +490,16 @@ def plot_cavity_cfd(res: Dict[str, np.ndarray]) -> go.Figure:
     """Create 3-panel visualization for 2D Lid-Driven Cavity CFD simulation."""
     ghia_ok = bool(res.get("ghia_applicable", False))
     profile_title = (
-        "Centerline u(y) vs. Ghia Re = 100"
+        "Centerline velocity · Re = 100"
         if ghia_ok
-        else "Centerline u(y) — Ghia overlay only at Re = 100"
+        else "Centerline velocity"
     )
     fig = make_subplots(
         rows=1, cols=3,
         column_widths=[0.38, 0.34, 0.28],
         subplot_titles=(
-            "Streamlines Ψ & Velocity Mag |u|",
-            "Vorticity Contour ω_z",
+            "Speed & streamlines",
+            "Vorticity",
             profile_title,
         ),
         horizontal_spacing=0.08
@@ -984,4 +983,93 @@ def plot_straw_bundle(n_list, power_open, power_bundle, re_straw) -> go.Figure:
     fig.update_xaxes(title_text="Number of straws N", type="log", row=1, col=2)
     fig.update_yaxes(title_text="Re_d (each straw)", type="log", row=1, col=2)
     fig.update_layout(height=420)
+    return apply_plotly_theme(fig)
+
+
+def plot_impeller_head_curve(curve: Dict, operating_q: float, operating_h: float) -> go.Figure:
+    """Ideal Euler head against flow rate, with the current operating point marked.
+
+    The straight line is the theory; a measured pump curve bends below it. Showing
+    only the line would be misleading, so the caption in the UI says which is which.
+    """
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
+            x=curve["flow_rate"] * 3600.0, y=curve["head"],
+            mode="lines", line=dict(color=ACCENT, width=3),
+            name=f"Euler head, beta_2 = {curve['beta2_deg']:.0f} deg",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[operating_q * 3600.0], y=[operating_h],
+            mode="markers", marker=dict(color=WARNING, size=13, symbol="diamond"),
+            name="Operating point",
+        )
+    )
+    fig.add_hline(
+        y=float(curve["head"][0]),
+        line=dict(color=TEXT_MUTED, width=1.4, dash="dot"),
+        annotation_text="approaching shutoff head",
+    )
+    fig.update_xaxes(title_text="Volumetric flow rate Q [m3/h]")
+    fig.update_yaxes(title_text="Euler head H [m]")
+    fig.update_layout(title="", height=380)
+    return apply_plotly_theme(fig)
+
+
+def plot_open_channel_rating(curve: Dict, state: Dict) -> go.Figure:
+    """Depth-discharge rating curve, velocity, and the Froude regime split."""
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=("Rating curve: how deep for a given flow", "Froude number and regime"),
+        horizontal_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=curve["discharge"], y=curve["depth"],
+            mode="lines", line=dict(color=ACCENT, width=3), name="Normal depth",
+        ),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[state["discharge"]], y=[state["normal_depth"]],
+            mode="markers", marker=dict(color=WARNING, size=13, symbol="diamond"),
+            name="Design point",
+        ),
+        row=1, col=1,
+    )
+    fig.add_hline(
+        y=state["bank_depth"], line=dict(color=PRESSURE, width=2, dash="dash"),
+        annotation_text="top of bank", row=1, col=1,
+    )
+    fig.add_hline(
+        y=state["critical_depth"], line=dict(color=SUCCESS, width=1.8, dash="dot"),
+        annotation_text="critical depth", row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=curve["depth"], y=curve["froude"],
+            mode="lines", line=dict(color=VORTICITY, width=3), name="Fr",
+        ),
+        row=1, col=2,
+    )
+    fig.add_hline(
+        y=1.0, line=dict(color=SUCCESS, width=2, dash="dash"),
+        annotation_text="Fr = 1, critical", row=1, col=2,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=[state["normal_depth"]], y=[state["froude"]],
+            mode="markers", marker=dict(color=WARNING, size=13, symbol="diamond"),
+            showlegend=False,
+        ),
+        row=1, col=2,
+    )
+    fig.update_xaxes(title_text="Discharge Q [m3/s]", row=1, col=1)
+    fig.update_yaxes(title_text="Depth y [m]", row=1, col=1)
+    fig.update_xaxes(title_text="Depth y [m]", row=1, col=2)
+    fig.update_yaxes(title_text="Froude number [-]", row=1, col=2)
+    fig.update_layout(title="", height=420)
     return apply_plotly_theme(fig)

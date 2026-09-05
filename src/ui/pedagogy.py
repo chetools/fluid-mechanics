@@ -1,12 +1,84 @@
 """Small Streamlit helpers for learning objectives, predict/observe, and checklists.
 
-KaTeX is not evaluated inside raw HTML, so these helpers use markdown
-containers and `st.latex` rather than styled HTML wrappers.
+KaTeX is not evaluated inside raw HTML, `st.info`/`st.success`/`st.warning`/
+`st.error`, or a multi-line `$$...$$` span in `st.markdown`. Streamlit's
+markdown parser ends a display-math span at the first newline, so the first
+line can vanish and the rest dumps as red raw TeX. Route display math through
+`st.latex` (flatten to one line). Inline `$...$` on a single markdown line is
+fine.
 """
 
-from typing import List, Optional, Sequence, Tuple
+from __future__ import annotations
+
+import re
+from typing import Iterator, List, Optional, Sequence, Tuple
 
 import streamlit as st
+
+DISPLAY_MATH_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
+
+
+def render_plot(figure, key: str) -> None:
+    """Keep multi-panel plots readable with a scrollable frame on small screens."""
+    with st.container(key=f"plot-{key}"):
+        st.plotly_chart(figure, width="stretch")
+    st.caption("Hover for values. On small screens, scroll the plot horizontally or use its fullscreen control.")
+
+
+def flatten_display_latex(tex: str) -> str:
+    """Collapse whitespace so the same source cannot split across markdown lines."""
+    return " ".join(tex.strip().split())
+
+
+def iter_prose_and_math(md: str) -> Iterator[Tuple[str, str]]:
+    """Yield ``("prose", text)`` / ``("math", flattened_latex)`` chunks."""
+    pos = 0
+    for match in DISPLAY_MATH_RE.finditer(md):
+        prose = md[pos : match.start()].strip()
+        if prose:
+            yield "prose", prose
+        yield "math", flatten_display_latex(match.group(1))
+        pos = match.end()
+    rest = md[pos:].strip()
+    if rest:
+        yield "prose", rest
+
+
+def render_latex(tex: str) -> None:
+    """Display math via Streamlit KaTeX. Always one physical line."""
+    st.latex(flatten_display_latex(tex))
+
+
+def render_prose_and_latex(md: str) -> None:
+    """Render markdown prose, routing ``$$...$$`` through ``st.latex``.
+
+    Never put display math in ``st.markdown``: a newline inside ``$$`` is the
+    class of bug that prints red TeX and can drop the first term (e.g. ``p/ρ``).
+    """
+    for kind, text in iter_prose_and_math(md):
+        if kind == "math":
+            st.latex(text)
+        else:
+            st.markdown(text)
+
+
+def render_symbols(rows: Sequence[Tuple[str, str]]) -> None:
+    """Define every symbol at the point of first use.
+
+    Each row is ``(latex_without_dollars, plain-English definition)``.
+    """
+    with st.container(border=True):
+        st.markdown("**Symbols**")
+        for sym, meaning in rows:
+            st.markdown(f"- ${sym}$ — {meaning}")
+
+
+def render_callout(body: str, title: str | None = None) -> None:
+    """Bordered note that still runs KaTeX (``st.info`` does not for ``$$``)."""
+    with st.container(border=True):
+        if title:
+            st.markdown(f"**{title}**")
+        render_prose_and_latex(body)
 
 
 def render_objectives(items: Sequence[str]) -> None:
@@ -55,9 +127,9 @@ def render_predict(
         st.caption("Choose a prediction, then operate the controls.")
         return None
     if pick == correct:
-        st.success(explanation)
+        st.markdown(f":green[**Yes.**] {explanation}")
     else:
-        st.info(f"Not quite. {explanation}")
+        st.markdown(f":orange[**Not quite.**] {explanation}")
     return pick
 
 
@@ -81,9 +153,9 @@ def render_self_check(
         if pick is None:
             return
         if pick == correct:
-            st.success(explanation)
+            st.markdown(f":green[**Yes.**] {explanation}")
         else:
-            st.warning(f"Revisit the derivation. {explanation}")
+            st.markdown(f":orange[**Revisit the derivation.**] {explanation}")
 
 
 def render_concept_map() -> None:
@@ -96,8 +168,11 @@ def render_concept_map() -> None:
         ("5. Euler", "Differential momentum; d'Alembert"),
         ("6. Stress & NS", "Tensors and constitutive laws"),
         ("7. Exact solutions & BL", "Couette, Hagen, Stokes, Blasius, separation"),
-        ("8. CFD", "Projection after you know what 'steady' means"),
-        ("9. Reference", "Nomenclature and validity matrix"),
+        ("8. External flow", "Stokes drag, settling and drag crisis"),
+        ("9. Turbomachinery", "Euler work, compression and expansion"),
+        ("10. Compressible", "Nozzles, choking, shocks and heated ducts"),
+        ("11. CFD", "Incompressible projection and verification"),
+        ("12. Reference", "Nomenclature and validity matrix"),
     ]
     st.markdown("**Path (easier plant story → harder mathematics)**")
     for title, blurb in steps:

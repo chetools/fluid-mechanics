@@ -1,6 +1,7 @@
 """UI module for Panel 1: Euler's Equation (1D to 3D), Streamlines & Bernoulli."""
 
 import streamlit as st
+from src.ui.pedagogy import render_plot
 
 from src.svg_diagrams import (
     diagram_continuity_streamtube,
@@ -18,13 +19,14 @@ from src.ui.pedagogy import (
     render_checklist,
     render_predict,
     render_self_check,
+    render_prose_and_latex,
+    render_callout,
 )
 
 
 def render_tab_euler():
     """Render comprehensive educational panel for Euler's Equation."""
     fluid = get_fluid_state()
-    st.markdown("## 5. Euler's Equation of Motion: From 1D to 3D Vector Form")
     st.markdown(
         """
         Euler’s equation is the momentum balance for an **inviscid fluid**
@@ -46,7 +48,7 @@ def render_tab_euler():
     # PART 0: Continuity
     # -------------------------------------------------------------------------
     st.markdown("### 5.1 Mass Conservation (Continuity) Comes First")
-    st.markdown(
+    render_prose_and_latex(
         r"""
         Momentum without mass conservation is incomplete. For a **steady** streamtube,
         mass does not accumulate inside:
@@ -57,8 +59,8 @@ def render_tab_euler():
     )
     render_svg(diagram_continuity_streamtube())
 
-    with st.expander("🔍 Reynolds transport vs. the differential statement", expanded=True):
-        st.markdown(
+    with st.expander("🔍 Reynolds transport vs. the differential statement", expanded=False):
+        render_prose_and_latex(
             r"""
             For a fixed control volume, mass conservation is the Reynolds transport theorem
             applied to $B = m$:
@@ -83,7 +85,7 @@ def render_tab_euler():
 
     render_svg(diagram_1d_euler_element())
 
-    st.info(
+    render_callout(
         """
         **Physical Force Inventory on the Fluid Parcel**
 
@@ -95,8 +97,8 @@ def render_tab_euler():
         """
     )
 
-    with st.expander("🔍 Step-by-Step Algebraic Proof: From Newton's Second Law to 1D Euler", expanded=True):
-        st.markdown(
+    with st.expander("🔍 Step-by-Step Algebraic Proof: From Newton's Second Law to 1D Euler", expanded=False):
+        render_prose_and_latex(
             r"""
             **Step 1: Write Newton's Second Law**
             $$dm \cdot a_x = \sum dF_x$$
@@ -142,7 +144,7 @@ def render_tab_euler():
 
     col_analogy1, col_analogy2 = st.columns(2)
     with col_analogy1:
-        st.info(
+        render_callout(
             """
             **Eulerian Viewpoint (The Sensor on the Bridge)**
 
@@ -152,7 +154,7 @@ def render_tab_euler():
             """
         )
     with col_analogy2:
-        st.success(
+        render_callout(
             """
             **Lagrangian Viewpoint (The Fish Swimming Along)**
 
@@ -168,7 +170,7 @@ def render_tab_euler():
     st.latex(r"\text{For velocity: } \quad \frac{D\mathbf{u}}{Dt} = \frac{\partial \mathbf{u}}{\partial t} + (\mathbf{u}\cdot\nabla)\mathbf{u} = \frac{\partial \mathbf{u}}{\partial t} + u\frac{\partial \mathbf{u}}{\partial x} + v\frac{\partial \mathbf{u}}{\partial y} + w\frac{\partial \mathbf{u}}{\partial z}")
 
     with st.expander("🔍 Multivariable Calculus Proof: Multidimensional Chain Rule"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             Let $\mathbf{u} = \mathbf{u}(x, y, z, t)$ be the velocity field.
             As a specific fluid parcel travels along its pathline, its coordinates vary with time:
@@ -188,7 +190,7 @@ def render_tab_euler():
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 5.4 Generalization to the 3D Vector Euler Equation")
-    st.markdown(
+    render_prose_and_latex(
         r"""
         Applying the momentum balance independently along all three Cartesian axes $(x, y, z)$
         for an infinitesimal control volume $dx \times dy \times dz$ yields:
@@ -214,7 +216,7 @@ def render_tab_euler():
     render_svg(diagram_streamline_geometry())
 
     with st.expander("🔍 Mathematical Derivation: Integrating Euler along a Streamline to Obtain Bernoulli"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             For steady flow ($\partial \mathbf{u}/\partial t = 0$), Euler's equation is:
             $$(\mathbf{u}\cdot\nabla)\mathbf{u} = -\frac{1}{\rho}\nabla p - g \nabla z$$
@@ -332,7 +334,7 @@ def render_tab_euler():
             "A real diffuser would drop $H$ slightly; Euler cannot see that loss."
         )
         fig_venturi = plot_venturi(res_venturi)
-        st.plotly_chart(fig_venturi, width="stretch")
+        render_plot(fig_venturi, key="tab_euler-fig_venturi")
 
     with demo_tab2:
         st.markdown(
@@ -369,9 +371,9 @@ def render_tab_euler():
             "That is why the integral is theoretically zero — viscosity is missing (Tab 6)."
         )
         fig_cyl = plot_cylinder_potential_flow(res_cyl)
-        st.plotly_chart(fig_cyl, width="stretch")
+        render_plot(fig_cyl, key="tab_euler-fig_cyl")
 
-        st.info(
+        render_callout(
             """
             **Why does d'Alembert's Paradox happen?**
 

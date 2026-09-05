@@ -8,3 +8,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Generated verification evidence, not an input to the application
+network-verification.png
+.pytest_cache/

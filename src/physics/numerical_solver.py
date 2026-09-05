@@ -11,7 +11,7 @@ Steps:
 5. Benchmark comparison with Ghia et al. (1982)
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 
 # Classical literature benchmark data from Ghia, Ghia & Shin (1982) for Re=100
@@ -55,34 +55,85 @@ def solve_pressure_poisson(
     rho: float,
     dt: float,
     n_iterations: int = 50,
+    omega: float = 1.8,
 ) -> np.ndarray:
-    """Solve the Pressure Poisson equation using vectorized Jacobi relaxation.
-    
+    """Solve the Pressure Poisson equation by red-black SOR.
+
     laplacian(p) = (rho / dt) * div(u*)
     Neumann boundary conditions: dp/dn = 0 on all walls.
+
+    Jacobi needs O(N^2) sweeps to relax the longest wavelength on an N x N
+    grid; successive over-relaxation with omega -> 2 needs O(N). The red-black
+    ordering keeps every sweep vectorized: red points depend only on black
+    neighbours and vice versa, so each half-sweep is a single NumPy expression
+    that already sees the other colour's updated values (true Gauss-Seidel).
+
+    The returned array is a new array; the caller's `p` is left unchanged.
     """
-    p_new = p.copy()
+    if not 0.0 < omega < 2.0:
+        raise ValueError("SOR relaxation factor must satisfy 0 < omega < 2")
+    p_new = np.array(p, dtype=float, copy=True)
     dx2 = dx * dx
     dy2 = dy * dy
     factor = 0.5 * (dx2 * dy2) / (dx2 + dy2)
     rhs = (rho / dt) * div_u_star
-    
+
+    # Compatibility. With dp/dn = 0 on every wall, the divergence theorem forces
+    # the source to integrate to zero, or no solution exists and the relaxation
+    # cannot converge at all. Impermeable walls make the *continuous* net flux
+    # zero, but central differences on a collocated grid decouple the even and
+    # odd nodes, leaving a small nonzero discrete mean. Projecting it out is
+    # what makes the residual below a meaningful convergence measure.
+    rhs = rhs.copy()
+    rhs[1:-1, 1:-1] -= np.mean(rhs[1:-1, 1:-1])
+
+    # Checkerboard masks over the interior nodes.
+    ny, nx = p_new.shape
+    jj, ii = np.meshgrid(np.arange(ny), np.arange(nx), indexing="ij")
+    red = ((ii + jj) % 2 == 0)[1:-1, 1:-1]
+    black = ~red
+
     for _ in range(n_iterations):
-        p_new[1:-1, 1:-1] = factor * (
-            (p[1:-1, 2:] + p[1:-1, :-2]) / dx2
-            + (p[2:, 1:-1] + p[:-2, 1:-1]) / dy2
-            - rhs[1:-1, 1:-1]
-        )
-        
+        for colour in (red, black):
+            gauss_seidel = factor * (
+                (p_new[1:-1, 2:] + p_new[1:-1, :-2]) / dx2
+                + (p_new[2:, 1:-1] + p_new[:-2, 1:-1]) / dy2
+                - rhs[1:-1, 1:-1]
+            )
+            interior = p_new[1:-1, 1:-1]
+            p_new[1:-1, 1:-1] = np.where(
+                colour, interior + omega * (gauss_seidel - interior), interior
+            )
+
         # Homogeneous Neumann boundary conditions: dp/dn = 0
         p_new[:, -1] = p_new[:, -2]  # Right wall
         p_new[:, 0] = p_new[:, 1]    # Left wall
         p_new[-1, :] = p_new[-2, :]  # Top wall
         p_new[0, :] = p_new[1, :]    # Bottom wall
-        
-        p[:] = p_new
-        
-    return p
+
+    # A pure-Neumann Poisson problem fixes pressure only to a constant.
+    # Pinning the mean keeps the reported field from drifting between runs;
+    # only the gradient enters the projection, so this changes no velocity.
+    return p_new - float(np.mean(p_new))
+
+
+def poisson_residual(
+    p: np.ndarray,
+    div_u_star: np.ndarray,
+    dx: float,
+    dy: float,
+    rho: float,
+    dt: float,
+) -> float:
+    """Max interior |laplacian(p) - (rho/dt) div(u*)| for the solved field."""
+    lap = np.zeros_like(p)
+    lap[1:-1, 1:-1] = (
+        (p[1:-1, 2:] - 2.0 * p[1:-1, 1:-1] + p[1:-1, :-2]) / (dx * dx)
+        + (p[2:, 1:-1] - 2.0 * p[1:-1, 1:-1] + p[:-2, 1:-1]) / (dy * dy)
+    )
+    rhs = (rho / dt) * div_u_star
+    return float(np.max(np.abs(lap[1:-1, 1:-1] - rhs[1:-1, 1:-1])))
+
 
 def solve_streamfunction(
     vorticity: np.ndarray,
@@ -124,6 +175,13 @@ def run_lid_driven_cavity(
     Top wall moves rightward with velocity u = u_lid.
     Other three walls are no-slip (u = 0, v = 0).
     """
+    for name, value in (("reynolds", reynolds), ("u_lid", u_lid), ("dt", dt)):
+        if not np.isfinite(value) or value <= 0:
+            raise ValueError(f"{name} must be finite and positive")
+    for name, value, minimum in (("nx", nx, 3), ("ny", ny, 3),
+                                 ("n_steps", n_steps, 0), ("poisson_iters", poisson_iters, 1)):
+        if not isinstance(value, (int, np.integer)) or value < minimum:
+            raise ValueError(f"{name} must be an integer >= {minimum}")
     lx, ly = 1.0, 1.0
     dx = lx / (nx - 1)
     dy = ly / (ny - 1)
@@ -141,6 +199,7 @@ def run_lid_driven_cavity(
     u = np.zeros((ny, nx), dtype=float)
     v = np.zeros((ny, nx), dtype=float)
     p = np.zeros((ny, nx), dtype=float)
+    u[-1, 1:-1] = u_lid
     
     last_div_star = np.zeros_like(u)
     last_p = p
@@ -148,7 +207,7 @@ def run_lid_driven_cavity(
     # Time stepping loop
     for _ in range(n_steps):
         # 1. Compute spatial derivatives for current u, v
-        # Upwind/central derivatives for advection
+        # Central derivatives for advection
         du_dx = (u[1:-1, 2:] - u[1:-1, :-2]) / (2.0 * dx)
         du_dy = (u[2:, 1:-1] - u[:-2, 1:-1]) / (2.0 * dy)
         dv_dx = (v[1:-1, 2:] - v[1:-1, :-2]) / (2.0 * dx)
@@ -178,7 +237,8 @@ def run_lid_driven_cavity(
         u_star[0, :] = 0.0
         u_star[:, 0] = 0.0
         u_star[:, -1] = 0.0
-        v_star[:, :] = 0.0  # walls impermeable
+        v_star[[0, -1], :] = 0.0  # walls impermeable
+        v_star[:, [0, -1]] = 0.0
         
         # 3. Compute divergence of u*
         div_u_star = np.zeros_like(u)
@@ -222,10 +282,8 @@ def run_lid_driven_cavity(
     psi = solve_streamfunction(vorticity, dx, dy)
     
     # Centerline velocity profiles for benchmark verification
-    mid_x_idx = nx // 2
-    mid_y_idx = ny // 2
-    u_centerline = u[:, mid_x_idx]
-    v_centerline = v[mid_y_idx, :]
+    u_centerline = np.array([np.interp(0.5 * lx, x, row) for row in u])
+    v_centerline = np.array([np.interp(0.5 * ly, y, col) for col in v.T])
     
     # Divergence check
     div_final = np.zeros_like(u)
@@ -234,23 +292,22 @@ def run_lid_driven_cavity(
         + (v[2:, 1:-1] - v[:-2, 1:-1]) / (2.0 * dy)
     )
     max_divergence = float(np.max(np.abs(div_final[1:-1, 1:-1])))
+    # The lid is discontinuous at the two top corners: u jumps from u_lid to 0
+    # across one cell, so |div| there is O(u_lid/dx) no matter how well the
+    # Poisson equation is solved. That corner singularity is a property of the
+    # problem, not of the projection. Report a corner-excluded measure as well,
+    # so a student can tell "the projection failed" from "the corner is singular".
+    margin = 3 if min(nx, ny) >= 9 else 1
+    max_divergence_interior = float(np.max(np.abs(div_final[margin:-margin, margin:-margin])))
 
-    dx2 = dx * dx
-    dy2 = dy * dy
-    lap_p = np.zeros_like(last_p)
-    lap_p[1:-1, 1:-1] = (
-        (last_p[1:-1, 2:] - 2.0 * last_p[1:-1, 1:-1] + last_p[1:-1, :-2]) / dx2
-        + (last_p[2:, 1:-1] - 2.0 * last_p[1:-1, 1:-1] + last_p[:-2, 1:-1]) / dy2
-    )
-    poisson_rhs = (rho / dt) * last_div_star
-    poisson_residual = float(np.max(np.abs(lap_p[1:-1, 1:-1] - poisson_rhs[1:-1, 1:-1])))
+    residual_p = poisson_residual(last_p, last_div_star, dx, dy, rho, dt)
 
     t_final = n_steps * dt
     cfl = (u_lid * dt / dx) if dx > 0 else float("inf")
     t_advect = lx / max(u_lid, 1e-12)
     t_viscous = (lx * lx) / max(nu, 1e-16)
     ghia_applicable = abs(reynolds - 100.0) < 1e-9
-    ghia_rmse = ghia_centerline_rmse(y, u_centerline) if ghia_applicable else float("nan")
+    ghia_rmse = ghia_centerline_rmse(y, u_centerline / u_lid) if ghia_applicable else float("nan")
     # A few lid-crossing times; viscous time is Re (when U = L = 1).
     approaching_steady = t_final >= 8.0 * t_advect
 
@@ -268,7 +325,8 @@ def run_lid_driven_cavity(
         "u_centerline": u_centerline,
         "v_centerline": v_centerline,
         "max_divergence": max_divergence,
-        "poisson_residual": poisson_residual,
+        "max_divergence_interior": max_divergence_interior,
+        "poisson_residual": residual_p,
         "ghia_y": GHIA_RE100_Y,
         "ghia_u": GHIA_RE100_U,
         "ghia_applicable": ghia_applicable,

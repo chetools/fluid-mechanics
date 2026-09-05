@@ -82,13 +82,7 @@ def render_top_bar(
         )
         
     with col_kpi5:
-        st.markdown(
-            """
-            <div class="metric-card">
-                <div class="metric-card-title">Display Units</div>
-            """,
-            unsafe_allow_html=True
-        )
+        st.caption("DISPLAY UNITS")
         unit_choice = st.selectbox(
             "Units",
             options=["SI (Metric)", "Nondimensional [-]"],
@@ -102,4 +96,4 @@ def render_top_bar(
             set_unit_system(selected_unit_sys)
             st.rerun()
             
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.caption("Controls stay in SI.")

@@ -7,3 +7,11 @@ font = "sans serif"
 
 [server]
 headless = true
+# Avoid Windows dependency-watcher stalls after a completed script run.
+# app.py fingerprints sources again on a manual browser refresh/rerun.
+fileWatcherType = "none"
+
+[runner]
+# Finish the current render before processing new widget state. The course
+# reloads shared modules and must not run two script contexts concurrently.
+fastReruns = false

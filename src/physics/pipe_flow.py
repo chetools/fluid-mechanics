@@ -9,7 +9,7 @@ Implements:
 6. Hydraulic diameter for non-circular channels and heat exchanger annuli
 """
 
-from typing import Dict, List, Tuple
+from typing import Dict
 import numpy as np
 
 # Standard commercial pipe roughness values (in meters)
@@ -46,6 +46,9 @@ def friction_factor_churchill(reynolds: float, rel_roughness: float) -> float:
     """
     if reynolds <= 0:
         return float("nan")
+    if reynolds < 1.0:
+        # Avoid large powers and retain the creeping-flow limit at tiny Re.
+        return 64.0 / reynolds
         
     Re = max(reynolds, 1e-4)
     eps_D = max(rel_roughness, 0.0)
@@ -69,6 +72,8 @@ def solve_colebrook_white(reynolds: float, rel_roughness: float, max_iter: int =
     
     1 / sqrt(f) = -2.0 * log10( (eps/D)/3.7 + 2.51 / (Re * sqrt(f)) )
     """
+    if reynolds <= 0:
+        return float("nan")
     if reynolds < 2300.0:
         return 64.0 / reynolds
         
@@ -142,7 +147,7 @@ def calculate_cheme_pipe_system(
     
     # Major head loss (pipe skin friction)
     dyn_head = 0.5 * density * velocity**2
-    delta_p_major = f_darcy * (pipe_length / pipe_diameter_inner) * dyn_head
+    delta_p_major = 0.0 if velocity == 0 else f_darcy * (pipe_length / pipe_diameter_inner) * dyn_head
     h_loss_major = delta_p_major / (density * 9.81)
     
     # Minor head loss (valves & fittings)
@@ -270,7 +275,7 @@ def npsh_available(
     k_total = sum(
         FITTING_K_FACTORS.get(name, 0.0) * count for name, count in fittings_counts.items()
     )
-    h_friction = f_d * (suction_length / D) * (velocity**2) / (2.0 * g)
+    h_friction = 0.0 if velocity == 0 else f_d * (suction_length / D) * (velocity**2) / (2.0 * g)
     h_minor = k_total * (velocity**2) / (2.0 * g)
     h_f = h_friction + h_minor
     static_abs = (p_tank_abs - p_vapor) / (density * g) if density > 0 else 0.0
@@ -328,7 +333,7 @@ def straw_bundle_comparison(
     u_open = Q / area_open if area_open > 0 else 0.0
     re_open = (density * u_open * D) / viscosity if viscosity > 0 else float("inf")
     f_open = friction_factor_churchill(re_open, roughness / D)
-    dp_open = f_open * (L / D) * 0.5 * density * u_open * u_open
+    dp_open = 0.0 if Q == 0 else f_open * (L / D) * 0.5 * density * u_open * u_open
 
     d = D * np.sqrt(phi / N)
     q_i = Q / N
@@ -336,7 +341,7 @@ def straw_bundle_comparison(
     u_i = q_i / area_i if area_i > 0 else 0.0
     re_i = (density * u_i * d) / viscosity if viscosity > 0 else float("inf")
     f_i = friction_factor_churchill(re_i, 0.0)
-    dp_bundle = f_i * (L / d) * 0.5 * density * u_i * u_i
+    dp_bundle = 0.0 if Q == 0 else f_i * (L / d) * 0.5 * density * u_i * u_i
     dp_lam_exact = (128.0 * viscosity * L * q_i) / (np.pi * d**4) if d > 0 else float("inf")
     return {
         "n_straws": N,

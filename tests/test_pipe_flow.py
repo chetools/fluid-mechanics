@@ -20,6 +20,40 @@ def test_churchill_laminar_asymptote():
     f_exact = 64.0 / re_test
     assert np.isclose(f_churchill, f_exact, rtol=1e-3)
 
+
+@pytest.mark.parametrize("reynolds", [1e-20, 1e-6, 0.1])
+def test_churchill_creeping_flow(reynolds):
+    assert friction_factor_churchill(reynolds, 0.0) == pytest.approx(64.0 / reynolds)
+
+
+def test_colebrook_zero_reynolds_is_undefined():
+    assert np.isnan(solve_colebrook_white(0.0, 0.0))
+
+
+def test_zero_flow_has_no_losses_or_power():
+    pipe = calculate_cheme_pipe_system(
+        flow_rate=0, pipe_diameter_inner=0.08, pipe_length=50,
+        roughness=0, density=1000, viscosity=0.001, elevation_gain=10,
+    )
+    assert pipe["delta_p_major"] == 0
+    assert pipe["delta_p_minor"] == 0
+    assert pipe["h_total"] == 10
+    assert pipe["p_shaft_kw"] == 0
+    assert pipe["annual_cost"] == 0
+    suction = npsh_available(
+        p_tank_abs=101325, z_surface=2, p_vapor=2338,
+        density=1000, viscosity=0.001, suction_length=5,
+        suction_diameter=0.08, roughness=0, flow_rate_m3s=0,
+    )
+    assert suction["h_f"] == 0
+    assert suction["npsh_a"] == pytest.approx((101325 - 2338) / 9810 + 2)
+    bundle = straw_bundle_comparison(
+        flow_rate=0, outer_diameter=0.08, length=50,
+        density=1000, viscosity=0.001, n_straws=100,
+    )
+    for key in ("dp_open", "dp_bundle", "power_open", "power_bundle"):
+        assert bundle[key] == 0
+
 def test_colebrook_white_and_churchill_agreement():
     """Verify Colebrook-White and Churchill agree in turbulent regime."""
     re_turb = 100000.0

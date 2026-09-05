@@ -7,7 +7,7 @@ Implements:
 4. Chemical engineering transport trade-offs (Reynolds / Chilton-Colburn analogy)
 """
 
-from typing import Dict, Tuple
+from typing import Dict
 import numpy as np
 
 def velocity_profile_comparison(

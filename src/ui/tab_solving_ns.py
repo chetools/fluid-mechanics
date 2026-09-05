@@ -1,8 +1,14 @@
 """UI module for Panel 4: Exact NS solutions and laminar boundary layers."""
 
 import streamlit as st
+from src.ui.pedagogy import render_plot
 
-from src.svg_diagrams import diagram_blasius_plate, render_svg
+from src.svg_diagrams import (
+    diagram_blasius_plate,
+    diagram_blasius_scaling,
+    diagram_blasius_similarity,
+    render_svg,
+)
 from src.physics.exact_solutions import (
     couette_poiseuille_channel,
     hagen_poiseuille_pipe,
@@ -22,20 +28,21 @@ from src.ui.pedagogy import (
     render_what_to_notice,
     render_predict,
     render_self_check,
+    render_callout,
+    render_prose_and_latex,
 )
 
 
 def render_tab_solving_ns():
     """Exact solutions plus Blasius / cylinder separation."""
     fluid = get_fluid_state()
-    st.markdown("## 7. Exact Solutions & Laminar Boundary Layers")
     st.markdown(
         """
         Except for a handful of highly symmetric cases, **no general closed-form
         Navier–Stokes solution exists**. Here the convective term vanishes or is
         absorbed into a similarity variable. The Blasius plate is the payoff of
         d'Alembert's paradox from Tab 5: viscosity lives in a thin layer, and
-        an adverse outer gradient separates it. Projection CFD is Tab 8.
+        an adverse outer gradient separates it. Projection CFD is Tab 11.
         """
     )
     render_objectives(
@@ -50,9 +57,11 @@ def render_tab_solving_ns():
     st.markdown("### 7.1 Exact Analytical Solutions (When Non-Linearity Vanishes)")
     st.markdown(
         """
-        When flow geometry forces streamlines to be straight and parallel ($v = w = 0$),
+        For fully developed parallel flow ($v = w = 0$ and $\\partial u/\\partial x = 0$),
         the non-linear term vanishes identically: $(\\mathbf{u}\\cdot\\nabla)\\mathbf{u} = u \\frac{\\partial u}{\\partial x} = 0$.
-        The partial differential equation simplifies to an ordinary differential equation.
+        With the additional assumption of steady flow, the momentum equation becomes
+        an ordinary differential equation across the gap or radius. Stokes' first
+        problem below is unsteady and instead retains a diffusion PDE.
         Viscosity $\\mu$ and density $\\rho$ come from the **sidebar fluid**.
         """
     )
@@ -107,14 +116,15 @@ def render_tab_solving_ns():
             )
         st.caption(
             f"μ = {fluid['mu']:.3e} Pa·s from **{fluid['name']}**. "
-            "Plane-channel kinetic-energy factor is α = 54/35 ≈ 1.54, not the pipe value 2."
+            "For pure pressure-driven plane Poiseuille flow, α = 54/35 ≈ 1.54. "
+            "Adding wall motion changes the profile and its correction factor."
         )
         render_what_to_notice("Green = total u(y). Dashed = linear Couette. Dotted = parabolic Poiseuille.")
         fig_cp = plot_exact_channel_flow(res_cp)
-        st.plotly_chart(fig_cp, width="stretch")
+        render_plot(fig_cp, key="tab_solving_ns-fig_cp")
 
-        with st.expander("🔍 Step-by-Step Derivation of Couette-Poiseuille Flow", expanded=True):
-            st.markdown(
+        with st.expander("🔍 Step-by-Step Derivation of Couette-Poiseuille Flow", expanded=False):
+            render_prose_and_latex(
                 r"""
                 For steady, fully developed 2D flow between infinite parallel plates:
                 $$\mathbf{u} = (u(y), 0, 0)$$
@@ -140,13 +150,15 @@ def render_tab_solving_ns():
             )
 
     with exact_tab2:
-        st.markdown(
+        render_prose_and_latex(
             r"""
             Hagen–Poiseuille is the **circular-pipe** cousin of plane Poiseuille — the profile
             ChemE students actually use. Axisymmetric NS with $u_z(r)$ only:
             $$u(r) = \frac{1}{4\mu}\left(-\frac{dp}{dz}\right)(R^2 - r^2), \qquad
             Q = \frac{\pi R^4}{8\mu}\left(-\frac{dp}{dz}\right), \qquad
             \frac{u_\mathrm{avg}}{u_\mathrm{max}} = \frac12, \quad \alpha = 2$$
+            $\alpha=(1/A)\int(u/\bar{u})^3\,dA$ is the kinetic-energy correction (Tab 1),
+            not an angle: the parabola forces $\alpha=2$ in a circular pipe.
             """
         )
         col_hp1, col_hp2 = st.columns(2)
@@ -171,7 +183,7 @@ def render_tab_solving_ns():
         )
         render_what_to_notice("Parabola in a round pipe; mean velocity is half the apex (not 2/3 — that is a plane channel).")
         fig_hp = plot_hagen_poiseuille(res_hp)
-        st.plotly_chart(fig_hp, width="stretch")
+        render_plot(fig_hp, key="tab_solving_ns-fig_hp")
 
     with exact_tab3:
         st.markdown(
@@ -196,10 +208,10 @@ def render_tab_solving_ns():
         res_stokes = stokes_first_problem(nu=nu_val)
         render_what_to_notice("Double ν and δ grows by √2, not 2. Viscosity is momentum diffusivity.")
         fig_stokes = plot_stokes_first_problem(res_stokes)
-        st.plotly_chart(fig_stokes, width="stretch")
+        render_plot(fig_stokes, key="tab_solving_ns-fig_stokes")
 
         with st.expander("🔍 Mathematical Derivation: Self-Similar Solution via Error Function"):
-            st.markdown(
+            render_prose_and_latex(
                 r"""
                 Governing diffusion PDE:
                 $$\frac{\partial u}{\partial t} = \nu \frac{\partial^2 u}{\partial y^2}$$
@@ -234,26 +246,223 @@ def render_tab_solving_ns():
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 7.2 Blasius Flat-Plate Boundary Layer")
-    st.markdown(
+    render_objectives(
+        [
+            "Say why a *thin* layer lets you delete two terms from Navier–Stokes, and which two.",
+            "Build the similarity variable $\\eta$ from the scaling argument, not by being told it.",
+            "Read $f''(0) = 0.332$ as a wall shear stress, and $\\delta^*$ as a displacement of the outer flow.",
+            "Explain why $\\delta \\propto \\sqrt{x}$ and $c_f \\propto 1/\\sqrt{x}$ are the *same* statement.",
+        ]
+    )
+    render_prose_and_latex(
         r"""
         A uniform stream $U_\infty$ meets a thin plate at $x = 0$. Far from the wall the
-        flow is inviscid; at the wall $u = 0$. Prandtl's 1904 scaling reduces NS to
-        $$f''' + \tfrac12 f f'' = 0, \qquad
-        \eta = y\sqrt{U_\infty/(\nu x)}, \qquad u/U_\infty = f'(\eta)$$
-        with $f(0)=f'(0)=0$ and $f'(\infty)=1$. The layer is thin:
-        $\delta/x \approx 4.91/\sqrt{\mathrm{Re}_x}$, so as $\mathrm{Re}\to\infty$
-        Euler is recovered *outside* the layer — but the wall still feels drag
-        $c_f = 0.664/\sqrt{\mathrm{Re}_x}$.
+        flow is inviscid; at the wall $u = 0$. Between those two facts sits the whole of
+        Prandtl's 1904 insight, and it resolves the paradox chapter 5 left open: how a
+        fluid can be *effectively* inviscid almost everywhere and still exert drag.
         """
     )
     render_svg(diagram_blasius_plate())
+
+    st.markdown("#### Step 0 · The question, and why Euler cannot answer it")
+    render_prose_and_latex(
+        r"""
+        Euler's equation has no viscosity, so it cannot impose $u = 0$ at a wall. It gets
+        one boundary condition per surface — no penetration — and is content with fluid
+        sliding along the plate at full speed. That solution has **zero shear stress
+        everywhere**, hence zero drag, which is wrong for every real plate ever tested.
+
+        The resolution is not that Euler is wrong. It is that the viscous term
+        $\nu\nabla^2\mathbf{u}$ carries the highest derivative, so dropping it lowers the
+        order of the equation and loses a boundary condition. Whenever the highest
+        derivative in a differential equation is multiplied by a small parameter, the
+        solution develops a **thin region where that term is not small** — a boundary
+        layer. The small parameter here is $1/\mathrm{Re}$.
+        """
+    )
+    render_callout(
+        """
+        **The pattern, in one sentence.** $\\nu \\to 0$ does not make the viscous term
+        disappear; it squeezes it into a layer thin enough that $\\nu \\partial^2 u/\\partial y^2$
+        stays finite. The layer must therefore get *thinner* as $\\nu$ falls — precisely
+        fast enough to keep the two terms comparable. Step 1 turns that sentence into $\\delta(x)$.
+        """
+    )
+
+    st.markdown("#### Step 1 · How thick? A balance of two terms")
+    render_svg(diagram_blasius_scaling())
+    render_prose_and_latex(
+        r"""
+        Inside the layer, streamwise momentum is carried downstream by inertia and removed
+        sideways by viscosity. Estimate each with the only scales available — $U_\infty$ for
+        velocity, $x$ along the plate, $\delta$ across it:
+        $$u\frac{\partial u}{\partial x} \sim \frac{U_\infty^2}{x},
+        \qquad \nu\frac{\partial^2 u}{\partial y^2} \sim \frac{\nu U_\infty}{\delta^2}$$
+        The layer's edge is *defined* as the place where these balance — inside, viscosity
+        matters; outside, it does not. Setting them equal:
+        $$\frac{U_\infty^2}{x} \sim \frac{\nu U_\infty}{\delta^2}
+        \quad\Longrightarrow\quad \delta \sim \sqrt{\frac{\nu x}{U_\infty}}
+        = \frac{x}{\sqrt{\mathrm{Re}_x}}$$
+
+        **Why the square root, physically.** Viscosity is a diffusivity, with units m²/s.
+        A diffusing quantity spreads a distance $\sqrt{\nu t}$ in time $t$ — the same law
+        that governs heat spreading into a wall, or ink in still water. A fluid parcel that
+        entered at the leading edge has been near the plate for a time $t \approx x/U_\infty$.
+        Substituting gives $\delta \sim \sqrt{\nu x / U_\infty}$ immediately. **Blasius is
+        Stokes' first problem carried downstream by the flow**: the moving plate of §7.1
+        replaced by a stationary plate and a moving observer.
+        """
+    )
     render_predict(
         "blasius_predict",
         "At fixed U_∞, doubling distance x from the leading edge makes δ…",
         ["double", "grow by √2", "stay constant (similarity)"],
         "grow by √2",
-        "δ ~ x / √(U x / ν) = √(ν x / U), so δ ∝ √x. Double x, multiply δ by √2.",
+        "δ ~ √(νx/U), so δ ∝ √x. Double x, multiply δ by √2 ≈ 1.41. "
+        "Equivalently: the diffusion time doubled, and diffusion depth goes as the square root of time.",
     )
+
+    st.markdown("#### Step 2 · What thinness buys: the Prandtl equations")
+    render_prose_and_latex(
+        r"""
+        With $\delta/x \sim \mathrm{Re}_x^{-1/2} \ll 1$, compare derivatives across and along
+        the layer. Any quantity changes by roughly the same amount in both directions, but
+        over lengths differing by the factor $\delta/x$:
+        $$\frac{\partial^2 u/\partial x^2}{\partial^2 u/\partial y^2}
+        \sim \frac{U_\infty/x^2}{U_\infty/\delta^2} = \left(\frac{\delta}{x}\right)^2
+        \sim \frac{1}{\mathrm{Re}_x}$$
+        At $\mathrm{Re}_x = 10^5$ that ratio is $10^{-5}$: streamwise diffusion is
+        negligible. **Deletion 1.**
+
+        Continuity fixes the size of the wall-normal velocity. If $u$ changes by $U_\infty$
+        over $x$, then $\partial v/\partial y \sim U_\infty/x$, so $v \sim U_\infty\delta/x$
+        — small, but *not* zero, and not negligible: $v\,\partial u/\partial y \sim
+        (U_\infty \delta/x)(U_\infty/\delta) = U_\infty^2/x$, the same size as
+        $u\,\partial u/\partial x$. The transverse velocity is small yet fully active.
+
+        The $y$-momentum equation, scaled the same way, gives $\partial p/\partial y \sim
+        \rho U_\infty^2 \delta / x^2$, which is smaller than $\partial p/\partial x$ by
+        $(\delta/x)^2$. So **pressure does not vary across the layer. Deletion 2.**
+        $$\boxed{\;u\frac{\partial u}{\partial x} + v\frac{\partial u}{\partial y}
+        = -\frac{1}{\rho}\frac{dp}{dx} + \nu\frac{\partial^2 u}{\partial y^2},
+        \qquad \frac{\partial p}{\partial y} = 0\;}$$
+        """
+    )
+    render_callout(
+        """
+        **Deletion 2 is the one that does the work.** Because $p$ does not change across the
+        layer, the wall feels whatever pressure the *inviscid outer flow* dictates. The
+        boundary layer stops being a coupled problem: solve Euler outside, hand the
+        resulting $p(x)$ down, and integrate the layer with it. For a flat plate at zero
+        incidence the outer flow is uniform, so $dp/dx = 0$ and the equation above loses its
+        pressure term entirely. Chapter 7.3 shows what happens when $dp/dx > 0$ instead.
+        """,
+        title="Why the boundary layer became solvable",
+    )
+
+    st.markdown("#### Step 3 · Two equations, one unknown: the stream function")
+    render_prose_and_latex(
+        r"""
+        Continuity $\partial u/\partial x + \partial v/\partial y = 0$ is satisfied
+        *identically* by any $\psi$ with
+        $$u = \frac{\partial \psi}{\partial y}, \qquad v = -\frac{\partial \psi}{\partial x}$$
+        because mixed partials commute. This is not a trick; it is the statement that an
+        incompressible plane flow has one degree of freedom, not two. Two unknowns become
+        one, and one of the two governing equations is discharged for free.
+        """
+    )
+
+    st.markdown("#### Step 4 · Similarity: guessing the right variable, and why it must exist")
+    render_svg(diagram_blasius_similarity())
+    render_prose_and_latex(
+        r"""
+        A semi-infinite plate has **no built-in length**. Nothing in the problem statement
+        says "10 cm". So the profile at station $x$ cannot depend on $x$ except through
+        whatever thickness the flow itself manufactures — and step 1 already found the only
+        candidate, $\sqrt{\nu x/U_\infty}$. Measure $y$ in those units:
+        $$\eta \equiv y\sqrt{\frac{U_\infty}{\nu x}} = \frac{y}{\delta(x)}\ \text{(up to a constant)}$$
+        and the profile must collapse onto a single curve:
+        $$\frac{u}{U_\infty} = f'(\eta)$$
+        The scaling for $\psi$ follows from $u = \partial\psi/\partial y$: since $u \sim U_\infty$
+        and $y \sim \sqrt{\nu x/U_\infty}$, we need $\psi \sim U_\infty\sqrt{\nu x/U_\infty}
+        = \sqrt{\nu x U_\infty}$. Hence
+        $$\psi = \sqrt{\nu x U_\infty}\, f(\eta)$$
+        with $f$ dimensionless. Writing the velocity as $f'$ rather than $f$ is a
+        convenience that makes exactly this work out.
+        """
+    )
+    render_what_to_notice(
+        "This is dimensional analysis (chapter 3) doing structural work: the *absence* of a "
+        "length scale is a fact about the problem, and it collapses a PDE in two variables "
+        "into an ODE in one. Whenever a problem has no intrinsic scale, look for similarity."
+    )
+
+    with st.expander("🔍 Step 5 · Grinding out the substitution, term by term"):
+        render_prose_and_latex(
+            r"""
+            Nothing subtle here — just the chain rule, kept in full. First the derivatives
+            of $\eta$ itself:
+            $$\frac{\partial \eta}{\partial y} = \sqrt{\frac{U_\infty}{\nu x}},
+            \qquad \frac{\partial \eta}{\partial x} = -\frac{1}{2}\frac{\eta}{x}$$
+
+            **The streamwise velocity.**
+            $$u = \frac{\partial \psi}{\partial y}
+            = \sqrt{\nu x U_\infty}\, f'(\eta)\frac{\partial \eta}{\partial y}
+            = \sqrt{\nu x U_\infty}\, f'(\eta) \sqrt{\frac{U_\infty}{\nu x}}
+            = U_\infty f'(\eta)$$
+            The dimensional factors cancel exactly, which is the check that the scaling for
+            $\psi$ was chosen correctly.
+
+            **The transverse velocity.** Differentiate the product, remembering that $\eta$
+            depends on $x$ too:
+            $$v = -\frac{\partial \psi}{\partial x}
+            = -\left[\frac{1}{2}\sqrt{\frac{\nu U_\infty}{x}}f
+            + \sqrt{\nu x U_\infty}\, f' \left(-\frac{\eta}{2x}\right)\right]
+            = \frac{1}{2}\sqrt{\frac{\nu U_\infty}{x}}\left(\eta f' - f\right)$$
+            Note $v > 0$: the layer *pushes fluid outward* as it thickens. That is the
+            displacement effect quantified in step 8.
+
+            **The three derivatives the equation needs.**
+            $$\frac{\partial u}{\partial x} = U_\infty f''\frac{\partial\eta}{\partial x}
+            = -\frac{U_\infty \eta}{2x}f''$$
+            $$\frac{\partial u}{\partial y} = U_\infty f''\sqrt{\frac{U_\infty}{\nu x}},
+            \qquad \frac{\partial^2 u}{\partial y^2} = \frac{U_\infty^2}{\nu x}f'''$$
+
+            **Assemble**, with $dp/dx = 0$:
+            $$\underbrace{U_\infty f'\left(-\frac{U_\infty\eta}{2x}f''\right)}_{u\,\partial u/\partial x}
+            + \underbrace{\frac{1}{2}\sqrt{\frac{\nu U_\infty}{x}}(\eta f' - f)\cdot U_\infty f''\sqrt{\frac{U_\infty}{\nu x}}}_{v\,\partial u/\partial y}
+            = \underbrace{\nu\frac{U_\infty^2}{\nu x}f'''}_{\nu\,\partial^2 u/\partial y^2}$$
+            Every term carries $U_\infty^2/x$. Divide it out:
+            $$-\frac{\eta}{2}f'f'' + \frac{1}{2}(\eta f' - f)f'' = f'''$$
+            The $\tfrac{1}{2}\eta f'f''$ terms cancel — the cancellation that makes the
+            method work at all — leaving
+            $$\boxed{\;f''' + \tfrac{1}{2} f f'' = 0\;}\qquad\text{(equivalently } 2f''' + ff'' = 0\text{)}$$
+            The $x$ and $y$ that appeared in every intermediate line are gone. A nonlinear
+            PDE in two variables has become a nonlinear ODE in one.
+            """
+        )
+
+    st.markdown("#### Step 6 · Boundary conditions, and the missing third one")
+    render_prose_and_latex(
+        r"""
+        Two conditions come straight from the physics at the wall, one from the free stream:
+        $$\underbrace{f(0) = 0}_{v = 0:\ \text{no through-flow}},\qquad
+        \underbrace{f'(0) = 0}_{u = 0:\ \text{no slip}},\qquad
+        \underbrace{f'(\infty) = 1}_{u \to U_\infty}$$
+        A third-order ODE needs three conditions, and it has three — but they are split
+        between two ends of the domain. That is a **boundary-value problem**, and it cannot
+        simply be integrated forward from $\eta = 0$, because $f''(0)$ is unknown.
+
+        The standard remedy is **shooting**: guess $f''(0)$, integrate to large $\eta$, and
+        compare $f'(\infty)$ with 1. The residual is monotone in the guess, so a root find
+        converges quickly. Howarth's value, which this app integrates to,
+        $$f''(0) = 0.332057\ldots$$
+        is not a fitted constant. It is the unique shooting parameter that makes the
+        solution approach the free stream instead of overshooting or stalling — and,
+        as step 7 shows, it *is* the drag.
+        """
+    )
+
     col_b1, col_b2 = st.columns(2)
     with col_b1:
         bl_u = st.slider("Freestream U_∞ [m/s]", min_value=0.2, max_value=10.0, value=1.0, step=0.2, key="blasius_u")
@@ -270,27 +479,100 @@ def render_tab_solving_ns():
     st.caption(
         f"ν = {nu_bl:.3e} m²/s ({fluid['name']}). "
         f"f''(0) = {sim['fpp0']:.5f} (Howarth), f'(η_max) = {sim['fp_inf']:.4f} → 1. "
-        "Stokes' first problem (above) is *unsteady* diffusion from a wall; Blasius is *steady* growth from a leading edge."
+        f"Wall shear at the trailing edge τ_w = {0.332 * float(fluid['rho']) * bl_u**2 / plate['re_L']**0.5:.4g} Pa. "
+        "Laminar theory only: transition on a smooth plate begins near Re_x ≈ 5×10⁵."
     )
+    if plate["re_L"] > 5e5:
+        st.warning(
+            f"Re_L = {plate['re_L']:.2e} exceeds the usual transition range (≈5×10⁵). "
+            "A real plate at these conditions is turbulent over much of its length, where "
+            "δ grows like x^(4/5) and drag is several times the Blasius value. The curves "
+            "below are the laminar solution regardless — read them as theory, not prediction."
+        )
     render_what_to_notice(
-        "Left: u/U rises from 0 to 1 by η ≈ 5. Right: δ, δ*, θ all grow like √x. "
-        "Drag is not zero — that is d'Alembert resolved for a plate."
+        "Left: u/U rises from 0 to 1 by η ≈ 5, and the curve has an inflection nowhere — "
+        "a zero-pressure-gradient profile is convex all the way to the wall. "
+        "Right: δ, δ* and θ all grow like √x, holding fixed ratios 1 : 0.35 : 0.135."
     )
     fig_bl = plot_blasius_profile(sim, plate)
-    st.plotly_chart(fig_bl, width="stretch")
+    render_plot(fig_bl, key="tab_solving_ns-fig_bl")
 
-    with st.expander("🔍 Blasius ODE and the standard coefficients"):
-        st.markdown(
-            r"""
-            Stream function $\psi = \sqrt{\nu x U_\infty}\, f(\eta)$ converts the BL equations
-            into $2f''' + f f'' = 0$. Numerical shooting with $f''(0) \approx 0.33206$
-            enforces $f'(\infty)=1$. Integrating the profile:
-            $$\frac{\delta_{99}}{x} \approx \frac{4.91}{\sqrt{\mathrm{Re}_x}},\quad
-            \frac{\delta^*}{x} = \frac{1.721}{\sqrt{\mathrm{Re}_x}},\quad
-            \frac{\theta}{x} = \frac{0.664}{\sqrt{\mathrm{Re}_x}} = c_f$$
-            Mean drag on one side of a plate of length $L$: $C_F = 1.328 / \sqrt{\mathrm{Re}_L}$.
-            """
-        )
+    st.markdown("#### Step 7 · Reading the answer: f″(0) is the drag")
+    render_prose_and_latex(
+        r"""
+        Wall shear stress is $\tau_w = \mu(\partial u/\partial y)|_{y=0}$. Using step 5's
+        derivative at $\eta = 0$:
+        $$\tau_w = \mu U_\infty f''(0)\sqrt{\frac{U_\infty}{\nu x}}
+        = 0.332\,\rho U_\infty^2\,\mathrm{Re}_x^{-1/2}$$
+        so the local skin-friction coefficient is
+        $$c_f \equiv \frac{\tau_w}{\tfrac12 \rho U_\infty^2} = \frac{0.664}{\sqrt{\mathrm{Re}_x}}$$
+        Integrating $\tau_w$ over a plate of length $L$ doubles the coefficient — the
+        $x^{-1/2}$ integrates to $2x^{1/2}$ — giving the mean
+        $$C_F = \frac{1.328}{\sqrt{\mathrm{Re}_L}}$$
+
+        **Three readings of the same result.** (i) $\tau_w \propto x^{-1/2}$: shear is
+        *infinite* at the leading edge and decays downstream, because the velocity gradient
+        is squeezed into an ever-thinner layer near $x = 0$. The singularity is integrable,
+        so the total drag is finite; it also signals that boundary-layer theory itself fails
+        in the first millimetre, where $\delta \not\ll x$. (ii) Drag grows like $\sqrt{L}$,
+        not $L$: the back of a plate contributes less than the front. (iii) $c_f$ falls with
+        Reynolds number but total drag $\propto U_\infty^{3/2}$ still rises — laminar skin
+        friction is *sub*-quadratic in speed, unlike pressure drag.
+        """
+    )
+
+    st.markdown("#### Step 8 · δ, δ* and θ: three thicknesses that mean different things")
+    render_prose_and_latex(
+        r"""
+        $\delta_{99}$ is a convention — the height where $u = 0.99U_\infty$ — and the
+        approach to the free stream is exponential, so any threshold is arbitrary. Two
+        integral thicknesses are not arbitrary, because each answers a physical question.
+
+        **Displacement thickness** $\delta^*$ answers: *by how much must the wall be moved
+        outward so that an inviscid flow carries the same mass?*
+        $$\delta^* = \int_0^\infty\left(1 - \frac{u}{U_\infty}\right)dy = \frac{1.721\,x}{\sqrt{\mathrm{Re}_x}}$$
+        The slow fluid near the wall represents a mass-flow deficit; the outer flow is pushed
+        aside by exactly $\delta^*$. This is how a boundary layer talks *back* to the
+        inviscid solution — a wing's effective shape is its geometry plus $\delta^*$, and
+        near separation that correction stops being small.
+
+        **Momentum thickness** $\theta$ answers: *by how much must the wall be moved outward
+        to account for the momentum deficit?*
+        $$\theta = \int_0^\infty \frac{u}{U_\infty}\left(1 - \frac{u}{U_\infty}\right)dy
+        = \frac{0.664\,x}{\sqrt{\mathrm{Re}_x}}$$
+        The von Kármán momentum integral makes this exact and general:
+        $\tau_w = \rho U_\infty^2 \, d\theta/dx$ for zero pressure gradient. So
+        **$\theta$ is the drag, accumulated**: total drag per unit width up to $x$ equals
+        $\rho U_\infty^2 \theta(x)$, no solution needed. The numerical coincidence
+        $\theta/x = c_f = 0.664/\sqrt{\mathrm{Re}_x}$ is that identity in disguise.
+
+        Their ratio is the **shape factor** $H = \delta^*/\theta = 1.721/0.664 = 2.59$ for
+        Blasius. $H$ is a health check on a boundary layer: it rises as the profile becomes
+        fuller near the wall and thinner in momentum, and laminar separation is approached
+        around $H \approx 3.5$. Turbulent layers run near $H \approx 1.4$ — far more
+        resistant to separation, which is the whole point of chapter 8's drag crisis.
+        """
+    )
+    render_self_check(
+        "blasius_self_check_theta",
+        "A plate's laminar boundary layer has θ = 0.4 mm at the trailing edge, in water "
+        "(ρ = 1000 kg/m³) at U∞ = 2 m/s. Drag per unit width on that side is…",
+        ["about 1.6 N/m", "about 0.8 N/m", "cannot be found without solving the profile"],
+        "about 1.6 N/m",
+        "The momentum integral gives D' = ρU∞²θ = 1000 × 4 × 0.0004 = 1.6 N/m directly. "
+        "This needs no profile at all — it is a control-volume result, and it is why θ is "
+        "the thickness engineers actually track.",
+    )
+    render_callout(
+        """
+        **Model limits.** Steady, two-dimensional, incompressible, constant properties,
+        zero pressure gradient, smooth plate, no free-stream turbulence, and $x$ far enough
+        from the leading edge that $\\delta \\ll x$. Transition on a smooth plate typically
+        begins near $\\mathrm{Re}_x \\approx 5\\times10^5$ but roughness or free-stream
+        turbulence can bring it forward by an order of magnitude. Nothing here applies once
+        the layer separates — that is chapter 7.3.
+        """
+    )
 
     # -------------------------------------------------------------------------
     # PART 3: Cylinder separation
@@ -323,7 +605,7 @@ def render_tab_solving_ns():
         "A viscous layer would leave the wall near 105° and never recover the rear stagnation pressure."
     )
     fig_sep = plot_cylinder_separation(sep)
-    st.plotly_chart(fig_sep, width="stretch")
+    render_plot(fig_sep, key="tab_solving_ns-fig_sep")
 
     render_self_check(
         "blasius_self_check_sep",

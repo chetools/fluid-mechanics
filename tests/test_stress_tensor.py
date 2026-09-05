@@ -1,11 +1,9 @@
 """Unit tests for stress tensor kinematics, symmetry, and Newtonian constitutive law."""
 
 import numpy as np
-import pytest
 from src.physics.stress_tensor import (
     decompose_velocity_gradient_2d,
-    compute_cauchy_stress_2d,
-    deform_fluid_element_2d
+    compute_cauchy_stress_2d
 )
 
 def test_velocity_gradient_decomposition():

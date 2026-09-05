@@ -1,7 +1,7 @@
 """UI module for Laminar vs. Turbulent flows: Diagrams, Theory, and Practical Trade-offs."""
 
 import streamlit as st
-import numpy as np
+from src.ui.pedagogy import render_plot
 
 from src.svg_diagrams import (
     diagram_reynolds_experiment,
@@ -17,12 +17,19 @@ from src.physics.pipe_flow import (
 )
 from src.plotting import plot_laminar_turbulent_profiles, plot_law_of_the_wall, plot_straw_bundle
 from src.units import get_fluid_state
-from src.ui.pedagogy import render_objectives, render_what_to_notice, render_predict, render_self_check
+from src.ui.pedagogy import (
+    render_objectives,
+    render_what_to_notice,
+    render_predict,
+    render_self_check,
+    render_callout,
+    render_prose_and_latex,
+    render_symbols,
+)
 
 def render_tab_turbulence():
     """Render comprehensive panel comparing laminar and turbulent flows."""
     fluid = get_fluid_state()
-    st.markdown("## 4. Laminar Force Balance, Turbulence & the Straw Question")
     st.markdown(
         """
         Flow regimes govern everything in fluid transport.
@@ -57,7 +64,7 @@ def render_tab_turbulence():
     
     render_svg(diagram_reynolds_experiment())
     
-    st.info(
+    render_callout(
         r"""
         **The Physical Mechanism of Turbulent Transition**
         
@@ -78,8 +85,8 @@ def render_tab_turbulence():
         Moody laminar line (Tab 2).
         """
     )
-    with st.expander("🔍 Force balance on a cylindrical fluid core (no skipped algebra)", expanded=True):
-        st.markdown(
+    with st.expander("🔍 Force balance on a cylindrical fluid core (no skipped algebra)", expanded=False):
+        render_prose_and_latex(
             r"""
             Take a coaxial plug of radius $r$ and length $L$. Steady axial flow,
             no acceleration, so $\sum F_z = 0$:
@@ -97,6 +104,17 @@ def render_tab_turbulence():
             $$f_D = \frac{2\Delta p D}{L\rho u^2} = \frac{64\mu}{\rho u D} = \frac{64}{\mathrm{Re}}$$
             Fanning is $f_F = 16/\mathrm{Re} = f_D/4$. Same physics, factor of four.
             """
+        )
+        render_symbols(
+            [
+                (r"\Delta p", "pressure drop over length $L$ (Pa)."),
+                (r"r", "radius of the coaxial fluid plug (m). Wall is $r=R=D/2$."),
+                (r"\tau(r)", r"axial shear on the cylindrical jacket (Pa). At the wall, $\tau_w=(D/4)(\Delta p/L)$."),
+                (r"\mu", "dynamic viscosity (Pa·s). Sidebar fluid."),
+                (r"u(r)", "axial speed of the Hagen–Poiseuille parabola (m/s)."),
+                (r"f_D", r"Darcy friction factor. This force balance gives $f_D=64/\mathrm{Re}$."),
+                (r"\mathrm{Re}", r"$\rho u_{\mathrm{avg}} D/\mu$ with $u_{\mathrm{avg}}$ the area-mean speed."),
+            ]
         )
     re_cmp = st.select_slider(
         "Compare f_D(Re) at",
@@ -156,10 +174,10 @@ def render_tab_turbulence():
     render_what_to_notice("Equal mean velocity: the turbulent profile is blunter, so the wall gradient (and τ_w) is steeper.")
     
     fig_prof = plot_laminar_turbulent_profiles(prof_res)
-    st.plotly_chart(fig_prof, width="stretch")
+    render_plot(fig_prof, key="tab_turbulence-fig_prof")
     
     with st.expander("🔍 Engineering Consequence: Kinetic Energy Flux Correction Factor α in Bernoulli's Equation"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             When writing the engineering mechanical energy balance (extended Bernoulli equation), 
             the true kinetic energy flux carried across a pipe cross-section is:
@@ -170,13 +188,25 @@ def render_tab_turbulence():
             In practical chemical engineering design, engineers assume $\alpha = 1.0$ for turbulent *pipe* calculations, but for laminar *pipe* flows (e.g., polymer extrusions, heavy crude oils), $\alpha = 2.0$ must be used. Do not use α = 2 for a plane slit.
             """
         )
+        render_symbols(
+            [
+                (
+                    r"\alpha",
+                    r"kinetic-energy correction $\alpha=(1/A)\int(u/\bar{u})^3\,dA$. "
+                    "Not an angle, not thermal diffusivity, not Tab 6's angular acceleration $\\alpha_z$. "
+                    "Circular pipe: $\\alpha=2$ laminar, $\\alpha\\approx 1.05$ turbulent.",
+                ),
+                (r"\dot{E}_k", r"true kinetic-energy flux through the cross-section (W)."),
+                (r"\bar{u}", r"area-mean speed $Q/A$ (m/s)."),
+            ]
+        )
 
     # -------------------------------------------------------------------------
     # PART 3: Law of the Wall
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 4.3 The Universal Law of the Wall")
-    st.markdown(
+    render_prose_and_latex(
         """
         The flow near any solid boundary is governed by inner wall variables scaled by the 
         **friction velocity** $u_\\tau = \\sqrt{\\tau_{\\text{wall}} / \\rho}$:
@@ -203,7 +233,7 @@ def render_tab_turbulence():
     wall_res = law_of_the_wall(kappa=karman_k, B=wall_b)
     render_what_to_notice("y⁺ < 5 is linear (viscous sublayer). y⁺ > 30 is the log overlap. The buffer is a blend, not a third law.")
     fig_wall = plot_law_of_the_wall(wall_res)
-    st.plotly_chart(fig_wall, width="stretch")
+    render_plot(fig_wall, key="tab_turbulence-fig_wall")
 
     # -------------------------------------------------------------------------
     # PART 4: Practical ChemE Trade-off
@@ -213,7 +243,7 @@ def render_tab_turbulence():
     
     col_to1, col_to2 = st.columns(2)
     with col_to1:
-        st.info(
+        render_callout(
             """
             **✅ Why We Want Turbulence: Transport Enhancement**
             
@@ -225,7 +255,7 @@ def render_tab_turbulence():
             """
         )
     with col_to2:
-        st.info(
+        render_callout(
             """
             **⚠️ The Pumping Penalty: Hydraulic Cost**
             
@@ -248,7 +278,7 @@ def render_tab_turbulence():
 
     st.markdown("---")
     st.markdown("### 4.5 The straw-pipe question")
-    st.markdown(
+    render_prose_and_latex(
         r"""
         Turbulence raises $f_D$ and $\Delta p \propto u^{1.75\text{–}2}$. A natural
         thought: **fill the pipe with $N$ capillary “straws”** so each lumen stays
@@ -331,7 +361,7 @@ def render_tab_turbulence():
         [s["power_bundle"] for s in sweep],
         [s["re_straw"] for s in sweep],
     )
-    st.plotly_chart(fig_st, width="stretch")
+    render_plot(fig_st, key="tab_turbulence-fig_st")
     render_self_check(
         "straw_self_check",
         "Why doesn’t “keep it laminar with straws” win on pump kW at fixed Q and outer D?",

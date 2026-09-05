@@ -16,3 +16,14 @@ dependencies = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+exclude = [".venv"]
+
+[tool.ruff.lint]
+# Start with the failure modes that actually bite this project: undefined names,
+# unused imports, and f-strings that lost their placeholders. Style rules stay
+# off so the existing dense physics formatting is not churned.
+select = ["F", "E9", "W6"]

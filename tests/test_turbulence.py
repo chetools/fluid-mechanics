@@ -1,7 +1,6 @@
 """Unit tests for turbulence velocity profiles and Law of the Wall."""
 
 import numpy as np
-import pytest
 from src.physics.turbulence import velocity_profile_comparison, law_of_the_wall
 
 def test_velocity_profiles_laminar_vs_turbulent():

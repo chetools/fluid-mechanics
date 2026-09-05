@@ -10,23 +10,84 @@ The application guides students and engineers from first-principles momentum con
 
 ## What It Does
 
-The interface features a persistent physical KPI strip above nine panels, ordered from plant energy to harder mathematics:
+The interface features a persistent physical KPI strip above twelve chapters, ordered from plant energy through gas dynamics and CFD. **One chapter renders at a time** — the chapter selector looks like a tab bar but only the selected chapter is built, which is what keeps a course this size responsive:
 
 | Tab | Contents |
 |---|---|
 | **🏭 1. ChemE Energy & Bernoulli** | Why $\Delta p$, pumps, and NPSH matter; Bernoulli from a steady energy balance; viscosity as frictional heating |
-| **🚰 2. Pipe Flow & Pumping** | Darcy vs Fanning, Moody, pump OPEX, entrance length, NPSH station, $D_H$ |
+| **🚰 2. Pipe Flow & Pumping** | Darcy vs Fanning, Churchill, schedule sizing, editable looped networks, pump OPEX, NPSH, hydraulic diameter, and open-channel canal design |
 | **📐 3. Dimensional Analysis** | Experimental collapse, SVD kernel **rotated** onto Re/Eu/$\varepsilon/D$, IT-π (maximum information) |
 | **🌪️ 4. Laminar $f$, Turbulence & Straws** | Force balance $\Rightarrow f_D=64/\mathrm{Re}$ vs Moody; straw-packing vs open-pipe pump kW |
 | **⚗️ 5. Euler (1D → 3D)** | Continuity, differential Euler, Venturi, d'Alembert |
 | **🧱 6. Stress & Navier–Stokes** | Cauchy stress, $\mathbf{D}+\boldsymbol{\Omega}$, Newtonian NS, power-law pipe |
-| **📏 7. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, Blasius, cylinder separation |
-| **💻 8. CFD (Projection)** | Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
-| **📖 9. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
+| **📏 7. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, step-by-step Blasius derivation, cylinder separation |
+| **8. External Flow** | Stokes derivation, settling, Schiller–Naumann and drag crisis |
+| **9. Turbomachinery** | Angular momentum, 3D impeller geometry and blade angles, velocity triangles, compressor/turbine efficiencies, intercooling, and a worked air-separation plant |
+| **10. Compressible Flow** | Stepwise nozzle derivation, choking calculator, normal shocks, Fanno and Rayleigh flow, everyday and process examples |
+| **💻 11. CFD (Projection)** | Incompressible Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
+| **📖 12. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
 
 ---
 
 ## Pedagogical Design & Mathematical Rigor
+
+Each chapter opens with a guiding question, prerequisites, a core equation, and
+an ordered reading route. Detailed derivations expand on demand; the closing
+"Put it together" card gives a concrete experiment and connects to the next chapter.
+The course moves through plant balances, scaling and regimes, local momentum,
+then external flow, turbomachinery, gas dynamics and numerical verification. All twelve
+chapter buttons wrap on narrow screens. Selecting a chapter is a Streamlit rerun rather
+than a client-side tab switch; widget state is preserved by explicit keys.
+
+### Open channels and canals
+
+Chapter 2 closes with open-channel flow, which is where the hydraulic diameter of
+section 2.4 comes from: the uniform-flow force balance gives `tau_w = rho g R_h S_0`,
+the same equation as a pipe with the bed slope in place of the pressure gradient.
+The calculator solves normal depth for a trapezoidal section by a bracketed root
+find, reports critical depth and Froude regime, checks freeboard against the
+customary `max(0.3 m, 0.2 y_n)`, and flags overtopping, siltation and scour
+velocities. Manning and Darcy-Weisbach are both offered, along with the bridge
+`n = R_h^(1/6) sqrt(f/8g)` that relates them; the two disagree by a few percent and
+the app says so rather than hiding it. Steady uniform flow in a prismatic channel
+only - no backwater curves, hydraulic jumps, sediment transport or flood routing.
+
+### Impeller geometry and air separation
+
+Chapter 9 builds the blade camberline by integrating the definition of the blade
+angle, `tan(beta) = dr / (r d(theta))`, so the 3D figure, the true-shape velocity
+triangle and the reported numbers cannot disagree. Angles are measured **from the
+tangential direction**; the complementary from-meridional value is reported beside
+every angle. Slip uses Wiesner's correlation with its radius-ratio limit checked.
+The chapter closes with a fully worked cryogenic air separation unit - main air
+compressor, booster, turboexpander and double column - computed live from the
+constant-`cp` stage model, including the comparison that justifies the expander over
+a throttling valve.
+
+### Piping network lab
+
+Chapter 2 includes nominal steel pipe sizes NPS 1/2–4, Schedule 40/80, from the
+linked Wheatland manufacturer table. Other sizes use measured inside diameter.
+Each pipe can use a material roughness estimate, absolute roughness, or ε/D.
+Edit the node and pipe tables, then press **Solve network**. Junction demands are
+positive for withdrawal; a zero-demand junction has zero net pipe flow. Prescribed
+pressure nodes solve their boundary exchange. Elevations affect recovered gauge
+pressures through piezometric head. Signed flows support reverse flow and loops.
+Results include continuity and energy residuals, a network drawing and CSV export.
+
+The network assumes steady incompressible single-phase flow, no pumps, and entered
+minor-loss coefficients. Nominal schedules are geometry, not pressure ratings.
+The separate gas calculators use absolute pressures, kelvin, constant cp and γ;
+they do not model real-gas, flashing or two-phase behavior. New calculators retain
+explicit SI labels independently of the existing nondimensional display toggle.
+
+The SVG teaching diagrams render through Streamlit's native image API. Most are
+hand-authored; the impeller figures in chapter 9 are **projections of computed
+geometry** from `src/physics/impeller.py`, so a blade angle drawn there is the same
+angle the velocity-triangle arithmetic uses.
+Diagrams and plots scroll horizontally on small screens to preserve readable
+labels; plots also offer hover values and a fullscreen control. SVG tests parse
+the cleaned output as XML to catch formatting errors that can make images disappear.
 
 1. **No Skipped Steps**: Every derivation is conducted without skipping algebra or calculus steps. Lengthy proofs, multivariable Taylor expansions, and tensor contractions are organized into clean, collapsible drawers (`st.expander`) to maintain conceptual narrative flow.
 2. **Textbook-Quality Vector Diagrams**: Custom inline SVG schematics rendered with crisp coordinate systems, dimension lines, and physical force tractions.
@@ -39,6 +100,11 @@ The interface features a persistent physical KPI strip above nine panels, ordere
 ---
 
 ## Getting Started
+
+For future development, start with [AGENTS.md](AGENTS.md) and the
+[development notes and lessons learned](docs/DEVELOPMENT_NOTES.md). They document
+the architecture, physics contracts, rendering pitfalls, live-browser rerun
+investigation and verification workflow.
 
 ### Prerequisites
 * Python 3.12+ (Python 3.14 recommended)
@@ -59,6 +125,14 @@ uv run streamlit run app.py
 ```bash
 uv run pytest
 ```
+
+The optional live-browser check is `uv run --with playwright python tests/browser_smoke.py`
+with the app running on port 8501 and Microsoft Edge installed. It verifies that
+the page actually finishes its run, then exercises the network solve, CSV download
+and new chapters. Automatic filesystem watching and overlapping fast reruns are
+disabled in the verified Windows configuration; refresh the browser after editing
+source files. See the development notes for the observed failure and the limits
+of the root-cause diagnosis.
 
 ## Deploying to Streamlit Community Cloud
 

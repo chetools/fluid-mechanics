@@ -1,6 +1,7 @@
 """UI module for Panel 3: Stress Tensor, Constitutive Equations & Navier-Stokes."""
 
 import streamlit as st
+from src.ui.pedagogy import render_plot
 import numpy as np
 
 from src.svg_diagrams import (
@@ -18,7 +19,13 @@ from src.physics.non_newtonian import power_law_pipe
 from src.physics.exact_solutions import hagen_poiseuille_pipe
 from src.plotting import plot_fluid_element_deformation, plot_power_law_pipe
 from src.units import format_quantity, get_fluid_state
-from src.ui.pedagogy import render_objectives, render_what_to_notice, render_self_check
+from src.ui.pedagogy import (
+    render_objectives,
+    render_what_to_notice,
+    render_self_check,
+    render_prose_and_latex,
+    render_symbols,
+)
 
 
 KINEMATIC_PRESETS = {
@@ -33,7 +40,6 @@ KINEMATIC_PRESETS = {
 def render_tab_stress_ns():
     """Render detailed step-by-step stress tensor and Navier-Stokes derivations."""
     fluid = get_fluid_state()
-    st.markdown("## 6. Incorporating Stress, Constitutive Equations & Navier–Stokes")
     st.markdown(
         """
         Euler's equation assumed fluids could sustain **only isotropic normal pressure**
@@ -87,12 +93,14 @@ def render_tab_stress_ns():
             """
         )
 
-    with st.expander("🔍 Step-by-Step Proof: Stress Tensor Symmetry via Angular Momentum Conservation", expanded=True):
-        st.markdown(
+    with st.expander("🔍 Step-by-Step Proof: Stress Tensor Symmetry via Angular Momentum Conservation", expanded=False):
+        render_prose_and_latex(
             r"""
             Consider an infinitesimal 2D element $dx \times dy$ in the $xy$-plane.
             Take the sum of torques about the center of the element:
             $$\sum M_z = I_z \alpha_z$$
+            Here $\alpha_z$ is **angular acceleration** (rad/s²), not the kinetic-energy
+            correction of Tabs 1–4.
 
             The shear stresses $\tau_{xy}$ (acting on the $+x$ face) and $-\tau_{xy}$ (on the $-x$ face) exert a counter-clockwise torque:
             $$T_{xy} = (\tau_{xy} \, dy) \cdot \left(\frac{dx}{2}\right) + (\tau_{xy} \, dy) \cdot \left(\frac{dx}{2}\right) = \tau_{xy} \, dx \, dy$$
@@ -111,9 +119,17 @@ def render_tab_stress_ns():
             **The Cauchy stress tensor is always symmetric ($\sigma_{ij} = \sigma_{ji}$) in any continuum without internal point body couples!**
             """
         )
+        render_symbols(
+            [
+                (r"\alpha_z", r"angular acceleration about $z$ (rad/s²). **Not** the pipe kinetic-energy factor $\alpha$ of Tabs 1–4."),
+                (r"M_z", "net torque about the element centre (N·m)."),
+                (r"I_z", r"moment of inertia of the fluid element about $z$ (kg·m²)."),
+                (r"\tau_{xy},\ \tau_{yx}", "shear tractions on the $x$ and $y$ faces (Pa)."),
+            ]
+        )
 
     with st.expander("🔍 Step-by-Step Derivation: Cauchy's Equation of Motion"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             Net force along the $x$-direction across all 6 faces of the differential box $dx \times dy \times dz$:
             $$dF_x = \left(\frac{\partial \sigma_{xx}}{\partial x}dx\right) dy dz + \left(\frac{\partial \tau_{yx}}{\partial y}dy\right) dx dz + \left(\frac{\partial \tau_{zx}}{\partial z}dz\right) dx dy + \rho g_x dx dy dz$$
@@ -146,7 +162,7 @@ def render_tab_stress_ns():
     st.latex(r"\mathbf{\Omega} = \frac{1}{2}\left[\nabla \mathbf{u} - (\nabla \mathbf{u})^T\right] \quad \text{(Spin / Vorticity Tensor: pure rigid rotation, ZERO stress)}")
 
     with st.expander("🔍 Geometric Insight: Why Pure Rotation (Ω) Generates Exactly Zero Viscous Stress"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             Consider a fluid parcel undergoing pure rigid-body rotation at angular velocity $\omega$:
             $$\mathbf{u} = \boldsymbol{\omega} \times \mathbf{r} = (-\omega y, \omega x, 0)$$
@@ -165,7 +181,7 @@ def render_tab_stress_ns():
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 6.3 The Newtonian Constitutive Law & Stokes' Hypothesis")
-    st.markdown(
+    render_prose_and_latex(
         """
         Sir Isaac Newton posited in 1687 that the shear resistance in a fluid is linearly
         proportional to the spatial velocity gradient: $\\tau = \\mu \\frac{du}{dy}$.
@@ -177,7 +193,7 @@ def render_tab_stress_ns():
     )
 
     with st.expander("🔍 Mathematical Formulation: From 1D Newton to 3D Stokes Constitutive Equation"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             For an isotropic linear viscous fluid, the stress tensor must be linear in strain-rate $\mathbf{D}$:
             $$\tau_{ij} = 2\mu D_{ij} + \lambda (\nabla \cdot \mathbf{u}) \delta_{ij}$$
@@ -210,7 +226,7 @@ def render_tab_stress_ns():
     )
 
     with st.expander("🔍 Vector Calculus Step: Divergence of the Viscous Stress Tensor"):
-        st.markdown(
+        render_prose_and_latex(
             r"""
             $$\nabla \cdot \boldsymbol{\sigma} = \nabla \cdot (-p\mathbf{I}) + \nabla \cdot (2\mu \mathbf{D})$$
             $$\nabla \cdot (-p\mathbf{I}) = -\nabla p$$
@@ -334,14 +350,14 @@ def render_tab_stress_ns():
         )
 
     fig_deform = plot_fluid_element_deformation(deform_res, stress_res)
-    st.plotly_chart(fig_deform, width="stretch")
+    render_plot(fig_deform, key="tab_stress_ns-fig_deform")
 
     # -------------------------------------------------------------------------
     # PART 6: Power-law constitutive
     # -------------------------------------------------------------------------
     st.markdown("---")
     st.markdown("### 6.6 Non-Newtonian Constitutive Law: Power-Law Pipe Flow")
-    st.markdown(
+    render_prose_and_latex(
         r"""
         Newtonian stress is $\boldsymbol{\tau} = 2\mu\mathbf{D}$ with $\mu$ constant.
         Many ChemE fluids are **Ostwald–de Waele** (power-law):
@@ -389,7 +405,7 @@ def render_tab_stress_ns():
         "n = 1 and K = μ must sit on the Newtonian parabola. n < 1 is flatter (plug-like). Tab 2 can use this Δp for laminar polymer lines."
     )
     fig_pl = plot_power_law_pipe(pl_res, newt)
-    st.plotly_chart(fig_pl, width="stretch")
+    render_plot(fig_pl, key="tab_stress_ns-fig_pl")
     render_self_check(
         "pl_self_check_n1",
         "When n = 1, the power-law pipe must recover…",

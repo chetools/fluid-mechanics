@@ -24,15 +24,25 @@ _MODULE_RELOAD_ORDER = (
     "src.physics.exact_solutions",
     "src.physics.numerical_solver",
     "src.physics.pipe_flow",
+    "src.physics.pipe_network",
+    "src.physics.open_channel",
+    "src.physics.gas_dynamics",
     "src.physics.turbulence",
     "src.physics.dimensional_analysis",
     "src.physics.boundary_layer",
     "src.physics.non_newtonian",
+    "src.physics.impeller",
+    "src.svg_impeller",
     "src.plotting",
     "src.ui.pedagogy",
+    "src.ui.learning_path",
     "src.ui.top_bar",
     "src.ui.tab_cheme_energy",
     "src.ui.tab_pipe_flow",
+    "src.ui.pipe_network_lab",
+    "src.ui.tab_external_flow",
+    "src.ui.tab_turbomachinery",
+    "src.ui.tab_compressible",
     "src.ui.tab_dimensional_analysis",
     "src.ui.tab_turbulence",
     "src.ui.tab_euler",
@@ -74,6 +84,7 @@ import src.theme as theme
 import src.units as units
 from src.ui.top_bar import render_top_bar
 from src.ui.pedagogy import render_concept_map
+from src.ui.learning_path import render_chapter_header, render_chapter_recap
 from src.ui.tab_cheme_energy import render_tab_cheme_energy
 from src.ui.tab_pipe_flow import render_tab_pipe_flow
 from src.ui.tab_dimensional_analysis import render_tab_dimensional_analysis
@@ -83,6 +94,10 @@ from src.ui.tab_stress_ns import render_tab_stress_ns
 from src.ui.tab_solving_ns import render_tab_solving_ns
 from src.ui.tab_cfd import render_tab_cfd
 from src.ui.tab_reference import render_tab_reference
+from src.ui.pipe_network_lab import render_network_lab
+from src.ui.tab_external_flow import render_tab_external_flow
+from src.ui.tab_turbomachinery import render_tab_turbomachinery
+from src.ui.tab_compressible import render_tab_compressible
 
 st.set_page_config(
     page_title="Fluid Mechanics: Euler to Navier-Stokes",
@@ -110,7 +125,7 @@ with st.sidebar:
     st.markdown("---")
 
     st.markdown("#### Global Physical Properties")
-    st.caption("These properties feed **every** lab (Venturi, Couette, pipes, Mach).")
+    st.caption("Shared by liquid, external-flow and incompressible labs. Gas-machine and compressible labs have separate thermodynamic inputs.")
     u_ref = st.number_input("Reference Velocity U₀ [m/s]", min_value=0.1, max_value=50.0, value=2.0, step=0.5)
     l_ref = st.number_input("Characteristic Length L [m]", min_value=0.001, max_value=5.0, value=0.05, step=0.01)
     fluid_preset = st.selectbox("Fluid Preset", options=["Water (20°C)", "Air (20°C)", "Glycerin", "Custom"])
@@ -164,47 +179,57 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+# A short orientation before the controls and chapter navigation.
+st.markdown('''<div class="course-intro"><div class="chapter-eyebrow">THE FLUID MECHANICS LAB</div>
+<h1>From a pressure drop<br>to the equations of motion.</h1>
+<p>Twelve connected lessons. Build the physical picture, follow the mathematics,
+then test your prediction in a live experiment.</p>
+<div class="course-route"><span>01 · Plant balances</span><span>02 · Scaling &amp; regimes</span>
+<span>03 · Local momentum</span><span>04 · External flow</span><span>05 · Gas &amp; shaft work</span><span>06 · CFD verification</span></div></div>''', unsafe_allow_html=True)
+st.caption("Start at chapter 1, or choose a chapter below. Detailed proofs unfold on demand. Open the sidebar to change the shared fluid.")
+
 # Render persistent top KPI strip
 render_top_bar(u_ref=u_ref, l_ref=l_ref, rho_ref=rho_ref, mu_ref=mu_ref)
 
 # Difficulty order that still tells a plant story:
 # energy → pipe design → experiments/Π → laminar f & straws → Euler → tensors → BL → CFD
-tab_energy, tab_pipe, tab_dim, tab_turb, tab_euler, tab_stress, tab_exact, tab_cfd, tab_ref = st.tabs([
-    "🏭 1. ChemE Energy & Bernoulli",
-    "🚰 2. Pipe Flow & Pumping",
-    "📐 3. Dimensional Analysis",
-    "🌪️ 4. Laminar f, Turbulence & Straws",
-    "⚗️ 5. Euler (1D → 3D)",
-    "🧱 6. Stress & Navier–Stokes",
-    "📏 7. Exact Solutions & BL",
-    "💻 8. CFD (Projection)",
-    "📖 9. Reference & Audit",
-])
+#
+# One chapter is rendered at a time, and this is not a cosmetic choice.
+# `st.tabs` executes every panel body on every script run, so all twelve
+# chapters — every Plotly figure, every SVG, every solver call — were rebuilt
+# whenever any widget moved. Once the course grew past roughly a hundred
+# elements the browser stopped finishing the render: the script completed in
+# Python (AppTest saw all 103 metrics, no exception) while the page stalled
+# part-way through chapter 9 with the running indicator still showing. That was
+# reproduced on a freshly started server and confirmed by bisection — skipping
+# chapters 1–6 let chapter 9 render to completion. Rendering one chapter is the
+# fix; see docs/DEVELOPMENT_NOTES.md before changing it back.
+CHAPTERS = (
+    ("1 · Energy", 1, lambda: render_tab_cheme_energy()),
+    ("2 · Pipes", 2, lambda: (render_tab_pipe_flow(), render_network_lab())),
+    ("3 · Scaling", 3, lambda: render_tab_dimensional_analysis()),
+    ("4 · Turbulence", 4, lambda: render_tab_turbulence()),
+    ("5 · Euler", 5, lambda: render_tab_euler()),
+    ("6 · Stress & NS", 6, lambda: render_tab_stress_ns()),
+    ("7 · Exact flows", 7, lambda: render_tab_solving_ns()),
+    ("8 · External flow", 8, lambda: render_tab_external_flow()),
+    ("9 · Turbomachinery", 9, lambda: render_tab_turbomachinery()),
+    ("10 · Compressible", 10, lambda: render_tab_compressible()),
+    ("11 · CFD", 11, lambda: render_tab_cfd()),
+    ("12 · Reference", 12, lambda: render_tab_reference()),
+)
 
-with tab_energy:
-    if hasattr(render_tab_cheme_energy, "__call__"):
-        render_tab_cheme_energy()
+selected = st.radio(
+    "Chapter",
+    options=[label for label, _, _ in CHAPTERS],
+    horizontal=True,
+    label_visibility="collapsed",
+    key="chapter_nav",
+)
 
-with tab_pipe:
-    render_tab_pipe_flow()
-
-with tab_dim:
-    render_tab_dimensional_analysis()
-
-with tab_turb:
-    render_tab_turbulence()
-
-with tab_euler:
-    render_tab_euler()
-
-with tab_stress:
-    render_tab_stress_ns()
-
-with tab_exact:
-    render_tab_solving_ns()
-
-with tab_cfd:
-    render_tab_cfd()
-
-with tab_ref:
-    render_tab_reference()
+for label, number, render in CHAPTERS:
+    if label == selected:
+        render_chapter_header(number)
+        render()
+        render_chapter_recap(number)
+        break

@@ -1,7 +1,6 @@
 """Unit tests for Euler's Equation physics and models."""
 
 import numpy as np
-import pytest
 from src.physics.euler import venturi_profile, cylinder_potential_flow
 
 def test_venturi_conservation_of_mass_and_bernoulli():
