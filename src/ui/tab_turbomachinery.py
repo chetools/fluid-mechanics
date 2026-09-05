@@ -1,5 +1,6 @@
 import plotly.graph_objects as go
 import streamlit as st
+from src.ui.state import persistent_input
 from src.physics.gas_dynamics import gas_machine
 from src.physics.impeller import blade_camberline, head_flow_curve, velocity_triangles
 from src.plotting import plot_impeller_head_curve
@@ -55,15 +56,15 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
     st.caption('The figures, the triangle and the numbers below all come from the same geometry code, so they cannot disagree.')
 
     g1, g2, g3, g4 = st.columns(4)
-    imp_rpm = g1.number_input('Shaft speed [rpm]', min_value=100., max_value=60000., value=2900., step=100., key='imp_rpm')
-    imp_q = g1.number_input('Volumetric flow Q [m³/s]', min_value=.001, max_value=2., value=.030, step=.005, format='%.3f', key='imp_q')
-    imp_r1 = g2.number_input('Inlet (eye) radius r₁ [m]', min_value=.005, max_value=.4, value=.045, step=.005, key='imp_r1')
-    imp_r2 = g2.number_input('Tip radius r₂ [m]', min_value=.01, max_value=1., value=.150, step=.005, key='imp_r2')
-    imp_b1 = g3.number_input('Inlet width b₁ [m]', min_value=.002, max_value=.3, value=.030, step=.002, key='imp_b1')
-    imp_b2 = g3.number_input('Outlet width b₂ [m]', min_value=.002, max_value=.3, value=.012, step=.002, key='imp_b2')
-    imp_beta1 = g4.slider('Inlet blade angle β₁ [° from tangential]', 5., 89., 30., key='imp_beta1')
-    imp_beta2 = g4.slider('Outlet blade angle β₂ [° from tangential]', 5., 89., 25., key='imp_beta2')
-    imp_blades = st.slider('Number of blades Z', 2, 20, 7, key='imp_blades')
+    imp_rpm = persistent_input(g1.number_input, 'Shaft speed [rpm]', min_value=100., max_value=60000., value=2900., step=100., key='imp_rpm')
+    imp_q = persistent_input(g1.number_input, 'Volumetric flow Q [m³/s]', min_value=.001, max_value=2., value=.030, step=.005, format='%.3f', key='imp_q')
+    imp_r1 = persistent_input(g2.number_input, 'Inlet (eye) radius r₁ [m]', min_value=.005, max_value=.4, value=.045, step=.005, key='imp_r1')
+    imp_r2 = persistent_input(g2.number_input, 'Tip radius r₂ [m]', min_value=.01, max_value=1., value=.150, step=.005, key='imp_r2')
+    imp_b1 = persistent_input(g3.number_input, 'Inlet width b₁ [m]', min_value=.002, max_value=.3, value=.030, step=.002, key='imp_b1')
+    imp_b2 = persistent_input(g3.number_input, 'Outlet width b₂ [m]', min_value=.002, max_value=.3, value=.012, step=.002, key='imp_b2')
+    imp_beta1 = persistent_input(g4.slider, 'Inlet blade angle β₁ [° from tangential]', 5., 89., 30., key='imp_beta1')
+    imp_beta2 = persistent_input(g4.slider, 'Outlet blade angle β₂ [° from tangential]', 5., 89., 25., key='imp_beta2')
+    imp_blades = persistent_input(st.slider, 'Number of blades Z', 2, 20, 7, key='imp_blades')
 
     if imp_r2 <= imp_r1:
         st.error('A centrifugal impeller needs r₂ > r₁: the work comes from the change in radius.')
@@ -157,12 +158,12 @@ $$\eta_c=\frac{h_{02s}-h_{01}}{h_{02}-h_{01}},\quad T_{02}=T_{01}+\frac{T_{02s}-
 $$\eta_t=\frac{h_{01}-h_{02}}{h_{01}-h_{02s}},\quad T_{02}=T_{01}-\eta_t(T_{01}-T_{02s}),\quad w_{\mathrm{out}}=c_p(T_{01}-T_{02})$$
 Heating/cooling describes temperature changes here; it does not imply heat transfer. With heat transfer q positive into the fluid, the first law becomes Δh₀ = q + w_in.''')
     a,b,c=st.columns(3)
-    mode=a.selectbox('Machine',['Compressor','Turbine'])
-    tin=a.number_input('Inlet stagnation temperature [K]',min_value=1.,value=300.)
-    ratio=b.number_input('High / low stagnation pressure ratio',min_value=1.,max_value=100.,value=4.)
-    eta=b.slider('Isentropic efficiency',.1,1.,.8)
-    gamma=c.number_input('Machine γ',min_value=1.01,max_value=1.67,value=1.4)
-    gasr=c.number_input('Machine gas constant [J/(kg·K)]',min_value=1.,value=287.05)
+    mode=persistent_input(a.selectbox, 'Machine',['Compressor','Turbine'], key="tab_turbomachinery_machine")
+    tin=persistent_input(a.number_input, 'Inlet stagnation temperature [K]',min_value=1.,value=300., key="tab_turbomachinery_inlet_stagnation_temperature_k")
+    ratio=persistent_input(b.number_input, 'High / low stagnation pressure ratio',min_value=1.,max_value=100.,value=4., key="tab_turbomachinery_high_low_stagnation_pressure_ratio")
+    eta=persistent_input(b.slider, 'Isentropic efficiency',.1,1.,.8, key="tab_turbomachinery_isentropic_efficiency")
+    gamma=persistent_input(c.number_input, 'Machine γ',min_value=1.01,max_value=1.67,value=1.4, key="tab_turbomachinery_machine_comparison")
+    gasr=persistent_input(c.number_input, 'Machine gas constant [J/(kg·K)]',min_value=1.,value=287.05, key="tab_turbomachinery_machine_gas_constant_j_kg_k")
     result=gas_machine(tin,ratio,eta,mode,gamma,gasr)
     a,b,c=st.columns(3)
     a.metric('Isentropic outlet T₀₂s',f'{result["ideal_temperature"]:.2f} K'); b.metric('Actual outlet T₀₂',f'{result["outlet_temperature"]:.2f} K'); c.metric('Work into fluid',f'{result["work_into_fluid"]/1000:+.2f} kJ/kg')
@@ -179,7 +180,7 @@ Each intercooler rejects cp times the preceding temperature rise. There are n−
 **Expansion with reheating.** Reheating between equal-ratio turbine stages back to the original hot inlet temperature increases shaft output; external heat supplies the added energy. A refrigeration expander instead keeps the cold exhaust and avoids reheating.
 $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)}\right]$$
 **Throttling is different.** A valve has no shaft output. With negligible heat, elevation and endpoint kinetic-energy changes, h₂ = h₁. An ideal gas therefore has no temperature change through the complete valve process. Real-gas Joule–Thomson cooling or heating depends on state and composition; it is not the turbine relation. Steam, condensing fluids and large temperature ranges require real property data.''')
-    stages=st.slider('Number of ideal intercooled / reheated stages',1,8,2)
+    stages=persistent_input(st.slider, 'Number of ideal intercooled / reheated stages',1,8,2, key="tab_turbomachinery_number_of_ideal_intercooled_reheated_stages")
     exponent=(gamma-1)/(gamma*stages)
     if mode=='Compressor':
         rise=tin*(ratio**exponent-1)/eta
@@ -243,20 +244,20 @@ The reflux for both columns is generated internally, with no external refrigerat
     )
 
     asu1, asu2, asu3 = st.columns(3)
-    m_air = asu1.number_input('Air feed ṁ [kg/s]', min_value=1., max_value=200., value=30., step=1., key='asu_mair')
-    t_amb = asu1.number_input('Ambient / intercooled T [K]', min_value=270., max_value=320., value=293., step=1., key='asu_tamb')
-    p_mac = asu2.number_input('MAC discharge [bar a]', min_value=2., max_value=12., value=5.8, step=.1, key='asu_pmac')
-    n_mac = asu2.slider('MAC stages', 1, 5, 3, key='asu_nmac')
-    eta_c = asu3.slider('Compressor isentropic efficiency', .60, .92, .82, key='asu_etac')
-    eta_t = asu3.slider('Expander isentropic efficiency', .60, .92, .85, key='asu_etat')
+    m_air = persistent_input(asu1.number_input, 'Air feed ṁ [kg/s]', min_value=1., max_value=200., value=30., step=1., key='asu_mair')
+    t_amb = persistent_input(asu1.number_input, 'Ambient / intercooled T [K]', min_value=270., max_value=320., value=293., step=1., key='asu_tamb')
+    p_mac = persistent_input(asu2.number_input, 'MAC discharge [bar a]', min_value=2., max_value=12., value=5.8, step=.1, key='asu_pmac')
+    n_mac = persistent_input(asu2.slider, 'MAC stages', 1, 5, 3, key='asu_nmac')
+    eta_c = persistent_input(asu3.slider, 'Compressor isentropic efficiency', .60, .92, .82, key='asu_etac')
+    eta_t = persistent_input(asu3.slider, 'Expander isentropic efficiency', .60, .92, .85, key='asu_etat')
 
     bac1, bac2, bac3 = st.columns(3)
-    m_side = bac1.number_input('Expander side stream ṁ [kg/s]', min_value=.5, max_value=100., value=6., step=.5, key='asu_mside')
-    p_bac = bac1.number_input('BAC discharge [bar a]', min_value=8., max_value=60., value=28., step=1., key='asu_pbac')
-    t_exp_in = bac2.number_input('Expander inlet T [K]', min_value=100., max_value=300., value=180., step=5., key='asu_texp')
-    p_exp_out = bac2.number_input('Expander outlet [bar a]', min_value=1.1, max_value=8., value=1.4, step=.1, key='asu_pexp')
-    o2_recovery = bac3.slider('Oxygen recovery from the feed', .40, .98, .65, key='asu_rec')
-    p_amb = bac3.number_input('Suction pressure [bar a]', min_value=.8, max_value=1.2, value=1.013, step=.005, key='asu_pamb')
+    m_side = persistent_input(bac1.number_input, 'Expander side stream ṁ [kg/s]', min_value=.5, max_value=100., value=6., step=.5, key='asu_mside')
+    p_bac = persistent_input(bac1.number_input, 'BAC discharge [bar a]', min_value=8., max_value=60., value=28., step=1., key='asu_pbac')
+    t_exp_in = persistent_input(bac2.number_input, 'Expander inlet T [K]', min_value=100., max_value=300., value=180., step=5., key='asu_texp')
+    p_exp_out = persistent_input(bac2.number_input, 'Expander outlet [bar a]', min_value=1.1, max_value=8., value=1.4, step=.1, key='asu_pexp')
+    o2_recovery = persistent_input(bac3.slider, 'Oxygen recovery from the feed', .40, .98, .65, key='asu_rec')
+    p_amb = persistent_input(bac3.number_input, 'Suction pressure [bar a]', min_value=.8, max_value=1.2, value=1.013, step=.005, key='asu_pamb')
 
     gamma_air, r_air = 1.4, 287.05
     stage_ratio = (p_mac / p_amb) ** (1.0 / n_mac)

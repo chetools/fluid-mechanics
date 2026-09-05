@@ -15,6 +15,7 @@ import textwrap
 from typing import Iterator, List, Optional, Sequence, Tuple
 
 import streamlit as st
+from src.ui.state import persistent_input
 
 DISPLAY_MATH_RE = re.compile(r"\$\$(.+?)\$\$", re.DOTALL)
 
@@ -145,7 +146,7 @@ def render_predict(
     Returns the selected option, or None if the student has not chosen yet.
     """
     st.markdown(f"**Predict first:** {question}")
-    pick = st.radio(
+    pick = persistent_input(st.radio,
         "Your prediction",
         options=list(options),
         key=key,
@@ -173,7 +174,7 @@ def render_self_check(
     """One multiple-choice check with immediate feedback."""
     with st.container(border=True):
         st.markdown(f"**Self-check.** {question}")
-        pick = st.radio(
+        pick = persistent_input(st.radio,
             "Answer",
             options=list(options),
             key=key,

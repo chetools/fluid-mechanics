@@ -305,8 +305,11 @@ unchanged.
 
 Consequences to keep in mind:
 
-- Switching chapters is now a rerun, not a client-side tab switch. Widget state survives
-  because every widget in the course already carries an explicit `key`.
+- Switching chapters is now a rerun, not a client-side tab switch. Explicit widget keys
+  alone do **not** preserve values: Streamlit cleans up keys for widgets that are absent
+  from a run. Use `persistent_input` from `src/ui/state.py` for lesson controls and
+  self-checks; it saves values in a separate session dictionary and restores them when
+  the widget returns. Each input needs a unique explicit key.
 - Anything that assumed all chapters are in the DOM at once — old browser tests, in-page
   anchors between chapters — no longer holds.
 - `tests/test_app_smoke.py` pins the behaviour in both directions: the twelve options exist,
@@ -489,4 +492,63 @@ All of these are cheap, and each catches a whole class rather than one instance:
 | Build every figure, assert traces > 0 | figures that silently render empty |
 | AppTest widget change, assert the number moves | UI that redraws but does not recompute |
 | Old algorithm kept as a benchmark baseline | performance claims going stale |
+
+## Navigation and diagnostic fixes
+
+The navigation round-trip regression was reproduced with air feed: 60 kg/s reverted
+to 30 kg/s after leaving and returning to chapter 9. `persistent_input` now covers
+calculator inputs, conditional controls and self-checks. Keep button events outside
+this helper. `persistent_editor` stores both the editor's fixed base and its latest
+complete table; it mounts the latest table as a new base only after widget cleanup.
+Replacing the base on every rerun would replay editor deltas and corrupt added or
+deleted rows. Saved network solutions still require a matching input signature.
+
+The live browser test clicks the visible radio label, waits for the selected chapter's
+recap and for script completion, and then checks for errors. A radio-input click is
+intercepted by the custom label; the old tab selectors do not match anything. The test
+now visits all twelve chapters and verifies an air-feed round trip, network solve and
+CSV download. AppTest additionally covers editor cell changes, row insertion/deletion,
+result invalidation and isolation between sessions.
+
+The CFD Poisson residual now uses the same mean-adjusted Neumann source as the solver.
+The signed source mean removed is reported separately as
+`poisson_compatibility_correction`, in the same pressure-Laplacian units as the residual.
+A small iterative residual does not imply a small compatibility correction or exact
+velocity mass conservation.
+
+Relief sizing rejects non-finite or out-of-range discharge coefficients and back
+pressure at or above the upstream stagnation pressure. Unlike the nozzle capacity
+function, a sizing function cannot return a finite area for positive required flow
+when there is no forward-flow pressure difference.
+
+## Educational geometry and worked examples
+
+The deformation lab now integrates a constant velocity gradient with `exp(L t)`.
+The old `I + L t` approximation enlarged a rigidly rotating parcel by 6.25% at
+the displayed time step. Perimeters and internal grid lines use the same exact
+map; the displayed angle is measured from transformed material directions.
+The D-only and Omega-only outlines are separate hypothetical flows, not an
+additive or generally composable finite-deformation decomposition. Distinguish
+Couette-like **simple shear** (strain and spin) from symmetric **pure shear**.
+
+Mohr's circle uses Pa relative to its mean normal stress, with equal axis scales.
+Report the mean separately: hydrostatic pressure shifts the mean, not the radius.
+Zero-radius rigid rotation must appear as a point. Preset explanations are shown
+only while the actual slider values still match the preset.
+
+`RELIEF_DEMO_DEFAULTS` is shared by the calculator and its worked example.
+Recompute the hot and high-back-pressure cases from those defaults. At fixed
+required rate, upstream pressure, gas and coefficient, choked area scales as the
+square root of temperature, while bore scales as its fourth root. The lesson's
+fixed-area flow model does not predict real valve lift or certify a device.
+
+The sphere figures distinguish local surface traction from the settling free
+body, and mark separation/wake boundaries as schematic. The nozzle figure shows
+the upstream acoustic branch at lab-frame speed `u-a`, which becomes zero at a
+sonic throat. Use `uv run --with playwright python tests/browser_education.py`
+with the app running to check the stress presets, hot relief bore, native SVG
+rendering and narrow-screen scrolling. Its screenshots go to the system temp
+directory for visual inspection.
+Teaching SVGs keep an 880 px minimum image width inside their local scroll area;
+shrinking an 880 px drawing to 600 px made its 12 px labels roughly 8 px on phones.
 

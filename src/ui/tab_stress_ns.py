@@ -1,6 +1,7 @@
 """UI module for Panel 3: Stress Tensor, Constitutive Equations & Navier-Stokes."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 import numpy as np
 
@@ -29,7 +30,8 @@ from src.ui.pedagogy import (
 
 
 KINEMATIC_PRESETS = {
-    "Pure shear (Couette-like)": {"dudx": 0.0, "dudy": 1.0, "dvdx": 0.0, "dvdy": 0.0},
+    "Simple shear (Couette-like)": {"dudx": 0.0, "dudy": 1.0, "dvdx": 0.0, "dvdy": 0.0},
+    "Pure shear (symmetric)": {"dudx": 0.0, "dudy": 1.0, "dvdx": 1.0, "dvdy": 0.0},
     "Pure rotation (rigid)": {"dudx": 0.0, "dudy": -1.0, "dvdx": 1.0, "dvdy": 0.0},
     "Incompressible extension": {"dudx": 1.0, "dudy": 0.0, "dvdx": 0.0, "dvdy": -1.0},
     "Dilatation (∇·u ≠ 0)": {"dudx": 1.0, "dudy": 0.0, "dvdx": 0.0, "dvdy": 1.0},
@@ -76,7 +78,7 @@ def render_tab_stress_ns():
 
     with st.container(border=True):
         st.markdown("**Stress tensor index nomenclature $\\sigma_{ij}$**")
-        st.markdown("The Cauchy stress is a $3\\times 3$ matrix. Streamlit does not render KaTeX inside `st.info` / raw HTML.")
+        st.markdown("The Cauchy stress is a $3\\times 3$ matrix. On a chosen face, resolve the traction into one normal force per unit area and two tangential components. Pressure contributes only to the normal component; viscous stress can contribute to both.")
         st.latex(
             r"\boldsymbol{\sigma} = \begin{bmatrix}"
             r"\sigma_{xx} & \tau_{xy} & \tau_{xz} \\"
@@ -266,10 +268,7 @@ def render_tab_stress_ns():
         """
     )
 
-    for key, val in {"dudx": 0.0, "dudy": 1.0, "dvdx": 0.0, "dvdy": 0.0}.items():
-        st.session_state.setdefault(f"stress_{key}", float(val))
-
-    preset_name = st.selectbox("Kinematic preset", options=list(KINEMATIC_PRESETS.keys()))
+    preset_name = persistent_input(st.selectbox, "Kinematic preset", options=list(KINEMATIC_PRESETS.keys()), key="tab_stress_ns_kinematic_preset")
     preset = KINEMATIC_PRESETS[preset_name]
     last_key = "stress_preset_last"
     if last_key not in st.session_state:
@@ -285,27 +284,26 @@ def render_tab_stress_ns():
 
     col_sl1, col_sl2, col_sl3, col_sl4 = st.columns(4)
     with col_sl1:
-        dudx = st.slider("∂u/∂x [1/s] (Normal strain)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dudx")
+        dudx = persistent_input(st.slider, "∂u/∂x [1/s] (Normal strain)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dudx")
     with col_sl2:
-        dudy = st.slider("∂u/∂y [1/s] (Shear rate)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dudy")
+        dudy = persistent_input(st.slider, "∂u/∂y [1/s] (Shear rate)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dudy")
     with col_sl3:
-        dvdx = st.slider("∂v/∂x [1/s] (Shear rate)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dvdx")
+        dvdx = persistent_input(st.slider, "∂v/∂x [1/s] (Shear rate)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dvdx")
     with col_sl4:
-        dvdy = st.slider("∂v/∂y [1/s] (Normal strain)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dvdy")
+        dvdy = persistent_input(st.slider, "∂v/∂y [1/s] (Normal strain)", min_value=-2.0, max_value=2.0, step=0.1, key="stress_dvdy")
 
     col_prop1, col_prop2 = st.columns(2)
     with col_prop1:
         mu_default = float(np.clip(fluid["mu"], 0.001, 0.1))
-        mu_val = st.slider(
+        mu_val = persistent_input(st.slider,
             "Dynamic Viscosity μ [Pa·s]",
             min_value=0.001,
             max_value=0.1,
             value=mu_default,
             step=0.005,
-            help=f"Sidebar fluid μ = {fluid['mu']:.3e} Pa·s. This slider is capped for Mohr-circle readability.",
-        )
+            help=f"Sidebar fluid μ = {fluid['mu']:.3e} Pa·s. This slider is capped for Mohr-circle readability.", key="tab_stress_ns_dynamic_viscosity_pa_s")
     with col_prop2:
-        p_val_kpa = st.slider("Hydrostatic Pressure p [kPa]", min_value=10.0, max_value=200.0, value=101.3, step=5.0)
+        p_val_kpa = persistent_input(st.slider, "Hydrostatic Pressure p [kPa]", min_value=10.0, max_value=200.0, value=101.3, step=5.0, key="tab_stress_ns_hydrostatic_pressure_p_kpa")
 
     decomp = decompose_velocity_gradient_2d(dudx, dudy, dvdx, dvdy)
     deform_res = deform_fluid_element_2d(dudx, dudy, dvdx, dvdy, dt=0.25)
@@ -324,14 +322,25 @@ def render_tab_stress_ns():
             "equation derived above assumed ∇·u = 0; the constitutive law here still includes "
             "the dilatation term (Stokes λ = −2μ/3)."
         )
-    if preset_name.startswith("Pure rotation"):
-        render_what_to_notice("D is the zero matrix — the green 'pure strain' outline stays square. τ_max is only the hydrostatic Mohr radius from p.")
-    elif preset_name.startswith("Pure shear"):
-        render_what_to_notice("The parcel shears into a parallelogram. Ω is nonzero too (vorticity = −∂u/∂y): simple shear is half strain, half spin.")
-    elif preset_name.startswith("Incompressible"):
+    matches_preset = preset is not None and all(
+        np.isclose(value, preset[key]) for key, value in
+        dict(dudx=dudx, dudy=dudy, dvdx=dvdx, dvdy=dvdy).items()
+    )
+    if matches_preset and preset_name.startswith("Pure rotation"):
+        render_what_to_notice("D is zero: the green D-only outline stays square, while the full parcel rotates without changing shape or area. Mohr's circle collapses to a point at −p. Changing pressure moves that point without creating shear.")
+    elif matches_preset and preset_name.startswith("Simple shear"):
+        render_what_to_notice("The parcel shears into a parallelogram. Both D and Ω are nonzero: simple shear combines instantaneous strain and spin. Their finite-time outlines are separate comparison flows, not shapes to add together.")
+    elif matches_preset and preset_name.startswith("Pure shear"):
+        render_what_to_notice("Ω is zero. The full and D-only outlines coincide: stretch along one diagonal and compression along the other preserve area, with no rigid spin.")
+    elif matches_preset and preset_name.startswith("Incompressible"):
         render_what_to_notice("Extension in x, compression in y, area preserved. This is an incompressible straining motion.")
     else:
-        render_what_to_notice("Dashed square = t₀. Filled = full L. Dotted green = strain D only (no rotation).")
+        render_what_to_notice("Dashed square = t₀. Filled = full L. Dotted green = the D-only comparison flow. Dash-dot orange = the Ω-only rigid rotation. Read the matrices for the current slider values.")
+
+    render_prose_and_latex(r'''The geometry follows a constant velocity gradient for Δt = 0.25 s:
+$$\frac{d\mathbf x}{dt}=\mathbf L\mathbf x,\qquad \mathbf x(t)=e^{\mathbf L t}\mathbf x(0),\qquad \frac{A(t)}{A(0)}=e^{\mathrm{tr}(\mathbf L)t}.$$
+Thus zero divergence preserves area exactly. The D-only and Ω-only outlines solve two separate flows. In general, their finite-time maps cannot be added or simply composed to recover the full motion.''')
+    st.caption(f"Computed area ratio A(t)/A(0) = {deform_res['area_ratio']:.6f}. Mohr's circle below uses Pa relative to the mean normal stress, so small viscous stresses remain visible. Changing pressure shifts the mean, while leaving the radius unchanged.")
 
     D = decomp["D"]
     Omega = decomp["Omega"]
@@ -370,9 +379,9 @@ def render_tab_stress_ns():
     render_svg(diagram_power_law())
     col_n1, col_n2, col_n3 = st.columns(3)
     with col_n1:
-        n_pl = st.slider("Power-law index n", min_value=0.3, max_value=1.7, value=0.7, step=0.05, key="pl_n")
+        n_pl = persistent_input(st.slider, "Power-law index n", min_value=0.3, max_value=1.7, value=0.7, step=0.05, key="pl_n")
     with col_n2:
-        k_pl = st.number_input(
+        k_pl = persistent_input(st.number_input,
             "Consistency K [Pa·sⁿ]",
             min_value=1e-4,
             max_value=10.0,
@@ -381,7 +390,7 @@ def render_tab_stress_ns():
             key="pl_K",
         )
     with col_n3:
-        pl_dp = st.slider("dp/dz [Pa/m]", min_value=-80.0, max_value=-5.0, value=-20.0, step=5.0, key="pl_dp")
+        pl_dp = persistent_input(st.slider, "dp/dz [Pa/m]", min_value=-80.0, max_value=-5.0, value=-20.0, step=5.0, key="pl_dp")
     pl_R = 0.025
     pl_res = power_law_pipe(
         radius=pl_R, dp_dz=pl_dp, K=float(k_pl), n=float(n_pl), rho=float(fluid["rho"])

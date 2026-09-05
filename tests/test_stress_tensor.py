@@ -1,9 +1,11 @@
 """Unit tests for stress tensor kinematics, symmetry, and Newtonian constitutive law."""
 
 import numpy as np
+import pytest
 from src.physics.stress_tensor import (
     decompose_velocity_gradient_2d,
-    compute_cauchy_stress_2d
+    compute_cauchy_stress_2d,
+    deform_fluid_element_2d,
 )
 
 def test_velocity_gradient_decomposition():
@@ -58,3 +60,43 @@ def test_cauchy_stress_symmetry_and_mohr_circle():
     p_stresses = res["principal_stresses"]
     assert np.isclose(p_stresses[0], center + radius)
     assert np.isclose(p_stresses[1], center - radius)
+
+
+@pytest.mark.parametrize('gradient', [(0, -1, 1, 0), (1, 0, 0, -1), (0, 1, 0, 0), (0, 1, 1, 0)])
+def test_incompressible_material_geometry_preserves_area(gradient):
+    result = deform_fluid_element_2d(*gradient, dt=0.25)
+    x, y = result['square_full'].T
+    polygon_area = 0.5 * abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
+    assert polygon_area == pytest.approx(1.0)
+    assert result['area_ratio'] == pytest.approx(polygon_area)
+
+
+def test_finite_rigid_rotation_preserves_lengths_and_internal_grid():
+    result = deform_fluid_element_2d(0, -1, 1, 0, dt=0.25)
+    rotation = np.array([[np.cos(.25), -np.sin(.25)], [np.sin(.25), np.cos(.25)]])
+    assert np.allclose(result['square_full'], result['square_initial'] @ rotation.T)
+    assert np.allclose(result['square_rot_only'], result['square_full'])
+    assert np.allclose(result['square_strain_only'], result['square_initial'])
+    for initial, final in zip(result['internal_lines_init'], result['internal_lines_full']):
+        assert np.allclose(final, initial @ rotation.T)
+    assert result['shear_angle_deg'] == pytest.approx(0)
+
+
+def test_finite_simple_shear_angle_matches_geometry():
+    result = deform_fluid_element_2d(0, 2, 0, 0, dt=.5)
+    assert np.allclose(result['deformation_gradient'], [[1, 1], [0, 1]])
+    assert result['shear_angle_deg'] == pytest.approx(45)
+
+
+def test_dilatation_has_exponential_area_growth():
+    result = deform_fluid_element_2d(1, 0, 0, 1, dt=.25)
+    assert result['area_ratio'] == pytest.approx(np.exp(.5))
+
+
+def test_pressure_shifts_mean_without_creating_mohr_radius():
+    for gradient in [(0, -1, 1, 0), (0, 1, 0, 0)]:
+        low = compute_cauchy_stress_2d(*gradient, p=1e4)
+        high = compute_cauchy_stress_2d(*gradient, p=2e5)
+        assert high['mohr_center'] - low['mohr_center'] == pytest.approx(-1.9e5)
+        assert high['mohr_radius'] == pytest.approx(low['mohr_radius'])
+    assert compute_cauchy_stress_2d(0, -1, 1, 0)['mohr_radius'] == 0

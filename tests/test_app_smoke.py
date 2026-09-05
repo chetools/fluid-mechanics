@@ -118,3 +118,86 @@ def test_canal_calculator_reacts_to_roughness():
     assert not at.exception, at.exception
     # A rougher channel needs more depth to pass the same discharge.
     assert normal_depth(at) > smooth
+
+
+def test_calculator_and_self_check_survive_chapter_round_trip():
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    at.number_input(key='asu_mair').set_value(60.0).run()
+    check = next(r for r in at.radio if r.key != 'chapter_nav')
+    check_key, answer = check.key, check.options[-1]
+    check.set_value(answer).run()
+    power = next(m.value for m in at.metric if m.label == 'MAC shaft power')
+    at.radio(key='chapter_nav').set_value('1 · Energy').run()
+    at.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    assert not at.exception
+    assert at.number_input(key='asu_mair').value == 60
+    assert at.radio(key=check_key).value == answer
+    assert next(m.value for m in at.metric if m.label == 'MAC shaft power') == power
+    # A new edit must supersede the saved value.
+    at.number_input(key='asu_mair').set_value(45.0).run()
+    assert at.number_input(key='asu_mair').value == 45
+
+
+def test_previously_unkeyed_input_survives_chapter_round_trip():
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key='chapter_nav').set_value('10 · Compressible').run()
+    temperature = next(w for w in at.number_input if w.label == 'Reservoir stagnation temperature [K]')
+    key = temperature.key
+    temperature.set_value(450.0).run()
+    at.radio(key='chapter_nav').set_value('1 · Energy').run()
+    at.radio(key='chapter_nav').set_value('10 · Compressible').run()
+    assert not at.exception
+    assert at.number_input(key=key).value == 450
+
+
+def test_lesson_values_are_isolated_between_sessions():
+    first = AppTest.from_file(APP, default_timeout=300).run()
+    first.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    first.number_input(key='asu_mair').set_value(60.0).run()
+    second = AppTest.from_file(APP, default_timeout=300).run()
+    second.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    assert second.number_input(key='asu_mair').value == 30
+
+
+def test_network_edits_and_solution_survive_navigation():
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key='chapter_nav').set_value('2 · Pipes').run()
+    # AppTest has no editor API; supply the same delta payload as the browser.
+    at.session_state['network_nodes'] = {
+        'edited_rows': {1: {'elevation_m': 17.0}}, 'added_rows': [], 'deleted_rows': [],
+    }
+    at.run()
+    at.button(key='solve_network_button').click().run()
+    signature = at.session_state['solved_network'][0]
+    at.radio(key='chapter_nav').set_value('1 · Energy').run()
+    at.radio(key='chapter_nav').set_value('2 · Pipes').run()
+    assert not at.exception
+    table = at.session_state['_lesson_tables']['network_nodes']['latest']
+    assert table.loc[1, 'elevation_m'] == 17
+    assert at.session_state['solved_network'][0] == signature
+    assert any('Solved in' in message.value for message in at.success)
+    # Editing after re-entry invalidates the old result until an explicit solve.
+    at.session_state['network_nodes'] = {
+        'edited_rows': {1: {'elevation_m': 18.0}}, 'added_rows': [], 'deleted_rows': [],
+    }
+    at.run()
+    assert not any('Solved in' in message.value for message in at.success)
+
+
+def test_network_row_addition_and_deletion_are_not_replayed():
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key='chapter_nav').set_value('2 · Pipes').run()
+    original = at.session_state['_lesson_tables']['network_pipes']['latest']
+    replacement = dict(original.iloc[2], pipe='Replacement')
+    at.session_state['network_pipes'] = {
+        'edited_rows': {}, 'added_rows': [replacement], 'deleted_rows': [2],
+    }
+    at.run()
+    expected = at.session_state['_lesson_tables']['network_pipes']['latest'].to_dict('records')
+    for _ in range(2):
+        at.run()
+        at.radio(key='chapter_nav').set_value('1 · Energy').run()
+        at.radio(key='chapter_nav').set_value('2 · Pipes').run()
+        assert not at.exception
+        assert at.session_state['_lesson_tables']['network_pipes']['latest'].to_dict('records') == expected

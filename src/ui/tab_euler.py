@@ -1,6 +1,7 @@
 """UI module for Panel 1: Euler's Equation (1D to 3D), Streamlines & Bernoulli."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 
 from src.svg_diagrams import (
@@ -297,11 +298,11 @@ def render_tab_euler():
         )
         col_v1, col_v2, col_v3 = st.columns(3)
         with col_v1:
-            d_throat = st.slider("Throat Diameter [m]", min_value=0.02, max_value=0.08, value=0.04, step=0.005)
+            d_throat = persistent_input(st.slider, "Throat Diameter [m]", min_value=0.02, max_value=0.08, value=0.04, step=0.005, key="tab_euler_throat_diameter_m")
         with col_v2:
-            q_flow = st.slider("Flow Rate Q [m³/s]", min_value=0.005, max_value=0.05, value=0.02, step=0.005)
+            q_flow = persistent_input(st.slider, "Flow Rate Q [m³/s]", min_value=0.005, max_value=0.05, value=0.02, step=0.005, key="tab_euler_flow_rate_q_m_s")
         with col_v3:
-            p_inlet_kpa = st.slider("Inlet Pressure [kPa]", min_value=50.0, max_value=300.0, value=150.0, step=10.0)
+            p_inlet_kpa = persistent_input(st.slider, "Inlet Pressure [kPa]", min_value=50.0, max_value=300.0, value=150.0, step=10.0, key="tab_euler_inlet_pressure_kpa")
 
         res_venturi = venturi_profile(
             d_throat=d_throat,
@@ -347,9 +348,9 @@ def render_tab_euler():
         )
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            u_inf = st.slider("Freestream Velocity U∞ [m/s]", min_value=1.0, max_value=15.0, value=5.0, step=1.0)
+            u_inf = persistent_input(st.slider, "Freestream Velocity U∞ [m/s]", min_value=1.0, max_value=15.0, value=5.0, step=1.0, key="tab_euler_freestream_velocity_u_m_s")
         with col_c2:
-            cyl_radius = st.slider("Cylinder Radius R [m]", min_value=0.5, max_value=2.0, value=1.0, step=0.1)
+            cyl_radius = persistent_input(st.slider, "Cylinder Radius R [m]", min_value=0.5, max_value=2.0, value=1.0, step=0.1, key="tab_euler_cylinder_radius_r_m")
 
         res_cyl = cylinder_potential_flow(
             radius=cyl_radius,

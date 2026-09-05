@@ -1,6 +1,7 @@
 """UI module for Pipe Flow and Chemical Engineering piping applications."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 
 from src.physics.pipe_flow import (
@@ -201,18 +202,16 @@ def render_tab_pipe_flow():
 
     col_m1, col_m2 = st.columns(2)
     with col_m1:
-        re_pipe_input = st.select_slider(
+        re_pipe_input = persistent_input(st.select_slider,
             "Operating Reynolds Number Re",
             options=[800, 1500, 2100, 3000, 5000, 10000, 50000, 100000, 500000, 1000000, 10000000],
-            value=50000
-        )
+            value=50000, key="tab_pipe_flow_operating_reynolds_number_re")
     with col_m2:
-        eps_d_input = st.select_slider(
+        eps_d_input = persistent_input(st.select_slider,
             "Relative Pipe Roughness ε/D",
             options=[0.0, 1e-5, 5e-5, 1e-4, 5e-4, 1e-3, 5e-3, 1e-2, 2e-2, 5e-2],
             value=1e-3,
-            format_func=lambda x: "Smooth (0.0)" if x == 0.0 else f"{x:.0e}"
-        )
+            format_func=lambda x: "Smooth (0.0)" if x == 0.0 else f"{x:.0e}", key="tab_pipe_flow_relative_pipe_roughness_d")
 
     f_op = friction_factor_churchill(re_pipe_input, eps_d_input)
 
@@ -240,26 +239,26 @@ def render_tab_pipe_flow():
 
     col_pipe1, col_pipe2, col_pipe3 = st.columns(3)
     with col_pipe1:
-        flow_rate_m3h = st.slider("Flow Rate Q [m³/h]", min_value=1.0, max_value=100.0, value=25.0, step=1.0)
-        pipe_d_mm = st.slider("Pipe Inner Diameter [mm]", min_value=25.0, max_value=200.0, value=75.0, step=5.0)
+        flow_rate_m3h = persistent_input(st.slider, "Flow Rate Q [m³/h]", min_value=1.0, max_value=100.0, value=25.0, step=1.0, key="tab_pipe_flow_flow_rate_q_m_h")
+        pipe_d_mm = persistent_input(st.slider, "Pipe Inner Diameter [mm]", min_value=25.0, max_value=200.0, value=75.0, step=5.0, key="tab_pipe_flow_pipe_inner_diameter_mm")
     with col_pipe2:
-        pipe_len_m = st.slider("Pipe Length L [m]", min_value=5.0, max_value=250.0, value=60.0, step=5.0)
-        elevation_m = st.slider("Static Elevation Gain Δz [m]", min_value=0.0, max_value=50.0, value=12.0, step=1.0)
+        pipe_len_m = persistent_input(st.slider, "Pipe Length L [m]", min_value=5.0, max_value=250.0, value=60.0, step=5.0, key="tab_pipe_flow_pipe_length_l_m")
+        elevation_m = persistent_input(st.slider, "Static Elevation Gain Δz [m]", min_value=0.0, max_value=50.0, value=12.0, step=1.0, key="tab_pipe_flow_static_elevation_gain_z_m")
     with col_pipe3:
-        pipe_mat = st.selectbox("Commercial Pipe Material", options=list(PIPE_ROUGHNESS.keys()), index=0)
-        pump_eff = st.slider("Pump Mechanical Efficiency η", min_value=0.40, max_value=0.90, value=0.72, step=0.02)
+        pipe_mat = persistent_input(st.selectbox, "Commercial Pipe Material", options=list(PIPE_ROUGHNESS.keys()), index=0, key="tab_pipe_flow_commercial_pipe_material")
+        pump_eff = persistent_input(st.slider, "Pump Mechanical Efficiency η", min_value=0.40, max_value=0.90, value=0.72, step=0.02, key="tab_pipe_flow_pump_mechanical_efficiency")
 
     st.markdown("#### Fittings & Valves Inventory (Minor Losses)")
     col_fit1, col_fit2, col_fit3 = st.columns(3)
     with col_fit1:
-        n_elbows = st.number_input("90° Standard Elbows", min_value=0, max_value=20, value=4)
-        n_tees = st.number_input("Tees (Flow through branch)", min_value=0, max_value=10, value=1)
+        n_elbows = persistent_input(st.number_input, "90° Standard Elbows", min_value=0, max_value=20, value=4, key="tab_pipe_flow_90_standard_elbows")
+        n_tees = persistent_input(st.number_input, "Tees (Flow through branch)", min_value=0, max_value=10, value=1, key="tab_pipe_flow_tees_flow_through_branch")
     with col_fit2:
-        n_gate_valves = st.number_input("Gate Valves (Open)", min_value=0, max_value=10, value=2)
-        n_globe_valves = st.number_input("Globe Valves (Open)", min_value=0, max_value=10, value=1)
+        n_gate_valves = persistent_input(st.number_input, "Gate Valves (Open)", min_value=0, max_value=10, value=2, key="tab_pipe_flow_gate_valves_open")
+        n_globe_valves = persistent_input(st.number_input, "Globe Valves (Open)", min_value=0, max_value=10, value=1, key="tab_pipe_flow_globe_valves_open")
     with col_fit3:
-        n_check_valves = st.number_input("Check Valves (Swing type)", min_value=0, max_value=5, value=1)
-        elec_cost_rate = st.number_input("Electricity Cost [$/kWh]", min_value=0.05, max_value=0.40, value=0.12, step=0.01)
+        n_check_valves = persistent_input(st.number_input, "Check Valves (Swing type)", min_value=0, max_value=5, value=1, key="tab_pipe_flow_check_valves_swing_type")
+        elec_cost_rate = persistent_input(st.number_input, "Electricity Cost [$/kWh]", min_value=0.05, max_value=0.40, value=0.12, step=0.01, key="tab_pipe_flow_electricity_cost_kwh")
 
     fittings_dict = {
         "90° Standard Elbow": n_elbows,
@@ -365,28 +364,28 @@ def render_tab_pipe_flow():
         pv_default = float(fluid["vapor_pressure"]) if fluid.get("vapor_pressure") is not None else 2338.8
         col_n1, col_n2, col_n3 = st.columns(3)
         with col_n1:
-            p_tank_kpa = st.number_input(
+            p_tank_kpa = persistent_input(st.number_input,
                 "Tank pressure (absolute) [kPa]",
                 min_value=20.0, max_value=300.0, value=101.3, step=1.0, key="npsh_ptank",
             )
-            z_s = st.slider(
+            z_s = persistent_input(st.slider,
                 "z surface above pump [m] (+ flooded)",
                 min_value=-8.0, max_value=12.0, value=2.0, step=0.5, key="npsh_z",
             )
         with col_n2:
-            L_suc = st.slider("Suction pipe L [m]", min_value=1.0, max_value=40.0, value=8.0, step=1.0, key="npsh_L")
-            D_suc_mm = st.slider("Suction ID [mm]", min_value=25.0, max_value=200.0, value=pipe_d_mm, step=5.0, key="npsh_D")
+            L_suc = persistent_input(st.slider, "Suction pipe L [m]", min_value=1.0, max_value=40.0, value=8.0, step=1.0, key="npsh_L")
+            D_suc_mm = persistent_input(st.slider, "Suction ID [mm]", min_value=25.0, max_value=200.0, value=pipe_d_mm, step=5.0, key="npsh_D")
         with col_n3:
-            p_v_kpa = st.number_input(
+            p_v_kpa = persistent_input(st.number_input,
                 "Vapor pressure P_v [kPa]",
                 min_value=0.0, max_value=50.0, value=pv_default / 1000.0, step=0.1, key="npsh_pv",
                 help=f"Sidebar {fluid['name']} default is {pv_default/1000:.2f} kPa at 20 °C.",
             )
-            npsh_r = st.number_input(
+            npsh_r = persistent_input(st.number_input,
                 "NPSH_R from pump curve [m]",
                 min_value=0.5, max_value=12.0, value=3.0, step=0.1, key="npsh_r",
             )
-        n_suc_elbows = st.number_input("Suction 90° elbows", min_value=0, max_value=8, value=2, key="npsh_elb")
+        n_suc_elbows = persistent_input(st.number_input, "Suction 90° elbows", min_value=0, max_value=8, value=2, key="npsh_elb")
         q_m3s = flow_rate_m3h / 3600.0
         npsh = npsh_available(
             p_tank_abs=p_tank_kpa * 1000.0,
@@ -435,10 +434,10 @@ def render_tab_pipe_flow():
         "From Tab 6's Ostwald–de Waele lab. Only valid while Re_MR is laminar; "
         "Churchill/Moody stay Newtonian."
     )
-    use_pl = st.checkbox("Compare power-law Δp_major to Newtonian", value=False, key="pipe_pl_toggle")
+    use_pl = persistent_input(st.checkbox, "Compare power-law Δp_major to Newtonian", value=False, key="pipe_pl_toggle")
     if use_pl:
-        n_des = st.slider("n (design)", min_value=0.3, max_value=1.5, value=0.7, step=0.05, key="pipe_pl_n")
-        k_des = st.number_input(
+        n_des = persistent_input(st.slider, "n (design)", min_value=0.3, max_value=1.5, value=0.7, step=0.05, key="pipe_pl_n")
+        k_des = persistent_input(st.number_input,
             "K [Pa·sⁿ]", min_value=1e-4, max_value=20.0,
             value=max(float(fluid["mu"]), 0.01), format="%.4f", key="pipe_pl_K",
         )
@@ -499,13 +498,13 @@ def render_tab_pipe_flow():
         )
 
     st.markdown("#### Hydraulic-diameter calculator")
-    geom = st.radio("Geometry", ["Annulus", "Rectangular duct"], horizontal=True)
+    geom = persistent_input(st.radio, "Geometry", ["Annulus", "Rectangular duct"], horizontal=True, key="tab_pipe_flow_geometry")
     if geom == "Annulus":
         c1, c2 = st.columns(2)
         with c1:
-            d_o = st.number_input("Outer diameter D_o [m]", min_value=0.02, max_value=0.5, value=0.10, step=0.01)
+            d_o = persistent_input(st.number_input, "Outer diameter D_o [m]", min_value=0.02, max_value=0.5, value=0.10, step=0.01, key="tab_pipe_flow_outer_diameter_d_o_m")
         with c2:
-            d_i = st.number_input("Inner diameter D_i [m]", min_value=0.01, max_value=0.49, value=0.06, step=0.01)
+            d_i = persistent_input(st.number_input, "Inner diameter D_i [m]", min_value=0.01, max_value=0.49, value=0.06, step=0.01, key="tab_pipe_flow_inner_diameter_d_i_m")
         if d_i >= d_o:
             st.error("Need D_i < D_o.")
         else:
@@ -514,9 +513,9 @@ def render_tab_pipe_flow():
     else:
         c1, c2 = st.columns(2)
         with c1:
-            a_duct = st.number_input("Width a [m]", min_value=0.02, max_value=2.0, value=0.40, step=0.02)
+            a_duct = persistent_input(st.number_input, "Width a [m]", min_value=0.02, max_value=2.0, value=0.40, step=0.02, key="tab_pipe_flow_width_a_m")
         with c2:
-            b_duct = st.number_input("Height b [m]", min_value=0.02, max_value=2.0, value=0.20, step=0.02)
+            b_duct = persistent_input(st.number_input, "Height b [m]", min_value=0.02, max_value=2.0, value=0.20, step=0.02, key="tab_pipe_flow_height_b_m")
         d_h = hydraulic_diameter("rectangular", a_duct, b_duct)
         st.metric("D_H = 2ab/(a+b)", f"{d_h:.4f} m")
 
@@ -722,16 +721,16 @@ def render_tab_pipe_flow():
 
     st.markdown("#### 2.5.4 Canal and channel calculator")
     ch1, ch2, ch3 = st.columns(3)
-    ch_q = ch1.number_input("Design discharge Q [m³/s]", min_value=0.01, max_value=5000.0,
+    ch_q = persistent_input(ch1.number_input, "Design discharge Q [m³/s]", min_value=0.01, max_value=5000.0,
                             value=8.0, step=0.5, key="canal_q")
-    ch_b = ch1.number_input("Bottom width b [m]", min_value=0.0, max_value=200.0,
+    ch_b = persistent_input(ch1.number_input, "Bottom width b [m]", min_value=0.0, max_value=200.0,
                             value=3.0, step=0.5, key="canal_b")
-    ch_z = ch2.number_input("Side slope z (horizontal per 1 vertical)", min_value=0.0,
+    ch_z = persistent_input(ch2.number_input, "Side slope z (horizontal per 1 vertical)", min_value=0.0,
                             max_value=6.0, value=1.5, step=0.25, key="canal_z")
-    ch_slope = ch2.number_input("Bed slope S₀ [m/m]", min_value=1e-6, max_value=0.2,
+    ch_slope = persistent_input(ch2.number_input, "Bed slope S₀ [m/m]", min_value=1e-6, max_value=0.2,
                                 value=0.0008, step=0.0002, format="%.5f", key="canal_s")
-    ch_material = ch3.selectbox("Channel surface", list(MANNING_N.keys()), index=4, key="canal_mat")
-    ch_bank = ch3.number_input("Bank height above invert [m]", min_value=0.05, max_value=60.0,
+    ch_material = persistent_input(ch3.selectbox, "Channel surface", list(MANNING_N.keys()), index=4, key="canal_mat")
+    ch_bank = persistent_input(ch3.number_input, "Bank height above invert [m]", min_value=0.05, max_value=60.0,
                                value=2.5, step=0.1, key="canal_bank")
 
     if ch_b == 0.0 and ch_z == 0.0:

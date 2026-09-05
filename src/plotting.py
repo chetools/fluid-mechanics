@@ -253,6 +253,7 @@ def plot_fluid_element_deformation(
     sq_init = deform_res["square_initial"]
     sq_full = deform_res["square_full"]
     sq_strain = deform_res["square_strain_only"]
+    sq_rotation = deform_res["square_rot_only"]
     
     # Initial square
     fig.add_trace(
@@ -279,9 +280,16 @@ def plot_fluid_element_deformation(
         go.Scatter(
             x=sq_strain[:, 0], y=sq_strain[:, 1],
             mode="lines", line=dict(color=SUCCESS, width=1.8, dash="dot"),
-            name="Pure Strain D (No Rotation)"
+            name="D-only comparison"
         ),
         row=1, col=1
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=sq_rotation[:, 0], y=sq_rotation[:, 1],
+            mode="lines", line=dict(color=PRESSURE, width=1.8, dash="dashdot"),
+            name="Ω-only rotation"
+        ), row=1, col=1,
     )
     # Internal grid lines
     for line in deform_res["internal_lines_full"]:
@@ -295,10 +303,12 @@ def plot_fluid_element_deformation(
         )
         
     # 2. Mohr's Circle (Right)
-    center = stress_res["mohr_center"] / 1000.0  # kPa
-    radius = stress_res["mohr_radius"] / 1000.0
-    sig_1 = stress_res["principal_stresses"][0] / 1000.0
-    sig_2 = stress_res["principal_stresses"][1] / 1000.0
+    # Plot deviations in Pa instead of burying millipascal shear beneath a
+    # ~100 kPa pressure offset. The separate mean restores the total stress.
+    mean_kpa = stress_res["mohr_center"] / 1000.0
+    center = 0.0
+    radius = stress_res["mohr_radius"]
+    sig_1, sig_2 = radius, -radius
     
     th_circle = np.linspace(0, 2*np.pi, 200)
     x_circle = center + radius * np.cos(th_circle)
@@ -317,7 +327,7 @@ def plot_fluid_element_deformation(
         go.Scatter(
             x=[center], y=[0],
             mode="markers", marker=dict(size=8, color=TEXT),
-            name=f"Mean Stress σ_avg = {center:.2f} kPa"
+            name=f"Mean σ = {mean_kpa:.3f} kPa"
         ),
         row=1, col=2
     )
@@ -326,7 +336,7 @@ def plot_fluid_element_deformation(
         go.Scatter(
             x=[sig_1, sig_2], y=[0, 0],
             mode="markers", marker=dict(size=10, color=SUCCESS, symbol="diamond"),
-            name="Principal Stresses (σ₁, σ₂)"
+            name="Principal stress deviations"
         ),
         row=1, col=2
     )
@@ -336,15 +346,16 @@ def plot_fluid_element_deformation(
             x=[center, center], y=[-radius, radius],
             mode="lines+markers", line=dict(color=SHEAR, width=1.5, dash="dash"),
             marker=dict(size=8, color=SHEAR),
-            name=f"Max In-Plane Shear τ_max = {radius:.2f} kPa"
+            name=f"Max shear = {radius:.3g} Pa"
         ),
         row=1, col=2
     )
     
-    fig.update_xaxes(title_text="x displacement", scaleanchor="y", scaleratio=1, row=1, col=1)
-    fig.update_yaxes(title_text="y displacement", row=1, col=1)
-    fig.update_xaxes(title_text="Normal Stress σ [kPa]", row=1, col=2)
-    fig.update_yaxes(title_text="Shear Stress τ [kPa]", row=1, col=2)
+    fig.update_xaxes(title_text="x position [initial side lengths]", scaleanchor="y", scaleratio=1, row=1, col=1)
+    fig.update_yaxes(title_text="y position", row=1, col=1)
+    limit = max(1.3 * radius, 1e-3)
+    fig.update_xaxes(title_text="σ − σ_mean [Pa]", range=[-limit, limit], constrain="domain", row=1, col=2)
+    fig.update_yaxes(title_text="Shear τ [Pa]", range=[-limit, limit], scaleanchor="x2", scaleratio=1, row=1, col=2)
     
     fig.update_layout(height=480)
     return apply_plotly_theme(fig)

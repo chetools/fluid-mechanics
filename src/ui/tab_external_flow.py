@@ -2,8 +2,10 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+from src.ui.state import persistent_input
 from src.units import get_fluid_state
 from src.physics.gas_dynamics import sphere_drag
+from src.svg_diagrams import diagram_sphere_forces, diagram_sphere_separation, render_svg
 from src.ui.pedagogy import render_prose_and_latex as prose, render_plot
 from src.theme import apply_plotly_theme
 
@@ -14,6 +16,7 @@ def render_tab_external_flow():
 $$F_D=\int_S(-p\mathbf n+\boldsymbol\tau\cdot\mathbf n)\cdot\mathbf e_U\,dS=\tfrac12\rho U^2C_D A,\quad A=\pi d^2/4,\quad Re_d=\rho Ud/\mu$$
 A flat plate aligned with flow is often dominated by skin friction; a bluff sphere or cylinder often has substantial pressure drag. Their coefficient curves and reference areas are different. Pipe transition thresholds do not classify these flows.''')
     st.markdown('### 8.2 Stokes flow · a derivation for a sphere')
+    render_svg(diagram_sphere_forces())
     prose(r'''**1 · Scale the equations.** Compare inertia with viscous stress. If Re ≪ 1, discard inertia but retain viscosity everywhere. Assume steady incompressible Newtonian flow, an isolated rigid sphere and no slip.
 $$Re(\mathbf u^*\cdot\nabla^*)\mathbf u^*=-\nabla^*p^*+\nabla^{*2}\mathbf u^*\quad\longrightarrow\quad\nabla p=\mu\nabla^2\mathbf u,\quad\nabla\cdot\mathbf u=0$$
 **2 · Enforce geometry and boundary conditions.** Write an axisymmetric streamfunction with radius a = d/2 and polar angle θ measured from the positive upstream velocity direction. The curl of momentum eliminates pressure and gives the biharmonic streamfunction equation. Its uniform-flow, r and 1/r terms are fixed by no slip at r = a and uniform speed U far away.
@@ -28,9 +31,9 @@ The coefficient diverges as U → 0, but the **force tends to zero linearly**. A
     st.markdown('### 8.3 Settling and finite-inertia drag lab')
     fluid = get_fluid_state(); rho, mu = fluid['rho'], fluid['mu']
     c1,c2,c3 = st.columns(3)
-    diameter = c1.number_input('Sphere diameter [mm]', min_value=.001, value=.1, key='sphere_d')/1000
-    speed = c2.number_input('Relative speed [m/s]', min_value=.000001, value=.001, format='%.6f', key='sphere_u')
-    density = c3.number_input('Particle density [kg/m³]', min_value=.1, value=2500., key='sphere_rho')
+    diameter = persistent_input(c1.number_input, 'Sphere diameter [mm]', min_value=.001, value=.1, key='sphere_d')/1000
+    speed = persistent_input(c2.number_input, 'Relative speed [m/s]', min_value=.000001, value=.001, format='%.6f', key='sphere_u')
+    density = persistent_input(c3.number_input, 'Particle density [kg/m³]', min_value=.1, value=2500., key='sphere_rho')
     re = rho*speed*diameter/mu
     drag=3*math.pi*mu*diameter*speed
     terminal=(density-rho)*9.81*diameter**2/(18*mu)
@@ -56,6 +59,7 @@ $$\frac{\pi d^3}{6}(\rho_p-\rho)g=3\pi\mu dU_t\quad\Rightarrow\quad U_t=\frac{(\
 For modest inertia, the empirical Schiller–Naumann correction is
 $$C_D=\frac{24}{Re}\left(1+0.15Re^{0.687}\right).$$''')
     st.markdown('### 8.4 Drag crisis · why a turbulent layer can reduce drag')
+    render_svg(diagram_sphere_separation())
     st.markdown('As Reynolds number rises, a smooth sphere develops a separated wake. Near the drag crisis (often a few hundred thousand), transition within the boundary layer increases near-wall momentum transport. Separation moves downstream, the wake narrows, and pressure drag drops sharply even though skin friction increases. Surface roughness and free-stream turbulence shift the transition; there is no universal critical Reynolds number.')
     fig=go.Figure()
     x=np.logspace(-3,3,180)

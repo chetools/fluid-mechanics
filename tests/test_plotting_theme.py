@@ -27,6 +27,7 @@ from src.physics.exact_solutions import (
 from src.physics.impeller import head_flow_curve, velocity_triangles
 from src.physics.gas_dynamics import relief_capacity_curve
 from src.physics.numerical_solver import run_lid_driven_cavity
+from src.physics.stress_tensor import compute_cauchy_stress_2d, deform_fluid_element_2d
 from src.physics.open_channel import MANNING_N, channel_state, rating_curve
 from src.physics.transport_analogy import (
     pohlhausen_theta_gradient,
@@ -144,3 +145,15 @@ def test_theme_survives_a_second_application():
     apply_plotly_theme(figure)
     assert figure.layout.title.text == "kept"
     assert figure.layout.template.layout.paper_bgcolor == SURFACE
+
+
+def test_mohr_plot_resolves_small_shear_and_keeps_equal_axis_scales():
+    fig = plotting.plot_fluid_element_deformation(
+        deform_fluid_element_2d(0, 1, 0, 0),
+        compute_cauchy_stress_2d(0, 1, 0, 0, mu=.001, p=101300),
+    )
+    circle = next(t for t in fig.data if t.name == "Mohr's Circle")
+    assert max(circle.x) == pytest.approx(.001)
+    assert any('0.001 Pa' in t.name for t in fig.data if t.showlegend is not False)
+    assert fig.layout.yaxis2.scaleanchor == 'x2'
+    assert fig.layout.yaxis2.scaleratio == 1

@@ -1,6 +1,7 @@
 """UI module for Panel 7: Numerical solution of Navier–Stokes (projection CFD)."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 import numpy as np
 
@@ -121,20 +122,18 @@ def render_tab_cfd():
 
     col_sim1, col_sim2, col_sim3 = st.columns(3)
     with col_sim1:
-        re_slider = st.select_slider(
+        re_slider = persistent_input(st.select_slider,
             "Reynolds Number Re = U·L/ν",
             options=[10.0, 50.0, 100.0, 200.0, 400.0],
-            value=100.0,
-        )
+            value=100.0, key="tab_cfd_reynolds_number_re_u_l")
     with col_sim2:
-        grid_res = st.selectbox("Grid Resolution", options=["31 x 31 (Fast)", "41 x 41 (Standard)"], index=1)
+        grid_res = persistent_input(st.selectbox, "Grid Resolution", options=["31 x 31 (Fast)", "41 x 41 (Standard)"], index=1, key="tab_cfd_grid_resolution")
         nx_val = 31 if "31" in grid_res else 41
     with col_sim3:
-        effort = st.selectbox(
+        effort = persistent_input(st.selectbox,
             "Integration effort",
             options=["Quick look (t* ≈ 0.5)", "Longer run (t* ≈ 4)"],
-            help="t* = t U/L. Viscous time is Re. Steady Ghia data need t* of order 10+, not 0.5.",
-        )
+            help="t* = t U/L. Viscous time is Re. Steady Ghia data need t* of order 10+, not 0.5.", key="tab_cfd_integration_effort")
 
     dt_auto = suggested_timestep(re_slider, nx_val)
     t_target = 0.5 if "Quick" in effort else 4.0
@@ -166,7 +165,8 @@ def render_tab_cfd():
 
     st.caption(
         f"Δt = {dt_auto:.2e} (CFL and viscous limits) · {n_steps_val} steps · "
-        f"Poisson residual {res_cavity['poisson_residual']:.2e} after {poisson_iters} red-black SOR sweeps · "
+        f"Poisson residual {res_cavity['poisson_residual']:.2e} Pa/m² after {poisson_iters} red-black SOR sweeps · "
+        f"source mean removed {res_cavity['poisson_compatibility_correction']:+.2e} Pa/m² · "
         f"viscous time L²/ν = {res_cavity['t_viscous']:.1f}. "
         "This 2D run cannot show vortex stretching."
     )
@@ -175,8 +175,10 @@ def render_tab_cfd():
             "1. **Boundary conditions:** the top wall moves; the other walls are stationary and impermeable.\n"
             "2. **Mass conservation:** inspect max |∇·u|. The discrete projection reduces divergence, "
             "but this collocated teaching solver does not enforce it exactly.\n"
-            "3. **Pressure solve:** a nonzero Poisson residual means the iterative solve is incomplete. "
-            "A small residual alone does not establish velocity accuracy.\n"
+            "3. **Pressure solve:** the reported residual measures the equation after subtracting "
+            "the source mean to make it compatible with impermeable walls. The separately reported "
+            "mean removed measures that adjustment, not iteration error. A small residual alone "
+            "does not establish mass conservation or velocity accuracy.\n"
             "4. **Time and grid:** compare integration times and grid sizes separately. "
             "A steady-looking picture can still contain spatial discretization error.\n"
             "5. **Reference:** compare with Ghia only at the same Reynolds number and after spin-up. "

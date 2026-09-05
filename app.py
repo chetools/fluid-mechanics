@@ -35,6 +35,7 @@ _MODULE_RELOAD_ORDER = (
     "src.physics.impeller",
     "src.svg_impeller",
     "src.plotting",
+    "src.ui.state",
     "src.ui.pedagogy",
     "src.ui.learning_path",
     "src.ui.top_bar",
@@ -83,6 +84,7 @@ _refresh_source_modules(_source_fingerprint())
 
 import src.theme as theme
 import src.units as units
+from src.ui.state import persistent_input
 from src.ui.top_bar import render_top_bar
 from src.ui.pedagogy import render_concept_map
 from src.ui.learning_path import render_chapter_header, render_chapter_recap
@@ -127,18 +129,16 @@ with st.sidebar:
 
     st.markdown("#### Global Physical Properties")
     st.caption("Shared by liquid, external-flow and incompressible labs. Gas-machine and compressible labs have separate thermodynamic inputs.")
-    u_ref = st.number_input("Reference Velocity U₀ [m/s]", min_value=0.1, max_value=50.0, value=2.0, step=0.5)
-    l_ref = st.number_input("Characteristic Length L [m]", min_value=0.001, max_value=5.0, value=0.05, step=0.01)
-    fluid_preset = st.selectbox("Fluid Preset", options=["Water (20°C)", "Air (20°C)", "Glycerin", "Custom"])
+    u_ref = persistent_input(st.number_input, "Reference Velocity U₀ [m/s]", min_value=0.1, max_value=50.0, value=2.0, step=0.5, key="app_reference_velocity_u_m_s")
+    l_ref = persistent_input(st.number_input, "Characteristic Length L [m]", min_value=0.001, max_value=5.0, value=0.05, step=0.01, key="app_characteristic_length_l_m")
+    fluid_preset = persistent_input(st.selectbox, "Fluid Preset", options=["Water (20°C)", "Air (20°C)", "Glycerin", "Custom"], key="app_fluid_preset")
 
     if fluid_preset == "Custom":
-        rho_ref = st.number_input("Density ρ [kg/m³]", min_value=0.1, max_value=20000.0, value=1000.0)
-        mu_ref = st.number_input(
-            "Dynamic Viscosity μ [Pa·s]", min_value=1e-6, max_value=10.0, value=1e-3, format="%.2e"
-        )
-        a_sound = st.number_input(
-            "Speed of sound a [m/s]", min_value=50.0, max_value=5000.0, value=1482.0, step=10.0
-        )
+        rho_ref = persistent_input(st.number_input, "Density ρ [kg/m³]", min_value=0.1, max_value=20000.0, value=1000.0, key="app_density_kg_m")
+        mu_ref = persistent_input(st.number_input,
+            "Dynamic Viscosity μ [Pa·s]", min_value=1e-6, max_value=10.0, value=1e-3, format="%.2e", key="app_dynamic_viscosity_pa_s")
+        a_sound = persistent_input(st.number_input,
+            "Speed of sound a [m/s]", min_value=50.0, max_value=5000.0, value=1482.0, step=10.0, key="app_speed_of_sound_a_m_s")
         kind = "liquid"
         vapor_pressure = None
     else:

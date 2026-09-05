@@ -167,3 +167,25 @@ def test_corner_singularity_is_reported_separately():
     res = run_lid_driven_cavity(reynolds=100.0, nx=41, ny=41, n_steps=100, dt=1e-3, poisson_iters=40)
     assert res["max_divergence_interior"] < res["max_divergence"]
     assert res["max_divergence_interior"] < 0.5 * res["max_divergence"]
+
+
+def test_poisson_residual_separates_compatibility_from_iteration_error():
+    from src.physics.numerical_solver import (
+        compatible_poisson_rhs, poisson_residual, solve_pressure_poisson,
+    )
+    p0, div, dx, dy, rho, dt = _poisson_case(n=15)
+    div[1:-1, 1:-1] += 0.25
+    before = div.copy()
+    rhs, correction = compatible_poisson_rhs(div, rho, dt)
+    assert correction == pytest.approx(250.0)
+    assert rhs[1:-1, 1:-1].mean() == pytest.approx(0, abs=1e-12)
+    assert poisson_residual(p0, div, dx, dy, rho, dt) > 0.1
+    p = solve_pressure_poisson(p0, div, dx, dy, rho, dt, n_iterations=1000)
+    assert poisson_residual(p, div, dx, dy, rho, dt) < 1e-8
+    assert np.array_equal(div, before)
+
+
+def test_unstarted_cavity_reports_zero_compatibility_correction():
+    result = run_lid_driven_cavity(nx=9, ny=9, n_steps=0)
+    assert result['poisson_residual'] == 0
+    assert result['poisson_compatibility_correction'] == 0

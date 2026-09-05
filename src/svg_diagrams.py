@@ -79,6 +79,125 @@ def _arrow_defs() -> str:
     </defs>
     """
 
+def diagram_sphere_forces() -> str:
+    """True-plane sphere traction geometry, separate from a settling free body."""
+    return f'''
+    <svg viewBox="0 0 880 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Local surface traction and the net force are different pictures</text>
+      <rect x="16" y="48" width="432" height="350" rx="8" fill="{SURFACE_RAISED}"/>
+      <rect x="460" y="48" width="404" height="350" rx="8" fill="{SURFACE_RAISED}"/>
+      <text x="32" y="74" fill="{ACCENT}" font-size="14">Fixed sphere · fluid flows to the right</text>
+      <line x1="38" y1="115" x2="133" y2="115" stroke="{ACCENT}" stroke-width="3" marker-end="url(#arrow-sky)"/>
+      <text x="45" y="103" fill="{ACCENT}" font-size="13">U, positive flow axis</text>
+      <circle cx="193" cy="229" r="75" fill="{rgba(ACCENT,.10)}" stroke="{ACCENT}" stroke-width="2"/>
+      <line x1="193" y1="229" x2="302" y2="229" stroke="{TEXT_DIM}" stroke-dasharray="4,3"/>
+      <line x1="193" y1="229" x2="246" y2="176" stroke="{TEXT_DIM}" stroke-dasharray="4,3"/>
+      <path d="M 224 229 A 31 31 0 0 0 215 207" fill="none" stroke="{TEXT}" stroke-width="1.5"/>
+      <text x="233" y="219" fill="{TEXT}" font-size="15">θ</text>
+      <text x="205" y="187" fill="{TEXT_DIM}" font-size="12">a</text>
+      <circle cx="193" cy="229" r="3" fill="{TEXT}"/>
+      <circle cx="246" cy="176" r="4" fill="{TEXT}"/>
+      <line x1="246" y1="176" x2="282" y2="140" stroke="{TEXT_DIM}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+      <text x="288" y="136" fill="{TEXT_DIM}" font-size="12">n outward</text>
+      <line x1="246" y1="176" x2="216" y2="206" stroke="{PRESSURE}" stroke-width="3" marker-end="url(#arrow-red)"/>
+      <text x="116" y="160" fill="{PRESSURE}" font-size="12">−p n inward</text>
+      <line x1="246" y1="176" x2="282" y2="212" stroke="{SHEAR}" stroke-width="3" marker-end="url(#arrow-orange)"/>
+      <text x="292" y="194" fill="{SHEAR}" font-size="12">Viscous traction</text>
+      <text x="292" y="211" fill="{SHEAR}" font-size="12">tangent at wall</text>
+      <text x="32" y="333" fill="{TEXT}" font-size="12">θ is measured from +U, in this true meridional plane.</text>
+      <text x="32" y="354" fill="{TEXT_DIM}" font-size="12">Integrate axial projections over the whole surface.</text>
+      <text x="32" y="375" fill="{TEXT_DIM}" font-size="12">Stokes drag: pressure contributes ⅓, viscosity ⅔.</text>
+      <text x="476" y="74" fill="{ACCENT}" font-size="14">Settling sphere · forces on the particle</text>
+      <circle cx="643" cy="216" r="43" fill="{rgba(ACCENT,.10)}" stroke="{ACCENT}" stroke-width="2"/>
+      <line x1="626" y1="216" x2="626" y2="125" stroke="{ACCENT}" stroke-width="3" marker-end="url(#arrow-sky)"/>
+      <text x="488" y="122" fill="{ACCENT}" font-size="12">Buoyancy ρgV</text>
+      <line x1="661" y1="216" x2="661" y2="150" stroke="{SHEAR}" stroke-width="3" marker-end="url(#arrow-orange)"/>
+      <text x="684" y="148" fill="{SHEAR}" font-size="12">Drag F<tspan baseline-shift="sub" font-size="9">D</tspan></text>
+      <line x1="643" y1="216" x2="643" y2="300" stroke="{PRESSURE}" stroke-width="3" marker-end="url(#arrow-red)"/>
+      <text x="666" y="295" fill="{PRESSURE}" font-size="12">Weight ρ<tspan baseline-shift="sub" font-size="9">p</tspan>gV</text>
+      <line x1="778" y1="195" x2="778" y2="256" stroke="{SUCCESS}" stroke-width="2" marker-end="url(#arrow-green)"/>
+      <text x="738" y="180" fill="{SUCCESS}" font-size="12">U<tspan baseline-shift="sub" font-size="9">t</tspan> downward</text>
+      <text x="476" y="333" fill="{TEXT}" font-size="12">At terminal speed: weight = buoyancy + drag.</text>
+      <text x="476" y="354" fill="{TEXT_DIM}" font-size="12">Shown: ρ<tspan baseline-shift="sub" font-size="9">p</tspan> &gt; ρ; a lighter particle rises.</text>
+      <text x="476" y="375" fill="{TEXT_DIM}" font-size="12">Separate free body; arrow lengths are schematic.</text>
+    </svg>'''
+
+
+def diagram_sphere_separation() -> str:
+    """Schematic separation locations; not a computed flow or universal threshold."""
+    panels = []
+    for offset, title, sx, sy, wake_y, color in (
+        (0, "Laminar boundary layer · earlier separation", 214, 136, 120, PRESSURE),
+        (436, "Turbulent boundary layer · later separation", 259, 157, 165, SUCCESS),
+    ):
+        panels.append(f'''
+        <g transform="translate({offset},0)">
+          <rect x="16" y="50" width="416" height="280" rx="8" fill="{SURFACE_RAISED}"/>
+          <text x="28" y="75" fill="{color}" font-size="13">{title}</text>
+          <line x1="40" y1="201" x2="111" y2="201" stroke="{ACCENT}" stroke-width="3" marker-end="url(#arrow-sky)"/>
+          <text x="46" y="183" fill="{ACCENT}" font-size="12">U</text>
+          <path d="M {sx} {sy} Q 299 {wake_y} 406 {wake_y} L 406 {402-wake_y} Q 299 {402-wake_y} {sx} {402-sy} Z"
+                fill="{rgba(color,.12)}"/>
+          <circle cx="210" cy="201" r="65" fill="{SURFACE}" stroke="{ACCENT}" stroke-width="2"/>
+          <path d="M {sx} {sy} Q 299 {wake_y} 406 {wake_y} M {sx} {402-sy} Q 299 {402-wake_y} 406 {402-wake_y}"
+                fill="none" stroke="{color}" stroke-width="2" stroke-dasharray="5,3"/>
+          <circle cx="{sx}" cy="{sy}" r="4" fill="{color}"/>
+          <circle cx="{sx}" cy="{402-sy}" r="4" fill="{color}"/>
+          <text x="284" y="205" fill="{color}" font-size="12">Wake</text>
+          <text x="30" y="307" fill="{TEXT_DIM}" font-size="12">Dots mark separation; dashed curves bound the wake.</text>
+        </g>''')
+    return f'''
+    <svg viewBox="0 0 880 410" width="100%" height="410" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Drag crisis: more near-wall momentum can mean a narrower wake</text>
+      {''.join(panels)}
+      <text x="24" y="357" fill="{TEXT}" font-size="13">A turbulent boundary layer transports momentum toward the wall and can resist separation longer.</text>
+      <text x="24" y="380" fill="{TEXT_DIM}" font-size="12">Pressure drag can fall more than skin friction rises. Schematic only: roughness and free-stream turbulence matter.</text>
+    </svg>'''
+
+
+def diagram_nozzle_information() -> str:
+    """Upstream acoustic characteristic in a converging nozzle, in the lab frame."""
+    return f'''
+    <svg viewBox="0 0 880 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Choking closes the upstream acoustic path at the throat</text>
+      <text x="24" y="55" fill="{TEXT_DIM}" font-size="12">Steady ideal gas · smooth converging nozzle · fixed reservoir state · velocities in the laboratory frame</text>
+      <text x="30" y="88" fill="{ACCENT}" font-size="14">Unchoked: M &lt; 1 throughout</text>
+      <path d="M 40 109 L 160 109 Q 240 109 317 143 L 388 143 M 40 209 L 160 209 Q 240 209 317 175 L 388 175"
+            fill="none" stroke="{TEXT_DIM}" stroke-width="4"/>
+      <text x="47" y="140" fill="{TEXT}" font-size="12">Reservoir</text>
+      <text x="47" y="160" fill="{TEXT_DIM}" font-size="12">p₀, T₀</text>
+      <line x1="173" y1="154" x2="233" y2="154" stroke="{ACCENT}" stroke-width="2" marker-end="url(#arrow-sky)"/>
+      <text x="188" y="142" fill="{ACCENT}" font-size="12">u &gt; 0</text>
+      <line x1="378" y1="165" x2="300" y2="165" stroke="{SUCCESS}" stroke-width="3" marker-end="url(#arrow-green)"/>
+      <text x="301" y="127" fill="{SUCCESS}" font-size="12">u − a &lt; 0</text>
+      <text x="319" y="220" fill="{TEXT_DIM}" font-size="12">Exit / throat</text>
+      <text x="414" y="149" fill="{TEXT}" font-size="13">Back pressure p<tspan baseline-shift="sub" font-size="10">b</tspan></text>
+      <text x="414" y="175" fill="{SUCCESS}" font-size="13">A pressure disturbance can travel upstream.</text>
+      <text x="414" y="199" fill="{TEXT_DIM}" font-size="12">Exit pressure matches p<tspan baseline-shift="sub" font-size="9">b</tspan> in this ideal subsonic model.</text>
+      <text x="30" y="255" fill="{ACCENT}" font-size="14">Choked: M = 1 at the exit</text>
+      <path d="M 40 276 L 160 276 Q 240 276 317 310 L 388 310 M 40 376 L 160 376 Q 240 376 317 342 L 388 342"
+            fill="none" stroke="{TEXT_DIM}" stroke-width="4"/>
+      <text x="47" y="307" fill="{TEXT}" font-size="12">Same p₀, T₀</text>
+      <line x1="173" y1="321" x2="233" y2="321" stroke="{ACCENT}" stroke-width="2" marker-end="url(#arrow-sky)"/>
+      <text x="182" y="309" fill="{ACCENT}" font-size="12">Flow →</text>
+      <line x1="388" y1="305" x2="388" y2="347" stroke="{WARNING}" stroke-width="3"/>
+      <circle cx="388" cy="326" r="4" fill="{WARNING}"/>
+      <text x="302" y="291" fill="{WARNING}" font-size="12">u − a = 0</text>
+      <text x="316" y="385" fill="{TEXT_DIM}" font-size="12">Sonic exit: p*</text>
+      <path d="M 395 310 Q 419 298 437 294 M 395 342 Q 419 354 437 358" fill="none" stroke="{ACCENT}" stroke-dasharray="4,3"/>
+      <text x="458" y="295" fill="{TEXT}" font-size="13">Lower p<tspan baseline-shift="sub" font-size="10">b</tspan> further: the jet adjusts outside.</text>
+      <text x="458" y="321" fill="{WARNING}" font-size="13">Upstream-going sound stalls at the sonic throat.</text>
+      <text x="458" y="346" fill="{TEXT_DIM}" font-size="12">While choked, ideal mass flow stays fixed; p* can exceed p<tspan baseline-shift="sub" font-size="9">b</tspan>.</text>
+      <text x="458" y="371" fill="{TEXT_DIM}" font-size="12">Raise p<tspan baseline-shift="sub" font-size="9">b</tspan> enough and the nozzle unchokes.</text>
+    </svg>'''
+
+
 def diagram_energy_budget() -> str:
     """A consistent illustrative reservoir-to-reservoir head balance."""
     return f'''
@@ -445,7 +564,7 @@ def diagram_kinematic_decomposition() -> str:
         <!-- 4. Rigid-Body Rotation -->
         <rect x="555" y="15" width="170" height="250" rx="6" fill="{SURFACE_RAISED}" stroke="{BORDER}" />
         <text x="565" y="38" fill="{TEXT}" font-size="12" font-weight="bold">4. Rigid Rotation</text>
-        <text x="565" y="55" fill="{TEXT_DIM}" font-size="11">Anti-symmetric spin Ω_xy</text>
+        <text x="565" y="55" fill="{TEXT_DIM}" font-size="11">Anti-symmetric spin Ω_yx</text>
         <!-- Square rotating without changing angles -->
         <rect x="610" y="120" width="45" height="45" fill="none" stroke="{BORDER_STRONG}" stroke-dasharray="3,3" />
         <g transform="translate(632, 142) rotate(22)">
@@ -1154,7 +1273,7 @@ def diagram_relief_valve() -> str:
          style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
         {_arrow_defs()}
         <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Pressure relief &#183; why the throat cannot hear the tailpipe</text>
-        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Once the throat reaches Mach 1, information cannot travel upstream against it. Capacity is then fixed by p{zero} and T{zero} alone.</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Once the throat reaches Mach 1, information cannot travel upstream against it. Ideal choked capacity uses a fixed area, coefficient, gas and upstream state.</text>
 
         <rect x="40" y="120" width="180" height="190" rx="10" fill="{rgba(PRESSURE, 0.12)}" stroke="{PRESSURE}" stroke-width="2.4"/>
         <text x="60" y="150" fill="{PRESSURE}" font-size="13" font-weight="700">PROTECTED VESSEL</text>
@@ -1166,12 +1285,12 @@ def diagram_relief_valve() -> str:
 
         <line x1="220" y1="215" x2="292" y2="215" stroke="{ACCENT}" stroke-width="10"/>
         <text x="228" y="200" fill="{TEXT_DIM}" font-size="10.5">inlet line</text>
-        <text x="196" y="330" fill="{WARNING}" font-size="10.5">inlet line loss must stay below 3% of the set pressure, or the valve chatters</text>
+        <text x="196" y="330" fill="{WARNING}" font-size="10.5">Inlet losses and valve lift need separate checks; this model uses fixed effective area.</text>
 
         <path d="M 292 186 L 330 208 L 330 222 L 292 244 Z" fill="{rgba(SHEAR, 0.30)}" stroke="{SHEAR}" stroke-width="2.4"/>
         <text x="300" y="168" fill="{SHEAR}" font-size="12.5" font-weight="700">throat</text>
         <text x="286" y="276" fill="{SHEAR}" font-size="12" font-weight="700">M = 1</text>
-        <text x="270" y="292" fill="{TEXT_DIM}" font-size="10.5">area A, coefficient K&#8340;</text>
+        <text x="270" y="292" fill="{TEXT_DIM}" font-size="10.5">area A, coefficient K{_sub("d")}</text>
 
         <path d="M 330 208 L 430 176 L 430 254 L 330 222 Z" fill="{rgba(ACCENT, 0.10)}" stroke="{ACCENT}" stroke-width="2"/>
         <line x1="430" y1="215" x2="560" y2="215" stroke="{ACCENT}" stroke-width="10"/>
@@ -1181,15 +1300,15 @@ def diagram_relief_valve() -> str:
         <text x="576" y="196" fill="{TEXT}" font-size="12.5" font-weight="700">BACK PRESSURE</text>
         <text x="576" y="218" fill="{TEXT_DIM}" font-size="11">superimposed (header)</text>
         <text x="576" y="236" fill="{TEXT_DIM}" font-size="11">+ built-up (own flow)</text>
-        <text x="576" y="254" fill="{TEXT_DIM}" font-size="11">= total p&#8342;</text>
+        <text x="576" y="254" fill="{TEXT_DIM}" font-size="11">= total p{_sub("b")}</text>
 
         <line x1="330" y1="322" x2="330" y2="352" stroke="{TEXT_FAINT}" stroke-width="1.4" stroke-dasharray="4,3"/>
         <line x1="640" y1="272" x2="640" y2="352" stroke="{TEXT_FAINT}" stroke-width="1.4" stroke-dasharray="4,3"/>
-        <line x1="330" y1="352" x2="640" y2="352" stroke="{VORTICITY}" stroke-width="2" marker-start="url(#arrow-purple)" marker-end="url(#arrow-purple)"/>
-        <text x="360" y="344" fill="{VORTICITY}" font-size="11.5">no signal can travel this way while M = 1 at the throat</text>
+        <line x1="640" y1="352" x2="330" y2="352" stroke="{VORTICITY}" stroke-width="2" stroke-dasharray="5,3" marker-end="url(#arrow-purple)"/>
+        <text x="360" y="344" fill="{VORTICITY}" font-size="11.5">Upstream acoustic propagation is blocked at the sonic throat.</text>
 
         <rect x="40" y="368" width="800" height="48" rx="8" fill="{rgba(SUCCESS, 0.10)}" stroke="{SUCCESS}" stroke-width="1.6"/>
-        <text x="60" y="390" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">G = p{zero} &#8730;(&#947;/RT{zero}) &#183; (2/(&#947;+1))^((&#947;+1)/2(&#947;&#8722;1))&#160;&#160;&#160;&#8658;&#160;&#160;&#160;A = W / (K&#8340; G)</text>
-        <text x="60" y="408" fill="{TEXT_DIM}" font-size="11">p&#8342; appears nowhere: that is the design fact. Capacity rises with p{zero}, and falls as &#8730;T{zero} rises &#8212; a hot relief case passes less.</text>
+        <text x="60" y="390" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">G = p{zero} &#8730;(&#947;/RT{zero}) &#183; (2/(&#947;+1))^((&#947;+1)/(2(&#947;&#8722;1)))&#160;&#160;&#160;&#8658;&#160;&#160;&#160;A = W / (K{_sub("d")} G)</text>
+        <text x="60" y="408" fill="{TEXT_DIM}" font-size="11">Back pressure drops out only while flow stays choked; real valve and piping effects are separate.</text>
     </svg>
     """

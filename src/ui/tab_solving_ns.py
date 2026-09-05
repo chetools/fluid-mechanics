@@ -1,6 +1,7 @@
 """UI module for Panel 4: Exact NS solutions and laminar boundary layers."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 
 from src.svg_diagrams import (
@@ -90,11 +91,11 @@ def render_tab_solving_ns():
         )
         col_cp1, col_cp2, col_cp3 = st.columns(3)
         with col_cp1:
-            u_wall = st.slider("Top Wall Velocity U_wall [m/s]", min_value=0.0, max_value=3.0, value=1.0, step=0.2)
+            u_wall = persistent_input(st.slider, "Top Wall Velocity U_wall [m/s]", min_value=0.0, max_value=3.0, value=1.0, step=0.2, key="tab_solving_ns_top_wall_velocity_u_wall_m_s")
         with col_cp2:
-            dp_dx = st.slider("Pressure Gradient dp/dx [Pa/m]", min_value=-50.0, max_value=20.0, value=-15.0, step=5.0)
+            dp_dx = persistent_input(st.slider, "Pressure Gradient dp/dx [Pa/m]", min_value=-50.0, max_value=20.0, value=-15.0, step=5.0, key="tab_solving_ns_pressure_gradient_dp_dx_pa_m")
         with col_cp3:
-            ch_height = st.slider("Channel Height h [m]", min_value=0.01, max_value=0.1, value=0.05, step=0.01)
+            ch_height = persistent_input(st.slider, "Channel Height h [m]", min_value=0.01, max_value=0.1, value=0.05, step=0.01, key="tab_solving_ns_channel_height_h_m")
 
         res_cp = couette_poiseuille_channel(
             h=ch_height,
@@ -163,9 +164,9 @@ def render_tab_solving_ns():
         )
         col_hp1, col_hp2 = st.columns(2)
         with col_hp1:
-            hp_radius = st.slider("Pipe radius R [m]", min_value=0.005, max_value=0.05, value=0.025, step=0.005)
+            hp_radius = persistent_input(st.slider, "Pipe radius R [m]", min_value=0.005, max_value=0.05, value=0.025, step=0.005, key="tab_solving_ns_pipe_radius_r_m")
         with col_hp2:
-            hp_dp = st.slider("Axial gradient dp/dz [Pa/m]", min_value=-80.0, max_value=-1.0, value=-20.0, step=1.0)
+            hp_dp = persistent_input(st.slider, "Axial gradient dp/dz [Pa/m]", min_value=-80.0, max_value=-1.0, value=-20.0, step=1.0, key="tab_solving_ns_axial_gradient_dp_dz_pa_m")
 
         res_hp = hagen_poiseuille_pipe(
             radius=hp_radius,
@@ -195,14 +196,13 @@ def render_tab_solving_ns():
         )
         nu_fluid = float(fluid["mu"]) / float(fluid["rho"])
         st.caption(f"ν = μ/ρ = {nu_fluid:.3e} m²/s from **{fluid['name']}**. Dotted horizontals are δ ≈ 3.64 √(ν t).")
-        override = st.checkbox("Override ν (compare fluids)", value=False)
+        override = persistent_input(st.checkbox, "Override ν (compare fluids)", value=False, key="tab_solving_ns_override_compare_fluids")
         if override:
-            nu_val = st.select_slider(
+            nu_val = persistent_input(st.select_slider,
                 "Kinematic Viscosity ν = μ/ρ [m²/s]",
                 options=[1.0e-5, 2.0e-5, 5.0e-5, 1.0e-4, 5.0e-4, 1.0e-3],
                 value=5.0e-5,
-                format_func=lambda v: f"{v:.1e} m²/s"
-            )
+                format_func=lambda v: f"{v:.1e} m²/s", key="tab_solving_ns_kinematic_viscosity_m_s")
         else:
             nu_val = nu_fluid
         res_stokes = stokes_first_problem(nu=nu_val)
@@ -474,9 +474,9 @@ def render_tab_solving_ns():
 
     col_b1, col_b2 = st.columns(2)
     with col_b1:
-        bl_u = st.slider("Freestream U_∞ [m/s]", min_value=0.2, max_value=10.0, value=1.0, step=0.2, key="blasius_u")
+        bl_u = persistent_input(st.slider, "Freestream U_∞ [m/s]", min_value=0.2, max_value=10.0, value=1.0, step=0.2, key="blasius_u")
     with col_b2:
-        bl_x = st.slider("Plate length L [m]", min_value=0.05, max_value=2.0, value=0.5, step=0.05, key="blasius_L")
+        bl_x = persistent_input(st.slider, "Plate length L [m]", min_value=0.05, max_value=2.0, value=0.5, step=0.05, key="blasius_L")
     nu_bl = float(fluid["mu"]) / float(fluid["rho"])
     sim = blasius_similarity_profile()
     plate = blasius_plate(x=bl_x, u_inf=bl_u, nu=nu_bl)
@@ -601,9 +601,9 @@ def render_tab_solving_ns():
     )
     col_cy1, col_cy2 = st.columns(2)
     with col_cy1:
-        sep_u = st.slider("U_∞ [m/s]", min_value=1.0, max_value=15.0, value=5.0, step=1.0, key="sep_u")
+        sep_u = persistent_input(st.slider, "U_∞ [m/s]", min_value=1.0, max_value=15.0, value=5.0, step=1.0, key="sep_u")
     with col_cy2:
-        sep_r = st.slider("Cylinder R [m]", min_value=0.5, max_value=2.0, value=1.0, step=0.1, key="sep_R")
+        sep_r = persistent_input(st.slider, "Cylinder R [m]", min_value=0.5, max_value=2.0, value=1.0, step=0.1, key="sep_R")
     sep = cylinder_outer_flow_and_separation(
         u_inf=sep_u, radius=sep_r, rho=float(fluid["rho"])
     )

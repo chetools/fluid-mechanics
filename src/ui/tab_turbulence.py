@@ -1,6 +1,7 @@
 """UI module for Laminar vs. Turbulent flows: Diagrams, Theory, and Practical Trade-offs."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
 
 from src.svg_diagrams import (
@@ -116,7 +117,7 @@ def render_tab_turbulence():
                 (r"\mathrm{Re}", r"$\rho u_{\mathrm{avg}} D/\mu$ with $u_{\mathrm{avg}}$ the area-mean speed."),
             ]
         )
-    re_cmp = st.select_slider(
+    re_cmp = persistent_input(st.select_slider,
         "Compare f_D(Re) at",
         options=[200, 500, 1000, 1500, 2000, 2300, 4000, 1e4],
         value=1000,
@@ -153,13 +154,12 @@ def render_tab_turbulence():
     
     col_v1, col_v2 = st.columns(2)
     with col_v1:
-        u_mean_input = st.slider("Mean Flow Velocity u_avg [m/s]", min_value=0.5, max_value=5.0, value=1.5, step=0.1)
+        u_mean_input = persistent_input(st.slider, "Mean Flow Velocity u_avg [m/s]", min_value=0.5, max_value=5.0, value=1.5, step=0.1, key="tab_turbulence_mean_flow_velocity_u_avg_m_s")
     with col_v2:
-        re_turb_prof = st.select_slider(
+        re_turb_prof = persistent_input(st.select_slider,
             "Turbulent Reynolds Number",
             options=[5000, 20000, 50000, 100000, 500000, 1000000],
-            value=50000
-        )
+            value=50000, key="tab_turbulence_turbulent_reynolds_number")
         
     prof_res = velocity_profile_comparison(pipe_radius=0.05, u_avg=u_mean_input, reynolds=re_turb_prof)
     
@@ -220,13 +220,13 @@ def render_tab_turbulence():
         "κ ≈ 0.41 and B ≈ 5.0 are **empirical constants** for a smooth wall, not operating "
         "conditions like Re. Moving them redraws the log law; it does not change the flow you specified."
     )
-    show_const = st.checkbox("Explore literature-constant sensitivity (κ, B)", value=False)
+    show_const = persistent_input(st.checkbox, "Explore literature-constant sensitivity (κ, B)", value=False, key="tab_turbulence_explore_literature_constant_sensitivity_b")
     if show_const:
         col_w1, col_w2 = st.columns(2)
         with col_w1:
-            karman_k = st.slider("von Kármán Constant κ", min_value=0.35, max_value=0.45, value=0.41, step=0.01)
+            karman_k = persistent_input(st.slider, "von Kármán Constant κ", min_value=0.35, max_value=0.45, value=0.41, step=0.01, key="tab_turbulence_von_k_rm_n_constant")
         with col_w2:
-            wall_b = st.slider("Log-Law Intercept Constant B", min_value=4.0, max_value=6.0, value=5.0, step=0.1)
+            wall_b = persistent_input(st.slider, "Log-Law Intercept Constant B", min_value=4.0, max_value=6.0, value=5.0, step=0.1, key="tab_turbulence_log_law_intercept_constant_b")
     else:
         karman_k, wall_b = 0.41, 5.0
 
@@ -303,13 +303,13 @@ def render_tab_turbulence():
     )
     col_s1, col_s2, col_s3 = st.columns(3)
     with col_s1:
-        straw_Q = st.slider("Total Q [m³/h]", min_value=5.0, max_value=80.0, value=25.0, step=1.0, key="straw_Q")
-        straw_D = st.slider("Outer D [mm]", min_value=40.0, max_value=200.0, value=75.0, step=5.0, key="straw_D")
+        straw_Q = persistent_input(st.slider, "Total Q [m³/h]", min_value=5.0, max_value=80.0, value=25.0, step=1.0, key="straw_Q")
+        straw_D = persistent_input(st.slider, "Outer D [mm]", min_value=40.0, max_value=200.0, value=75.0, step=5.0, key="straw_D")
     with col_s2:
-        straw_L = st.slider("Length L [m]", min_value=10.0, max_value=200.0, value=60.0, step=5.0, key="straw_L")
-        straw_phi = st.slider("Packing fraction φ", min_value=0.5, max_value=0.91, value=0.85, step=0.01, key="straw_phi")
+        straw_L = persistent_input(st.slider, "Length L [m]", min_value=10.0, max_value=200.0, value=60.0, step=5.0, key="straw_L")
+        straw_phi = persistent_input(st.slider, "Packing fraction φ", min_value=0.5, max_value=0.91, value=0.85, step=0.01, key="straw_phi")
     with col_s3:
-        straw_N = st.select_slider(
+        straw_N = persistent_input(st.select_slider,
             "Number of straws N",
             options=[1, 4, 7, 19, 37, 61, 100, 200, 400],
             value=19,

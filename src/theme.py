@@ -101,7 +101,7 @@ def app_css() -> str:
         [data-testid="stMetricValue"] {{ font-size: clamp(1.25rem, 2vw, 1.8rem); overflow-wrap: anywhere; }}
         [data-testid="stLatex"] {{ overflow-x: auto; overflow-y: hidden; padding: .3rem 0; }}
         [class*="st-key-fig-"] [data-testid="stImage"] {{ overflow-x: auto; margin: .7rem 0; border-radius: 12px; }}
-        [class*="st-key-fig-"] img {{ display: block; width: 100%; min-width: 600px;
+        [class*="st-key-fig-"] img {{ display: block; width: 100%; min-width: 880px;
             height: auto; max-width: 960px; margin: 0 auto; }}
         .diagram-frame:focus-visible {{ outline: 2px solid {ACCENT}; outline-offset: 2px; }}
         [class*="st-key-plot-"] {{ overflow-x: auto; }}

@@ -176,3 +176,34 @@ def test_invalid_relief_inputs_rejected(kwargs):
     from src.physics.gas_dynamics import relief_sizing
     with pytest.raises(ValueError):
         relief_sizing(**kwargs)
+
+
+@pytest.mark.parametrize('coefficient', [0, -0.1, 1.01, float('nan'), float('inf')])
+def test_relief_rejects_invalid_discharge_coefficient(coefficient):
+    from src.physics.gas_dynamics import relief_sizing
+    with pytest.raises(ValueError, match='Discharge coefficient'):
+        relief_sizing(5, 12e5, 300, 1e5, discharge_coefficient=coefficient)
+
+
+@pytest.mark.parametrize('back_pressure', [12e5, 13e5])
+def test_relief_rejects_no_forward_flow(back_pressure):
+    from src.physics.gas_dynamics import relief_sizing
+    with pytest.raises(ValueError, match='Back pressure must be below'):
+        relief_sizing(5, 12e5, 300, back_pressure)
+
+
+@pytest.mark.parametrize('back_pressure', [1e5, 9e5])
+def test_relief_ideal_coefficient_recovers_nozzle_capacity(back_pressure):
+    from src.physics.gas_dynamics import relief_sizing
+    result = relief_sizing(5, 12e5, 300, back_pressure, discharge_coefficient=1)
+    assert nozzle(12e5, 300, back_pressure, result['area'])['mass_flow'] == pytest.approx(5)
+
+
+def test_relief_example_distinguishes_area_and_bore_temperature_scaling():
+    from src.physics.gas_dynamics import RELIEF_DEMO_DEFAULTS, relief_sizing
+    base = relief_sizing(**RELIEF_DEMO_DEFAULTS)
+    hot = relief_sizing(**dict(RELIEF_DEMO_DEFAULTS, t0=811))
+    temperature_ratio = 811 / RELIEF_DEMO_DEFAULTS['t0']
+    assert hot['area'] / base['area'] == pytest.approx(temperature_ratio**.5)
+    assert hot['diameter'] / base['diameter'] == pytest.approx(temperature_ratio**.25)
+    assert hot['diameter'] * 1000 == pytest.approx(61.92, abs=.01)

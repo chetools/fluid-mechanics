@@ -3,6 +3,13 @@ import math
 from src.physics.pipe_network import positive
 
 
+# Shared by the calculator and the reproducible blocked-outlet worked example.
+RELIEF_DEMO_DEFAULTS = dict(
+    required_flow=5.0, p0=12e5, t0=333.15, back_pressure=1.013e5,
+    gamma=1.4, gas_constant=287.05, discharge_coefficient=0.975,
+)
+
+
 def gas_properties(gamma, gas_constant):
     if not math.isfinite(gamma) or gamma <= 1:
         raise ValueError('gamma must exceed one.')
@@ -123,9 +130,14 @@ def relief_sizing(required_flow, p0, t0, back_pressure, gamma=1.4,
     """
     positive(required_flow, 'Required relief rate')
     positive(back_pressure, 'Back pressure')
+    positive(p0, 'Upstream stagnation pressure')
+    if not math.isfinite(discharge_coefficient) or not 0 < discharge_coefficient <= 1:
+        raise ValueError('Discharge coefficient must be finite and in (0, 1].')
+    if back_pressure >= p0:
+        raise ValueError('Back pressure must be below the upstream stagnation pressure.')
     critical = critical_pressure_ratio(gamma)
     flux = choked_mass_flux(p0, t0, gamma, gas_constant)
-    ratio = back_pressure / positive(p0, 'Upstream stagnation pressure')
+    ratio = back_pressure / p0
     choked = ratio <= critical
 
     if choked:

@@ -23,7 +23,7 @@ LESSONS = [
         "Darcy & Fanning → friction chart → pump sizing → suction head → schedules → network solver → open channels",
         r"h_L = \left(f_D\frac{L}{D}+\sum K\right)\frac{\bar{u}^2}{2g},\qquad P_{\mathrm{shaft}}=\frac{\rho g Q h_p}{\eta_p}",
         "Find velocity first, then Reynolds number, then friction factor. Add static head after calculating losses. NPSH is a separate check on the pump inlet.",
-        "Keep flow rate, length, fluid, and fittings fixed; increase the pipe diameter. Observe the lower speed and pressure loss. Then raise the suction tank by 1 m: available NPSH should rise by exactly 1 m. In the canal calculator, quadruple the bed slope: capacity rises only 41%, because Q grows as the square root of slope.",
+        "Keep flow rate, length, fluid, and fittings fixed; increase the pipe diameter. Observe the lower speed and pressure loss. Then raise the suction tank by 1 m: available NPSH should rise by exactly 1 m. For a canal at fixed depth, section and Manning roughness, quadrupling bed slope doubles capacity because Q grows as the square root of slope. The calculator instead holds discharge fixed: quadruple its slope and observe a lower normal depth.",
     ),
     (
         "Dimensional analysis", "02 / SCALING & REGIMES",
@@ -59,7 +59,7 @@ LESSONS = [
         "Surface traction → Cauchy balance → deformation vs rotation → viscosity → Navier–Stokes",
         r"\boldsymbol{\sigma}=-p\mathbf{I}+2\mu\mathbf{D},\qquad \mathbf{D}=\tfrac12\left(\nabla\mathbf{u}+(\nabla\mathbf{u})^T\right)",
         "For an incompressible Newtonian fluid, pressure acts normally and viscous stress responds to deformation rate. Rigid rotation changes orientation without deforming the parcel.",
-        "Compare Pure rotation with Pure shear in the deformation lab. Rotation should give D = 0 and zero viscous stress even though vorticity is nonzero. Pure shear contains both deformation and rotation.",
+        "Compare Pure rotation with Simple shear in the deformation lab. Rotation gives D = 0 and zero viscous stress even though vorticity is nonzero. Simple shear contains both strain and spin. Then select Pure shear (symmetric): D is nonzero but Ω is zero. All three preserve area because their divergence is zero.",
     ),
     (
         "Exact flows & boundary layers", "04 / SOLUTIONS & VERIFICATION",
@@ -134,7 +134,7 @@ def render_chapter_header(number: int) -> None:
 def render_chapter_recap(number: int) -> None:
     lesson = LESSONS[number - 1]
     st.divider()
-    with st.container(border=True):
+    with st.container(border=True, key=f"chapter-recap-{number}"):
         st.markdown("### Put it together")
         st.markdown("**One experiment to try**")
         render_prose_and_latex(lesson[7])

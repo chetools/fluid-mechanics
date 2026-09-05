@@ -47,6 +47,19 @@ def ghia_centerline_rmse(y: np.ndarray, u_centerline: np.ndarray) -> float:
     u_at_ghia = np.interp(GHIA_RE100_Y, y, u_centerline)
     return float(np.sqrt(np.mean((u_at_ghia - GHIA_RE100_U) ** 2)))
 
+def compatible_poisson_rhs(div_u_star, rho, dt):
+    """Return the zero-mean Neumann source and the signed mean removed.
+
+    Both quantities have pressure-Laplacian units (Pa/m²). Keeping the
+    compatibility correction separate distinguishes a source imbalance from
+    the iterative solver's error on the equation it actually solves.
+    """
+    rhs = (rho / dt) * np.array(div_u_star, dtype=float, copy=True)
+    correction = float(np.mean(rhs[1:-1, 1:-1]))
+    rhs[1:-1, 1:-1] -= correction
+    return rhs, correction
+
+
 def solve_pressure_poisson(
     p: np.ndarray,
     div_u_star: np.ndarray,
@@ -76,7 +89,6 @@ def solve_pressure_poisson(
     dx2 = dx * dx
     dy2 = dy * dy
     factor = 0.5 * (dx2 * dy2) / (dx2 + dy2)
-    rhs = (rho / dt) * div_u_star
 
     # Compatibility. With dp/dn = 0 on every wall, the divergence theorem forces
     # the source to integrate to zero, or no solution exists and the relaxation
@@ -84,8 +96,7 @@ def solve_pressure_poisson(
     # zero, but central differences on a collocated grid decouple the even and
     # odd nodes, leaving a small nonzero discrete mean. Projecting it out is
     # what makes the residual below a meaningful convergence measure.
-    rhs = rhs.copy()
-    rhs[1:-1, 1:-1] -= np.mean(rhs[1:-1, 1:-1])
+    rhs, _ = compatible_poisson_rhs(div_u_star, rho, dt)
 
     # Checkerboard masks over the interior nodes.
     ny, nx = p_new.shape
@@ -125,13 +136,13 @@ def poisson_residual(
     rho: float,
     dt: float,
 ) -> float:
-    """Max interior |laplacian(p) - (rho/dt) div(u*)| for the solved field."""
+    """Max interior residual against the compatible source actually solved."""
     lap = np.zeros_like(p)
     lap[1:-1, 1:-1] = (
         (p[1:-1, 2:] - 2.0 * p[1:-1, 1:-1] + p[1:-1, :-2]) / (dx * dx)
         + (p[2:, 1:-1] - 2.0 * p[1:-1, 1:-1] + p[:-2, 1:-1]) / (dy * dy)
     )
-    rhs = (rho / dt) * div_u_star
+    rhs, _ = compatible_poisson_rhs(div_u_star, rho, dt)
     return float(np.max(np.abs(lap[1:-1, 1:-1] - rhs[1:-1, 1:-1])))
 
 
@@ -301,6 +312,7 @@ def run_lid_driven_cavity(
     max_divergence_interior = float(np.max(np.abs(div_final[margin:-margin, margin:-margin])))
 
     residual_p = poisson_residual(last_p, last_div_star, dx, dy, rho, dt)
+    _, compatibility_correction = compatible_poisson_rhs(last_div_star, rho, dt)
 
     t_final = n_steps * dt
     cfl = (u_lid * dt / dx) if dx > 0 else float("inf")
@@ -327,6 +339,7 @@ def run_lid_driven_cavity(
         "max_divergence": max_divergence,
         "max_divergence_interior": max_divergence_interior,
         "poisson_residual": residual_p,
+        "poisson_compatibility_correction": compatibility_correction,
         "ghia_y": GHIA_RE100_Y,
         "ghia_u": GHIA_RE100_U,
         "ghia_applicable": ghia_applicable,

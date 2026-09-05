@@ -10,6 +10,7 @@ Computes:
 
 from typing import Dict
 import numpy as np
+from scipy.linalg import expm
 
 def decompose_velocity_gradient_2d(
     dudx: float, dudy: float,
@@ -116,8 +117,9 @@ def deform_fluid_element_2d(
     """Compute the physical geometric deformation of a square fluid parcel over dt.
     
     Initial geometry: unit square centered at origin [-0.5, 0.5]^2.
-    Displacement: dx = L * x * dt.
-    Also calculates pure strain deformation (using D only) vs pure rotation (using Omega only).
+    For a spatially and temporally constant gradient, dx/dt = L x has the
+    exact solution x(t) = exp(L t) x(0). D-only and Omega-only outlines are
+    separate hypothetical flows, not additive finite-displacement components.
     """
     decomp = decompose_velocity_gradient_2d(dudx, dudy, dvdx, dvdy)
     L = decomp["L"]
@@ -138,31 +140,32 @@ def deform_fluid_element_2d(
         internal_lines_init.append(np.column_stack([s, val * np.ones_like(s)]))
         internal_lines_init.append(np.column_stack([val * np.ones_like(s), s]))
         
-    # Full deformation: x_new = x_init + (L @ x_init) * dt
-    # np.einsum for tensor contraction
-    square_full = square_initial + np.einsum("ij,...j->...i", L, square_initial) * dt
+    deformation_gradient = expm(L * dt)
+    strain_gradient = expm(D * dt)
+    rotation_gradient = expm(Omega * dt)
+    square_full = square_initial @ deformation_gradient.T
     
     # Pure strain deformation (using D):
-    square_strain_only = square_initial + np.einsum("ij,...j->...i", D, square_initial) * dt
+    square_strain_only = square_initial @ strain_gradient.T
     
     # Pure rotation (using Omega):
-    square_rot_only = square_initial + np.einsum("ij,...j->...i", Omega, square_initial) * dt
+    square_rot_only = square_initial @ rotation_gradient.T
     
     internal_lines_full = [
-        line + np.einsum("ij,...j->...i", L, line) * dt
+        line @ deformation_gradient.T
         for line in internal_lines_init
     ]
     
-    # Shear strain angle gamma in degrees
-    # Original angle between x and y axes was 90 degrees (pi/2)
-    # New angle is pi/2 - (dv/dx + du/dy)*dt
-    shear_angle_deg = np.degrees((dvdx + dudy) * dt)
+    # Actual change in angle between initially orthogonal material directions.
+    edge_x, edge_y = deformation_gradient[:, 0], deformation_gradient[:, 1]
+    cosine = np.dot(edge_x, edge_y) / (np.linalg.norm(edge_x) * np.linalg.norm(edge_y))
+    shear_angle_deg = 90.0 - np.degrees(np.arccos(np.clip(cosine, -1.0, 1.0)))
     
-    # Rigid rotation angle theta in degrees
+    # Rotation of the Omega-only flow, not the polar rotation of the full map.
     rot_angle_deg = np.degrees(0.5 * (dvdx - dudy) * dt)
     
-    # Area ratio A_final / A_initial = det(I + L*dt)
-    area_ratio = np.linalg.det(np.eye(2) + L * dt)
+    # det(exp(L dt)) = exp(tr(L) dt): incompressible flow preserves area.
+    area_ratio = np.linalg.det(deformation_gradient)
     
     return {
         "square_initial": square_initial,
@@ -174,4 +177,5 @@ def deform_fluid_element_2d(
         "shear_angle_deg": shear_angle_deg,
         "rot_angle_deg": rot_angle_deg,
         "area_ratio": area_ratio,
+        "deformation_gradient": deformation_gradient,
     }

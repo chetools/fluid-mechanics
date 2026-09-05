@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from src.ui.state import persistent_editor, persistent_input
 from src.units import get_fluid_state
 from src.physics.pipe_network import SCHEDULES, PIPE_DATA_SOURCE, resolve_pipe, pipe_headloss, example_network, solve_network
 from src.physics.pipe_flow import PIPE_ROUGHNESS, friction_factor_churchill
@@ -19,19 +20,19 @@ def render_network_lab():
     rho, mu = fluid['rho'], fluid['mu']
     c1, c2, c3 = st.columns(3)
     with c1:
-        mode = st.selectbox('Size definition', ['Schedule', 'Inside diameter'], key='real_size')
-        nps = st.selectbox('Nominal pipe size [in]', list(SCHEDULES), index=5, disabled=mode!='Schedule')
-        schedule = st.selectbox('Schedule', ['40', '80'], disabled=mode!='Schedule')
-        diameter = st.number_input('Measured inside diameter [mm]', min_value=1., value=50., disabled=mode!='Inside diameter')
+        mode = persistent_input(st.selectbox, 'Size definition', ['Schedule', 'Inside diameter'], key='real_size')
+        nps = persistent_input(st.selectbox, 'Nominal pipe size [in]', list(SCHEDULES), index=5, disabled=mode!='Schedule', key="pipe_network_lab_nominal_pipe_size_in")
+        schedule = persistent_input(st.selectbox, 'Schedule', ['40', '80'], disabled=mode!='Schedule', key="pipe_network_lab_schedule")
+        diameter = persistent_input(st.number_input, 'Measured inside diameter [mm]', min_value=1., value=50., disabled=mode!='Inside diameter', key="pipe_network_lab_measured_inside_diameter_mm")
     with c2:
-        rough_mode = st.selectbox('Roughness definition', ['Material', 'Relative ε/D', 'Absolute ε (mm)'])
-        material = st.selectbox('Pipe material', list(PIPE_ROUGHNESS), disabled=rough_mode!='Material')
-        relative = st.number_input('Relative roughness ε/D', min_value=0., max_value=.05, value=.001, format='%.5f', disabled=rough_mode!='Relative ε/D')
-        rough_mm = st.number_input('Absolute roughness ε [mm]', min_value=0., value=.045, format='%.4f', disabled=rough_mode!='Absolute ε (mm)')
+        rough_mode = persistent_input(st.selectbox, 'Roughness definition', ['Material', 'Relative ε/D', 'Absolute ε (mm)'], key="pipe_network_lab_roughness_definition")
+        material = persistent_input(st.selectbox, 'Pipe material', list(PIPE_ROUGHNESS), disabled=rough_mode!='Material', key="pipe_network_lab_pipe_material")
+        relative = persistent_input(st.number_input, 'Relative roughness ε/D', min_value=0., max_value=.05, value=.001, format='%.5f', disabled=rough_mode!='Relative ε/D', key="pipe_network_lab_relative_roughness_d")
+        rough_mm = persistent_input(st.number_input, 'Absolute roughness ε [mm]', min_value=0., value=.045, format='%.4f', disabled=rough_mode!='Absolute ε (mm)', key="pipe_network_lab_absolute_roughness_mm")
     with c3:
-        q = st.number_input('Flow [m³/h]', min_value=0., value=10.)
-        length = st.number_input('Pipe length [m]', min_value=.01, value=100.)
-        k = st.number_input('Total minor-loss coefficient K', min_value=0., value=1.)
+        q = persistent_input(st.number_input, 'Flow [m³/h]', min_value=0., value=10., key="pipe_network_lab_flow_m_h")
+        length = persistent_input(st.number_input, 'Pipe length [m]', min_value=.01, value=100., key="pipe_network_lab_pipe_length_m")
+        k = persistent_input(st.number_input, 'Total minor-loss coefficient K', min_value=0., value=1., key="pipe_network_lab_total_minor_loss_coefficient_k")
     row = dict(size_mode=mode, nps=nps, schedule=schedule, diameter_mm=diameter, roughness_mode=rough_mode, material=material, relative_roughness=relative, roughness_mm=rough_mm, length_m=length, k_minor=k)
     pipe = None
     try:
@@ -76,10 +77,10 @@ $$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{Q_
 **4 · Verify.** Inspect continuity residuals, edge energy residuals and pressure plausibility. Every connected component needs a prescribed-pressure node. This is a steady, single-phase incompressible model with no pump curves or automatic valve logic.''')
     nodes, pipes = example_network()
     st.caption('Edit cells or add/delete rows. Use exact node names in the pipe table. Pressure entries at Junction nodes are ignored; demands at Pressure nodes must be zero. All table units are SI as labeled.')
-    node_table = st.data_editor(pd.DataFrame(nodes), key='network_nodes', num_rows='dynamic', hide_index=True, width='stretch', column_config={
+    node_table = persistent_editor(pd.DataFrame(nodes), key='network_nodes', num_rows='dynamic', hide_index=True, width='stretch', column_config={
         'boundary': st.column_config.SelectboxColumn('Boundary', options=['Pressure','Junction'], required=True),
         'elevation_m':'Elevation [m]', 'pressure_kpag':'Gauge pressure [kPa]', 'demand_m3h':'Demand [m³/h]'})
-    pipe_table = st.data_editor(pd.DataFrame(pipes), key='network_pipes', num_rows='dynamic', hide_index=True, width='stretch', column_config={
+    pipe_table = persistent_editor(pd.DataFrame(pipes), key='network_pipes', num_rows='dynamic', hide_index=True, width='stretch', column_config={
         'size_mode': st.column_config.SelectboxColumn('Size definition', options=['Schedule','Inside diameter'], required=True),
         'nps': st.column_config.SelectboxColumn('NPS [in]', options=list(SCHEDULES)),
         'schedule': st.column_config.SelectboxColumn('Schedule', options=['40','80']),

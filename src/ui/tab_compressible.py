@@ -2,14 +2,16 @@ import math
 import numpy as np
 import plotly.graph_objects as go
 import streamlit as st
+from src.ui.state import persistent_input
 from src.physics.gas_dynamics import (
     normal_shock,
     nozzle,
     relief_capacity_curve,
     relief_sizing,
+    RELIEF_DEMO_DEFAULTS,
 )
 from src.plotting import plot_relief_capacity
-from src.svg_diagrams import diagram_relief_valve, render_svg
+from src.svg_diagrams import diagram_nozzle_information, diagram_relief_valve, render_svg
 from src.ui.pedagogy import (
     render_callout,
     render_plot,
@@ -46,18 +48,20 @@ A converging passage accelerates subsonic flow. Supersonic flow accelerates in a
 $$\frac{A}{A^*}=\frac{1}{M}\left[\frac{2}{\gamma+1}\left(1+\frac{\gamma-1}{2}M^2\right)\right]^{(\gamma+1)/(2(\gamma-1))}$$
 For A/A* > 1 there are subsonic and supersonic mathematical branches. Boundary conditions, shocks and the nozzle geometry select the realized branch.''')
     st.markdown('### 10.3 Choking · a converging-nozzle calculator')
+    render_svg(diagram_nozzle_information())
+    prose(r'''A weak pressure disturbance travels at speed a relative to the gas. Its upstream-travelling branch moves at u − a in the laboratory frame: negative in subsonic flow, zero at a sonic throat. Once this ideal converging passage chokes, lowering back pressure changes the external jet rather than increasing throat mass flow. Raising back pressure enough to unchoke it restores upstream communication.''')
     prose(r'''Write mass flux using the same substitutions. At fixed reservoir p₀ and T₀, differentiating its logarithm with respect to M gives a maximum at M = 1.
 $$\frac{\dot m}{A}=\frac{p_0}{\sqrt{T_0}}\sqrt{\frac{\gamma}{R}}\,M\left(1+\frac{\gamma-1}{2}M^2\right)^{-(\gamma+1)/(2(\gamma-1))}$$
 $$\frac{p^*}{p_0}=\left(\frac{2}{\gamma+1}\right)^{\gamma/(\gamma-1)},\quad\frac{T^*}{T_0}=\frac{2}{\gamma+1}$$
 Below the critical back-pressure ratio, a converging nozzle is sonic at its exit and further lowering the downstream pressure cannot increase its ideal mass flow. The jet adjusts outside the nozzle. The exit static pressure then differs from the imposed back pressure.
 $$\dot m_* =A\frac{p_0}{\sqrt{T_0}}\sqrt{\frac{\gamma}{R}}\left(\frac{2}{\gamma+1}\right)^{(\gamma+1)/(2(\gamma-1))}$$''')
     a,b,c=st.columns(3)
-    p0=a.number_input('Reservoir stagnation pressure [kPa absolute]',min_value=.001,value=500.)*1000
-    t0=a.number_input('Reservoir stagnation temperature [K]',min_value=1.,value=300.)
-    pb=b.number_input('Back pressure [kPa absolute]',min_value=.001,value=100.)*1000
-    d=b.number_input('Converging-nozzle exit diameter [mm]',min_value=.01,value=5.)/1000
-    gamma=c.number_input('Nozzle γ',min_value=1.01,max_value=1.67,value=1.4)
-    gasr=c.number_input('Nozzle gas constant [J/(kg·K)]',min_value=1.,value=287.05)
+    p0=persistent_input(a.number_input, 'Reservoir stagnation pressure [kPa absolute]',min_value=.001,value=500., key="tab_compressible_reservoir_stagnation_pressure_kpa_absolute")*1000
+    t0=persistent_input(a.number_input, 'Reservoir stagnation temperature [K]',min_value=1.,value=300., key="tab_compressible_reservoir_stagnation_temperature_k")
+    pb=persistent_input(b.number_input, 'Back pressure [kPa absolute]',min_value=.001,value=100., key="tab_compressible_back_pressure_kpa_absolute")*1000
+    d=persistent_input(b.number_input, 'Converging-nozzle exit diameter [mm]',min_value=.01,value=5., key="tab_compressible_converging_nozzle_exit_diameter_mm")/1000
+    gamma=persistent_input(c.number_input, 'Nozzle γ',min_value=1.01,max_value=1.67,value=1.4, key="tab_compressible_nozzle")
+    gasr=persistent_input(c.number_input, 'Nozzle gas constant [J/(kg·K)]',min_value=1.,value=287.05, key="tab_compressible_nozzle_gas_constant_j_kg_k")
     area=math.pi*d*d/4; result=nozzle(p0,t0,pb,area,gamma,gasr)
     a,b,c,e=st.columns(4)
     a.metric('Mass flow',f'{result["mass_flow"]:.5f} kg/s'); b.metric('Exit Mach',f'{result["mach"]:.3f}'); c.metric('Exit static T',f'{result["temperature"]:.2f} K'); e.metric('Exit static pressure',f'{result["pressure"]/1000:.2f} kPa abs')
@@ -85,7 +89,7 @@ $$\frac{\rho_2}{\rho_1}=\frac{(\gamma+1)M_1^2}{2+(\gamma-1)M_1^2},\qquad\frac{p_
 $$M_2^2=\frac{1+(\gamma-1)M_1^2/2}{\gamma M_1^2-(\gamma-1)/2},\quad\frac{T_2}{T_1}=\frac{p_2/p_1}{\rho_2/\rho_1}$$
 Static pressure and temperature rise; Mach number drops below one. Stagnation temperature stays constant because there is no heat or work. Entropy rises and stagnation pressure falls. Compute each side's stagnation pressure separately:
 $$\frac{p_{02}}{p_{01}}=\frac{p_2}{p_1}\left[\frac{1+(\gamma-1)M_2^2/2}{1+(\gamma-1)M_1^2/2}\right]^{\gamma/(\gamma-1)}<1$$''')
-    m1=st.slider('Upstream normal-shock Mach number',1.,5.,2.,step=.05)
+    m1=persistent_input(st.slider, 'Upstream normal-shock Mach number',1.,5.,2.,step=.05, key="tab_compressible_upstream_normal_shock_mach_number")
     shock=normal_shock(m1,gamma)
     a,b,c,e=st.columns(4)
     a.metric('Downstream Mach',f'{shock["mach2"]:.3f}'); b.metric('Static p₂ / p₁',f'{shock["pressure_ratio"]:.3f}'); c.metric('Static T₂ / T₁',f'{shock["temperature_ratio"]:.3f}'); e.metric('Stagnation p₀₂ / p₀₁',f'{shock["stagnation_pressure_ratio"]:.4f}')
@@ -118,60 +122,59 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
 
     st.markdown('### 10.7 Why choking is the foundation of pressure relief design')
     st.markdown(
-        'Choking is not a curiosity confined to rockets and wind tunnels. It is the single '
-        'fact that makes a relief valve sizeable at all, and every process plant on earth '
-        'depends on it. Section 10.3 showed the mass-flow plateau; this section is what that '
-        'plateau is worth.'
+        'The mass-flow plateau gives a useful first model for gas relief capacity. '
+        'This section sizes an idealized fixed-area restriction for a specified mass rate, '
+        'then separates that flow model from the behavior of a real valve and its piping.'
     )
     render_svg(diagram_relief_valve())
 
     st.markdown('#### 10.7.1 The design fact')
-    prose(r'''Every pressure vessel needs a relief device sized so that, in a defined worst-case scenario — external fire, blocked outlet, control-valve failure open, thermal expansion — it can pass enough mass to stop the pressure climbing past the code limit. To size the hole you must know the flow through it.
+    prose(r'''Start with a defined gas-release scenario, such as a blocked outlet. The required release rate W comes from that scenario's mass and energy balances. The flow model then estimates the area needed to pass W at a specified upstream state.
 
-For an incompressible flow that would be a problem, because the flow through an orifice depends on the pressure on **both** sides, and the downstream side is a flare header shared with every other device on the plant, whose pressure during an upset is not something you know precisely.
+For an incompressible or unchoked gas flow, capacity depends on pressures on **both** sides. In a shared discharge header the downstream pressure is itself part of a network calculation.
 
-Choking removes the difficulty entirely. Above the critical ratio the throat runs sonic, and no information can travel upstream against a flow already moving at the speed of sound. The throat therefore cannot detect the downstream pressure, and
+For an ideal fixed-area gas passage, choking removes back pressure from the mass-flux equation **while p_b/p_0 remains at or below the critical ratio**. A small downstream disturbance cannot propagate upstream through the sonic throat, and
 $$G=\frac{\dot m}{A}=p_0\sqrt{\frac{\gamma}{RT_0}}\left(\frac{2}{\gamma+1}\right)^{\frac{\gamma+1}{2(\gamma-1)}}$$
 contains no back pressure at all. The required area follows immediately:
 $$A=\frac{W}{K_d\,G}$$
-with $W$ the required relief rate and $K_d$ the device's discharge coefficient. **The capacity of a relief device is a property of the vessel and the hole, not of what it discharges into.**''')
+with $W$ the required relief rate and $K_d$ the discharge coefficient. **This independence holds at fixed upstream state, gas properties, area and coefficient.** Real valve lift, inlet losses and discharge-system effects are outside this ideal flow model.''')
     render_callout(
         """
-        **For air-like gases the threshold is $p_0/p_b > 1.9$.** The critical ratio is
+        **For air-like gases the threshold is approximately $p_0/p_b = 1.9$.** The critical ratio is
         $(2/(\\gamma+1))^{\\gamma/(\\gamma-1)} = 0.528$ for $\\gamma = 1.4$, so anything
-        relieving from above roughly 1.9 bar absolute to atmosphere is already choked. Since
-        set pressures are usually many times atmospheric, **choked flow is the normal case in
-        relief sizing, not the exception** — which is why the sizing equations in API 520 are
-        written for it and carry a separate, messier subcritical form for the rest.
+        an ideal passage with sufficient upstream-to-downstream absolute pressure ratio
+        chokes. Always calculate the ratio for the stated gas and back pressure;
+        a high upstream pressure alone is not enough.
         """,
-        title="Almost every relief case is choked",
+        title="Check the pressure ratio first",
     )
 
     st.markdown('#### 10.7.2 What the formula tells a designer')
     prose(r'''Three consequences fall straight out of $G \propto p_0/\sqrt{T_0}$, and each one is a mistake someone has made.
 
-**1 · You cannot buy capacity with a lower downstream pressure.** Routing a valve to a lower-pressure header, or to a vacuum, adds nothing while it stays choked. If a device is undersized the only remedies are more area or a higher set pressure.
+**1 · Lower back pressure does not increase ideal choked mass flux.** With upstream state, gas and coefficient fixed, lowering back pressure further adds no capacity. In this model a larger required rate needs more area. A real undersized system requires reassessing the release scenario, device and piping; changing a set pressure is not a general remedy.
 
-**2 · A hot relief case is a bigger relief case.** $G$ falls as $\sqrt{T_0}$ rises, so the same hole passes less mass. The fire case is often sizing precisely because the relieving temperature is high — and it is the *relieving* stagnation temperature that matters, not the normal operating one.
+**2 · Higher temperature needs more area at the same required mass rate.** $G$ falls as $1/\sqrt{T_0}$. Therefore $A\propto\sqrt{T_0}$, but the equivalent diameter scales only as $d\propto T_0^{1/4}$. A different release scenario may also change W and the gas state; temperature alone does not define a fire case.
 
-**3 · Rising back pressure eventually does bite, in two separate ways.** Once the total back pressure exceeds the critical ratio, flow unchokes and capacity genuinely falls, and the subcritical equation must be used. Separately, and usually first, back pressure interferes with the *valve* rather than the *flow*: a conventional spring valve becomes unstable above roughly 10% built-up back pressure, which is why balanced-bellows and pilot-operated designs exist.''')
+**3 · Back pressure matters through two distinct mechanisms.** Once p_b/p_0 exceeds the critical ratio, flow unchokes and mass flux falls. Separately, back pressure can affect a real valve's opening and lift even while its flow is choked. Those effects depend on device design and service conditions; this fixed-area model cannot predict them.''')
 
     st.markdown('#### 10.7.3 Sizing calculator')
+    defaults = RELIEF_DEMO_DEFAULTS
     rl1, rl2, rl3 = st.columns(3)
-    w_req = rl1.number_input('Required relief rate W [kg/s]', min_value=.001, max_value=500.,
-                             value=5.0, step=.5, key='relief_w')
-    p_set = rl1.number_input('Relieving pressure p₀ [bar a]', min_value=1.05, max_value=400.,
-                             value=12.0, step=.5, key='relief_p0')
-    t_rel = rl2.number_input('Relieving temperature T₀ [K]', min_value=100., max_value=1500.,
-                             value=333.15, step=5., key='relief_t0')
-    p_back = rl2.number_input('Total back pressure [bar a]', min_value=.05, max_value=390.,
-                              value=1.013, step=.1, key='relief_pb')
-    kd = rl3.number_input('Discharge coefficient K_d', min_value=.1, max_value=1.,
-                          value=.975, step=.005, key='relief_kd')
-    gamma_r = rl3.number_input('γ', min_value=1.01, max_value=1.7, value=1.4, step=.01,
+    w_req = persistent_input(rl1.number_input, 'Required relief rate W [kg/s]', min_value=.001, max_value=500.,
+                             value=defaults['required_flow'], step=.5, key='relief_w')
+    p_set = persistent_input(rl1.number_input, 'Relieving pressure p₀ [bar a]', min_value=1.05, max_value=400.,
+                             value=defaults['p0'] / 1e5, step=.5, key='relief_p0')
+    t_rel = persistent_input(rl2.number_input, 'Relieving temperature T₀ [K]', min_value=100., max_value=1500.,
+                             value=defaults['t0'], step=5., key='relief_t0')
+    p_back = persistent_input(rl2.number_input, 'Total back pressure [bar a]', min_value=.05, max_value=390.,
+                              value=defaults['back_pressure'] / 1e5, step=.1, key='relief_pb')
+    kd = persistent_input(rl3.number_input, 'Discharge coefficient K_d', min_value=.1, max_value=1.,
+                          value=defaults['discharge_coefficient'], step=.005, key='relief_kd')
+    gamma_r = persistent_input(rl3.number_input, 'γ', min_value=1.01, max_value=1.7, value=defaults['gamma'], step=.01,
                                key='relief_gamma')
-    r_gas = rl3.number_input('Gas constant R [J/(kg·K)]', min_value=20., max_value=4200.,
-                             value=287.05, step=1., key='relief_r')
+    r_gas = persistent_input(rl3.number_input, 'Gas constant R [J/(kg·K)]', min_value=20., max_value=4200.,
+                             value=defaults['gas_constant'], step=1., key='relief_r')
 
     if p_back >= p_set:
         st.error('Back pressure must be below the relieving pressure, or nothing flows out.')
@@ -188,8 +191,8 @@ with $W$ the required relief rate and $K_d$ the device's discharge coefficient. 
         if sizing['choked']:
             st.success(
                 f"Choked: {sizing['back_pressure_ratio']:.3f} is below the critical ratio "
-                f"{sizing['critical_ratio']:.3f}. Capacity is fixed by p₀ and T₀ alone — "
-                "lowering the back pressure further would change nothing."
+                f"{sizing['critical_ratio']:.3f}. At fixed upstream state, gas, area and coefficient, "
+                "lowering back pressure further does not increase this model's capacity."
             )
         else:
             st.warning(
@@ -197,20 +200,19 @@ with $W$ the required relief rate and $K_d$ the device's discharge coefficient. 
                 f"ratio {sizing['critical_ratio']:.3f}, so the throat now feels the "
                 f"downstream pressure and capacity has fallen "
                 f"{100 * sizing['capacity_loss_vs_choked']:.1f}% below the choked value. "
-                "The area above already accounts for that. Check the valve type too: this "
-                "much back pressure will also affect lift on a conventional spring valve."
+                "The area above already accounts for the flow effect. It does not account "
+                "for device-specific back-pressure effects on valve lift."
             )
         st.caption(
             f"Choked mass flux at these conditions would be "
             f"{sizing['choked_mass_flux']:.0f} kg/(s·m²). Sizing basis: A = W/(K_d G) with "
-            f"K_d = {kd:g}. Doubling p₀ halves the area; raising T₀ from {t_rel:.0f} K to "
-            f"{4 * t_rel:.0f} K would double it."
+            f"K_d = {kd:g}. For choked flow at fixed W, gas and K_d, doubling p₀ halves "
+            f"the area; raising T₀ from {t_rel:.0f} K to {4 * t_rel:.0f} K doubles it."
         )
         render_what_to_notice(
-            'Drag the back pressure up from 1 bar. Nothing at all happens to the area until '
-            'you cross the critical ratio — then it starts to climb. That flat stretch is '
-            'the entire reason relief devices can be sized against a header whose pressure '
-            'nobody knows exactly.'
+            'Hold the other inputs fixed and raise back pressure from below the critical '
+            'ratio. The required area stays flat until flow unchokes, then climbs. This '
+            'plot describes ideal gas flow, not how valve lift responds to back pressure.'
         )
         render_plot(
             plot_relief_capacity(
@@ -221,32 +223,33 @@ with $W$ the required relief rate and $K_d$ the device's discharge coefficient. 
         )
 
     st.markdown('#### 10.7.4 Worked example: a blocked-outlet case')
-    prose(r'''A vessel with a set pressure of 10 bar g relieves gas at 10% overpressure, so $p_0 = 11$ bar g $= 12.0$ bar a. The relieving temperature is 60 °C = 333 K, the gas is air-like, and the blocked-outlet scenario requires $W = 5$ kg/s. The device discharges to a flare header at 1.013 bar a through a nozzle-type valve, $K_d = 0.975$.
+    example = relief_sizing(**defaults)
+    hot = relief_sizing(**dict(defaults, t0=811.0))
+    high_back = relief_sizing(**dict(defaults, back_pressure=8e5))
+    prose(f'''This reproducible example uses the calculator's initial values, independently of your current edits: upstream stagnation pressure {defaults['p0'] / 1e5:g} bar a, temperature {defaults['t0']:g} K, required mass rate {defaults['required_flow']:g} kg/s, back pressure {defaults['back_pressure'] / 1e5:g} bar a, gamma {defaults['gamma']:g}, gas constant {defaults['gas_constant']:g} J/(kg·K), and discharge coefficient {defaults['discharge_coefficient']:g}.
 
-**1 · Is it choked?** $p_b/p_0 = 1.013/12.0 = 0.084$, far below 0.528. Choked, comfortably.
+**1 · Check choking.** The computed pressure ratio is {example['back_pressure_ratio']:.3f}, below the critical ratio {example['critical_ratio']:.3f}.
 
-**2 · Mass flux.** With $\gamma = 1.4$ and $R = 287$ J/(kg·K),
-$$G = 12.0\times10^{5}\sqrt{\frac{1.4}{287\times333}}\left(\frac{2}{2.4}\right)^{3} = 2.66\times10^{3}\ \mathrm{kg/(s\,m^2)}$$
+**2 · Calculate mass flux.** Substitution in the choked-flow equation gives G = {example['mass_flux']:.1f} kg/(s·m²).
 
-**3 · Area.** $A = W/(K_d G) = 5/(0.975 \times 2657) = 1.93\times10^{-3}\ \mathrm{m^2}$, an equivalent bore of 49.6 mm. In API 526 terms that falls between the standard "P" and "Q" orifices, and you would select the next size up — never down.
+**3 · Convert mass rate to area, then area to diameter.** A = W/(K_d G) = {example['area'] * 1e6:.1f} mm²; the equivalent circular bore is {example['diameter'] * 1000:.2f} mm. This is a model area, not a certified valve selection.
 
-**4 · Now test the assumptions.** Raise the header to 8 bar a and $p_b/p_0 = 0.67$: no longer choked, capacity down about 4%, and a conventional spring valve would be well past its 10% built-up back-pressure limit. Raise the relieving temperature to the fire case instead, say 811 K, and $G$ falls by $\sqrt{811/333} = 1.56$, so the required area grows by the same factor to 77 mm — a different valve entirely. **The scenario, not the vessel, sizes the device.**''')
+**4 · Separate the two sensitivity experiments.** Raising only back pressure to 8 bar a gives a ratio of {high_back['back_pressure_ratio']:.3f} and unchokes the flow. The model's mass flux falls by {100 * high_back['capacity_loss_vs_choked']:.1f}%.
+
+Returning back pressure to its initial value and raising only temperature to 811 K increases area by a factor of {hot['area'] / example['area']:.3f}, to {hot['area'] * 1e6:.1f} mm². Bore increases by only {hot['diameter'] / example['diameter']:.3f}, to **{hot['diameter'] * 1000:.2f} mm**. Area follows the square root of temperature; diameter follows its fourth root. This temperature comparison holds the required mass rate fixed; an actual fire scenario requires its own release-rate calculation.''')
     render_self_check(
         'relief_self_check_backpressure',
-        'A relief valve is choked, discharging to a 1 bar a header. Someone proposes routing '
-        'it to a 0.3 bar a vacuum header to gain capacity. The gain is…',
+        'An ideal fixed-area gas restriction is choked, discharging to a 1 bar a header. With upstream state unchanged, routing '
+        'it to a 0.3 bar a vacuum header gives a capacity gain of…',
         ['about three times', 'none at all', 'about 40%'],
         'none at all',
         'While choked, the throat cannot detect downstream pressure — the mass flux contains '
-        'no p_b term. The only ways to pass more are more area or a higher relieving '
-        'pressure. This is the most useful single consequence of choking in process safety.',
+        'no p_b term at fixed upstream state, gas and coefficient. Real valve and piping '
+        'effects require a separate model.',
     )
     st.caption(
-        'Model limits: single-phase ideal gas with constant γ, no inlet line loss, no valve '
-        'dynamics. **This does not size two-phase or flashing relief**, which needs the omega '
-        'method or a homogeneous equilibrium model and can require an order of magnitude more '
-        'area — the single most consequential way a gas-only calculation goes wrong. Real '
-        'sizing follows API 520/521 with certified K_d values, checks the 3% inlet-loss rule, '
-        'and verifies the built-up back pressure against the valve type. Nothing here is a '
-        'substitute for that.'
+        'Model limits: single-phase ideal gas with constant gamma, fixed effective area and '
+        'coefficient, no inlet line loss and no valve dynamics. Flashing, two-phase flow, '
+        'real-gas properties and certified device selection require other methods. '
+        'This lesson demonstrates a flow model rather than a complete relief-system design.'
     )

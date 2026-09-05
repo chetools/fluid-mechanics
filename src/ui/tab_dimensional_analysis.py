@@ -1,6 +1,7 @@
 """UI module for Dimensional Analysis: Buckingham Pi & Linear Algebra Null-Space Approach."""
 
 import streamlit as st
+from src.ui.state import persistent_input
 import pandas as pd
 import numpy as np
 
@@ -307,7 +308,7 @@ def render_tab_dimensional_analysis():
         """
     )
     
-    preset_choice = st.selectbox(
+    preset_choice = persistent_input(st.selectbox,
         "Chemical Engineering Problem Preset",
         options=[
             "Pipe Flow Pressure Drop",
@@ -315,19 +316,17 @@ def render_tab_dimensional_analysis():
             "Submerged Body Drag",
             "Capillary Rise / Atomization",
             "Custom Variable Selection"
-        ]
-    )
+        ], key="tab_dimensional_analysis_chemical_engineering_problem_preset")
     
     if preset_choice != "Custom Variable Selection":
         selected_vars = get_cheme_preset(preset_choice)
     else:
         all_keys = list(VARIABLE_REGISTRY.keys())
-        selected_vars = st.multiselect(
+        selected_vars = persistent_input(st.multiselect,
             "Select Physical Variables",
             options=all_keys,
             default=["delta_p", "u", "D", "rho", "mu"],
-            format_func=lambda k: f"{VARIABLE_REGISTRY[k]['name']} [{VARIABLE_REGISTRY[k]['unit']}]"
-        )
+            format_func=lambda k: f"{VARIABLE_REGISTRY[k]['name']} [{VARIABLE_REGISTRY[k]['unit']}]", key="tab_dimensional_analysis_select_physical_variables")
         
     if len(selected_vars) < 3:
         st.warning("Please select at least 3 variables to perform dimensional analysis.")
@@ -631,10 +630,10 @@ def render_tab_dimensional_analysis():
     render_svg(diagram_transport_geometries())
 
     geo1, geo2, geo3 = st.columns(3)
-    geometry = geo1.selectbox("Geometry", list(CORRELATIONS.keys()), key="ta_geom")
-    re_ta = geo2.number_input("Reynolds number", min_value=1e-3, max_value=1e8,
+    geometry = persistent_input(geo1.selectbox, "Geometry", list(CORRELATIONS.keys()), key="ta_geom")
+    re_ta = persistent_input(geo2.number_input, "Reynolds number", min_value=1e-3, max_value=1e8,
                               value=1.0e4, step=1e3, format="%.4g", key="ta_re")
-    fluid_choice = geo3.selectbox(
+    fluid_choice = persistent_input(geo3.selectbox,
         "Fluid", ["Water (20 °C)", "Air (20 °C)", "Engine oil", "Liquid sodium"], key="ta_fluid")
     presets = {
         "Water (20 °C)": dict(rho=998.2, mu=1.002e-3, k_thermal=0.598, cp=4182.0, d_ab=1.5e-9),

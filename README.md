@@ -154,11 +154,15 @@ uv run pytest
 
 The optional live-browser check is `uv run --with playwright python tests/browser_smoke.py`
 with the app running on port 8501 and Microsoft Edge installed. It verifies that
-the page actually finishes its run, then exercises the network solve, CSV download
-and new chapters. Automatic filesystem watching and overlapping fast reruns are
+each of the twelve chapters finishes its run, then exercises input persistence
+across chapter changes, the network solve and CSV download. Automatic filesystem watching and overlapping fast reruns are
 disabled in the verified Windows configuration; refresh the browser after editing
 source files. See the development notes for the observed failure and the limits
 of the root-cause diagnosis.
+
+For the teaching figures, run `uv run --with playwright python tests/browser_education.py`.
+It checks deformation presets, the relief-temperature example and narrow-screen
+diagram scrolling, and saves screenshots in the system temporary directory.
 
 ## Deploying to Streamlit Community Cloud
 

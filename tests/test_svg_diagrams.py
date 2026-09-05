@@ -26,6 +26,9 @@ from src.svg_diagrams import (
     diagram_relief_valve,
     diagram_transport_analogy,
     diagram_transport_geometries,
+    diagram_sphere_forces,
+    diagram_sphere_separation,
+    diagram_nozzle_information,
     clean_svg
 )
 from src.svg_impeller import (
@@ -61,6 +64,9 @@ def test_svg_diagrams_render_valid_xml():
         diagram_relief_valve(),
         diagram_transport_analogy(),
         diagram_transport_geometries(),
+        diagram_sphere_forces(),
+        diagram_sphere_separation(),
+        diagram_nozzle_information(),
         # Generated from the computed geometry, including non-default cases: a
         # near-radial blade and a two-blade rotor exercise the projection and
         # the painter's ordering differently from the defaults.
@@ -99,6 +105,29 @@ def test_renderer_uses_native_image_api(monkeypatch):
     svg_diagrams.render_svg(diagram_energy_budget())
     assert len(images) == 1
     assert ET.fromstring(images[0]).tag == "{http://www.w3.org/2000/svg}svg"
+
+
+def test_new_physical_diagrams_state_their_conventions_and_limits():
+    def text(svg):
+        return " ".join(ET.fromstring(svg).itertext())
+
+    sphere = text(diagram_sphere_forces())
+    assert "θ is measured from +U" in sphere
+    assert "weight = buoyancy + drag" in sphere
+    assert "arrow lengths are schematic" in sphere
+    separation = text(diagram_sphere_separation())
+    assert "earlier separation" in separation and "later separation" in separation
+    assert "Schematic only" in separation
+    nozzle = text(diagram_nozzle_information())
+    assert "u − a < 0" in nozzle and "u − a = 0" in nozzle
+    assert "velocities in the laboratory frame" in nozzle
+    assert "the nozzle unchokes" in nozzle
+
+
+def test_kinematic_spin_label_matches_its_component_formula():
+    svg = diagram_kinematic_decomposition()
+    assert "Anti-symmetric spin Ω_yx" in svg
+    assert "½(∂v/∂x - ∂u/∂y)" in svg
 
 
 def test_generated_impeller_diagram_tracks_its_geometry():
