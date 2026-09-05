@@ -15,6 +15,31 @@ uv run python -m pytest -q
 
 Keep one main server on 8501. Stop temporary diagnostic servers when finished. Session/process IDs from an earlier conversation are not durable launch instructions.
 
+## Before you start: the traps that have actually bitten
+
+Each of these cost real time at least once and is invisible to a casual read. The
+detail is further down; this is the index.
+
+| Symptom | Real cause | Guard |
+|---|---|---|
+| LaTeX renders as literal `$...$` in monospace | markdown, not KaTeX: the prose block kept its Python source indentation, and 4+ spaces after a blank line is an indented code block | `tests/test_markdown_indentation.py`; route blocks through `render_prose_and_latex` |
+| Math renders as raw TeX inside a note | `st.info`/`st.warning`/`st.error` do not run KaTeX | `tests/test_katex_safety.py`; use `render_callout` |
+| A subscript renders as a currency symbol | Unicode has no subscript `w` or capitals; nearby entities are Currency Symbols (U+20A2 is CRUZEIRO SIGN) | `svg_diagrams._sub()`; currency scan in `tests/test_svg_diagrams.py` |
+| An angle in a figure is visibly not the angle it names | it was drawn on an axonometric projection, which foreshortens each direction differently | mark angles on the plan view only |
+| Second panel of a subplot figure looks light/unstyled | `update_layout(xaxis=...)` reaches only axis 1 | the registered Plotly template; `tests/test_plotting_theme.py` |
+| Page renders partially, script "still running", no error | the whole course was being built every run | one chapter at a time; never restore `st.tabs` |
+| A new module silently never reloads | missing from `_MODULE_RELOAD_ORDER` | bidirectional check in `tests/test_app_smoke.py` |
+| `{name}` appears literally in an SVG | doubled brace in an f-string | placeholder scan in `tests/test_svg_diagrams.py` |
+| Prose numbers disagree with the live calculator | the worked example was written against different inputs | compute worked examples from the app's own defaults |
+
+**The verification loop that works.** Passing tests do not establish that a page
+renders. Run the app, open the chapter, and look at it. For a figure, render it
+to a standalone HTML file inside a `max-width: 880px` wrapper so it is scaled the
+way Streamlit scales it — without that constraint the SVG renders oversized and
+overflow judgements are wrong. XML validity proves nothing about layout: every
+diagram in the third pass parsed cleanly and still had colliding labels or text
+running past the viewBox.
+
 ## Architecture and chapter integration
 
 | Location | Responsibility |
@@ -144,7 +169,7 @@ Retain tests for the first-step moving-lid boundary condition, preservation of i
 
 ## Verification workflow and baseline
 
-At completion, **170 pytest cases passed**. The live headless-Edge check also passed: network solve, CSV download, new chapter navigation, no KaTeX errors and no browser page errors. A separate AppTest exercise changed a junction elevation and changed a pipe to measured ID with relative roughness; the resulting geometry/pressure changed correctly. Invalid roughness, compressor/turbine switching and no-forward-flow nozzle behavior were also exercised.
+At completion of the third pass, **247 pytest cases passed** (76 after the first pass, 170 after the second). The live headless-Edge check also passed: network solve, CSV download, new chapter navigation, no KaTeX errors and no browser page errors. A separate AppTest exercise changed a junction elevation and changed a pipe to measured ID with relative roughness; the resulting geometry/pressure changed correctly. Invalid roughness, compressor/turbine switching and no-forward-flow nozzle behavior were also exercised.
 
 ```powershell
 # Optional integration test; keep the app running on port 8501.
@@ -293,58 +318,175 @@ Do not restore `st.tabs` without re-measuring the full-page render in a real bro
 passing AppTest does not establish that the page finishes drawing — that was the entire
 lesson here, and it matches the earlier live-browser section above.
 
-## Markdown indentation kills KaTeX, and looks like a KaTeX bug
+## Third pass: rendering root causes, transport analogy, relief sizing
 
-Recorded after a user reported "LaTeX did not render properly, this happens in many places".
+Recorded after the session that fixed the LaTeX rendering complaint, rebuilt the
+impeller figures, founded the scaling chapter on the SVD, and added the
+transport analogy and pressure-relief sections. Test count went 195 to 247.
 
-The cause was markdown, not KaTeX. A triple-quoted prose block carries the source
-indentation of the function it sits in. `iter_prose_and_math` only called `.strip()`,
-which dedents the **first** line; every later line still began with eight spaces. In
-CommonMark, a line indented four or more spaces *after a blank line* opens an indented
-code block, so the list, the `**bold**` and the `$...$` all rendered literally in
-monospace and KaTeX never ran on any of it.
+### Markdown indentation kills KaTeX, and looks like a KaTeX bug
 
-Why it hid for so long: a single-paragraph block is unaffected, because its later lines
-are lazy continuations of the first paragraph and their indentation is ignored. The bug
-only fires when a chunk contains a blank line followed by indented content — lists and
-multi-paragraph prose. Two live instances existed and had presumably been visible for
-some time: the Moody-zone list in chapter 2 and the entire textbook reference list in
-chapter 12.
+The reported symptom was "LaTeX did not render properly, this happens in many
+places". The cause was markdown.
 
-`src/ui/pedagogy.py` now exposes `dedent_markdown()` and applies it in
-`iter_prose_and_math`, so everything routed through the helpers is safe.
-`textwrap.dedent` strips only the common prefix, so a list continuation indented three
-spaces deeper stays three deeper and remains inside its list item.
+A triple-quoted prose block carries the source indentation of the function it
+sits in. `iter_prose_and_math` only called `.strip()`, which dedents the **first**
+line; every later line still began with eight spaces. In CommonMark a line
+indented four or more spaces *after a blank line* opens an indented code block,
+so the list, the `**bold**` and the `$...$` all rendered literally in monospace
+and KaTeX never ran on any of it.
 
-`tests/test_markdown_indentation.py` walks the AST of every UI module, extracts string
-literals passed to `st.markdown` / `st.caption` / `st.write`, and fails on any that
-CommonMark would swallow into a code block. Direct `st.*` calls bypass the helpers, so
-that scan is what stops this recurring. Prefer `render_prose_and_latex` for any block
-containing a blank line.
+Why it hid: a single-paragraph block is unaffected, because its later lines are
+lazy continuations of the first paragraph and their indentation is ignored. The
+bug only fires when a chunk contains a blank line followed by indented content,
+which means lists and multi-paragraph prose. Two live instances had presumably
+been visible for some time before anyone reported them: the Moody-zone list in
+chapter 2 and the entire textbook reference list in chapter 12.
 
-## Unicode has no subscript for "w", and the neighbours are currency signs
+`src/ui/pedagogy.py` now exposes `dedent_markdown()` and applies it inside
+`iter_prose_and_math`, so anything routed through the helpers is safe.
+`textwrap.dedent` strips only the common prefix, so a list continuation indented
+three spaces deeper stays three deeper and remains inside its list item.
 
-Subscripts exist in Unicode for digits and a handful of lowercase letters. There is none
-for `w`, and none for capitals. Guessing a numeric entity near the subscript block lands
-in Currency Symbols: `&#8354;` (U+20A2) is the CRUZEIRO SIGN, and it was rendering as a
-wall subscript in the canal diagrams. The transport diagrams then repeated the mistake
-with `&#8347;` (subscript *s*, used for *x*) and `&#8320;&#8342;` (subscript zero and *k*,
-used for *AB*).
+Direct `st.markdown` calls bypass the helpers, so
+`tests/test_markdown_indentation.py` walks the AST of every UI module, extracts
+string literals passed to `st.markdown` / `st.caption` / `st.write`, and fails on
+any that CommonMark would swallow. **Prefer `render_prose_and_latex` for any
+block containing a blank line.**
 
-Use `svg_diagrams._sub()` for any subscript Unicode does not actually provide. `R_h` and
-`D_h` are fine as `&#8341;` because subscript *h* genuinely exists.
-`test_no_diagram_contains_a_currency_or_stray_symbol` asserts no diagram output contains
-a character from the Currency Symbols block, which catches the whole class for free.
+### Unicode has no subscript for "w", and the neighbours are currency signs
 
-## Angles cannot be drawn on an axonometric projection
+Subscripts exist in Unicode for digits and a handful of lowercase letters. There
+is none for `w`, and none for capitals. Guessing a numeric entity near the
+subscript block lands in Currency Symbols: `&#8354;` is U+20A2, the CRUZEIRO
+SIGN, and it was rendering as a wall subscript in the canal diagrams. The
+transport diagrams then repeated the mistake twice more, with `&#8347;`
+(subscript *s*, used for *x*) and `&#8320;&#8342;` (subscript zero and *k*, used
+for *AB*).
 
-The impeller figure originally marked beta_2 on the 3D view. A projection foreshortens
-each direction by a different amount, so a 25-degree blade angle rendered as roughly 50.
-No caption rescues that. The figure is now two panels: the axonometric wheel for shape,
-and a plan view looking down the shaft for angles, where the r-theta plane is undistorted
-and the angles are true. This is the split turbomachinery texts use, and it also fixed a
-legend that no longer had to fit beside the geometry.
+Use `svg_diagrams._sub()` for any subscript Unicode does not provide. `R_h` and
+`D_h` are genuinely fine as `&#8341;`, because subscript *h* exists.
+`test_no_diagram_contains_a_currency_or_stray_symbol` asserts no diagram output
+contains a Currency Symbols character, which catches the entire class for free.
 
-Every angle mark draws both bounding rays from its vertex. An arc floating beside a
-vector does not say which two directions it spans, which was the substance of the
-original complaint.
+### Angles cannot be drawn on an axonometric projection
+
+The impeller figure originally marked beta_2 on the 3D view. A projection
+foreshortens each direction by a different amount, so a 25-degree blade angle
+rendered as roughly 50. No caption rescues an angle that is drawn wrong.
+
+The figure is now two panels, the split turbomachinery texts use: the axonometric
+wheel for shape, claiming nothing about angles, and a plan view down the shaft
+for the angles, where the r-theta plane is undistorted and they are true. As a
+side effect the legend fits, because each panel only has to label what it can
+honestly show.
+
+Two related rules came out of the same work:
+
+* **Every angle mark draws both bounding rays from its vertex.** An arc floating
+  beside a vector does not say which two directions it spans; that was the
+  substance of the original complaint. `_angle_mark` in `src/svg_impeller.py`
+  does vertex dot, two dashed rays, shaded wedge, label on the bisector.
+* **A velocity triangle is drawn closed, head to tail.** The 3D figure had drawn
+  U2, W2, Cm2 and C2 radiating from one point, which is not a triangle and shows
+  nothing of C = U + W.
+
+When placing annotations on a projected figure, pick the annotated feature by
+*projected* geometry, not by world geometry: `diagram_blade_angles` chooses the
+blade whose tangent survives the projection best **and** points into empty
+canvas, and sizes the marks by their length in pixels rather than in metres.
+Choosing by world angle alone gives marks that shrink or overlap the wheel
+depending on the viewing angle.
+
+### Confusing a ratio of derivatives with a ratio of integrated changes
+
+The one physics error a reader spotted directly. The Blasius section claimed
+`dp/dy` is smaller than `dp/dx` by `(delta/x)^2`. It is smaller by `delta/x`;
+`(delta/x)^2` is the ratio of the pressure *changes*, because the transverse one
+is accumulated over only `delta` while the streamwise one accumulates over `x`.
+
+Both numbers appear in textbooks attached to different quantities, which is
+exactly why the slip is easy. When writing a scaling argument, state explicitly
+whether the comparison is between gradients or between integrated changes, and
+if both are interesting, give both with their factors, as that section now does.
+
+### Internal inconsistency is the cheapest error signal
+
+An independent audit of the new content found six confirmed errors. **Three of
+them contradicted a neighbouring sentence in the same paragraph:**
+
+* the shape factor was said to rise as the profile becomes *fuller*, two
+  sentences before correctly saying separation is approached at high `H`;
+* the degree of reaction was said to approach 1 for a radial blade, immediately
+  before correctly describing the radial blade's fast discharge;
+* the blade-to-blade plane was described as a fixed-radius cut, in a paragraph
+  whose own equation `tan(beta) = dr/(r dtheta)` requires otherwise.
+
+Re-reading a passage against itself is far cheaper than re-deriving it, and it
+found half the defects here. Do that pass before asking for external review.
+
+### Make the app compute what the prose claims
+
+Wherever a constant or a comparison could be recomputed, it now is, and the
+recomputation is the check:
+
+* `pohlhausen_theta_gradient` solves the thermal boundary-layer ODE, and at
+  `Pr = 1` returns 0.33206 against Blasius `f''(0) = 0.332057` -- because at
+  `Pr = 1` the energy equation *is* the differentiated Blasius equation. The
+  familiar `0.332 Pr^(1/3)` is then shown to be a ~2% fit to the solved ODE,
+  rather than quoted.
+* The open-channel section runs Darcy alongside Manning and prints the
+  disagreement instead of hiding it.
+* The SOR change was justified by benchmarking against the Jacobi it replaced,
+  and the old Jacobi is kept in the test file as that baseline.
+
+This is more work than asserting the number, and it is what makes the numbers
+trustworthy when the surrounding prose is later edited.
+
+### Physics module conventions worth keeping
+
+Established across `impeller.py`, `open_channel.py` and `transport_analogy.py`:
+
+* **State the convention in code, and report both.** Blade angles are measured
+  from tangential; every result dictionary also carries the `*_from_meridional`
+  complement, so a reader can check against either textbook. The single
+  ambiguity that causes the most wrong answers is not left implicit.
+* **Store a shared correlation once.** `transport_analogy.CORRELATIONS` holds one
+  entry per geometry and evaluates it for heat or mass by swapping `Pr` for `Sc`.
+  Heat and mass therefore cannot drift apart -- the analogy is expressed as code
+  rather than as a claim in prose.
+* **Attach validity ranges and report them.** Correlations carry `re_range` and
+  `pr_range`; the UI warns rather than silently extrapolating, and the plot draws
+  each curve only across its own band.
+* **Put the model limits in the module docstring**, not only in the UI. They are
+  what the next person needs before reusing the function.
+
+### Writing source files: escaping hazards
+
+Two mistakes cost time and both are silent:
+
+* A bash heredoc carrying Python turned `\theta` into a literal **tab** character
+  inside a prose string. It passed tests and only showed up in the rendered page.
+* `"\m"` and similar produced `SyntaxWarning: invalid escape sequence` in strings
+  that then behaved unexpectedly.
+
+Prefer writing file content with an editor tool over shell heredocs when the
+content contains backslashes; use raw strings for anything with TeX; and after a
+bulk edit, scan for stray control characters, which is a two-line check and
+catches the tab case immediately.
+
+### Test patterns that earned their keep
+
+All of these are cheap, and each catches a whole class rather than one instance:
+
+| Test | Catches |
+|---|---|
+| AST scan of `st.markdown` literals | indentation that becomes a code block |
+| Currency-character scan of every diagram | invented Unicode subscripts |
+| `{placeholder}` regex over every diagram | doubled braces in f-strings |
+| `_MODULE_RELOAD_ORDER` vs the file tree, both directions | modules that never reload |
+| "no `gridcolor` in `plotting.py`" | per-figure theme overrides returning |
+| Build every figure, assert traces > 0 | figures that silently render empty |
+| AppTest widget change, assert the number moves | UI that redraws but does not recompute |
+| Old algorithm kept as a benchmark baseline | performance claims going stale |
+
