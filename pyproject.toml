@@ -1,0 +1,18 @@
+[project]
+name = "fluid-mechanics"
+version = "0.1.0"
+description = "Educational Fluid Mechanics Simulator: From Euler to Navier-Stokes"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.2",
+    "pandas>=3.0.5",
+    "plotly>=7.0.0",
+    "pytest>=9.1.1",
+    "scipy>=1.18.1",
+    "streamlit>=1.63.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
