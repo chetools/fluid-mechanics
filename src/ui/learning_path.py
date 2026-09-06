@@ -1,14 +1,45 @@
-"""A consistent reading guide for the twelve lessons."""
+"""A consistent reading guide for the twelve lessons.
+
+This module is the single source of truth for how the course is named and
+divided. The banner, the chapter navigation, the chapter header and the sidebar
+map all read it. They used to carry three different names and two different
+numberings for the same twelve chapters -- the landing banner counted "01..06"
+while the navigation beneath it counted 1..12, so "04 · External flow" in one
+was chapter 8 in the other.
+"""
+
+from typing import List, Tuple
 
 import streamlit as st
 
 from src.ui.pedagogy import render_latex, render_prose_and_latex
 
 
-# title, stage, question, prerequisites, route, core equation, interpretation, experiment
+# Six parts of two chapters each. Part names must not repeat: the old data had
+# "SOLUTIONS & VERIFICATION" on both part 4 and part 6, and part 4 itself
+# carried two different names on its two chapters.
+PARTS: Tuple[Tuple[int, str, Tuple[int, int]], ...] = (
+    (1, "Plant balances", (1, 2)),
+    (2, "Scaling & regimes", (3, 4)),
+    (3, "Local momentum", (5, 6)),
+    (4, "Viscous solutions & drag", (7, 8)),
+    (5, "Work & thermodynamics", (9, 10)),
+    (6, "Computation & reference", (11, 12)),
+)
+
+# Short labels for the horizontal chapter navigation. Kept separate from the
+# lesson titles because a twelve-option radio needs one or two words, while a
+# chapter heading can afford a full title.
+NAV_LABELS: Tuple[str, ...] = (
+    "Energy", "Pipes", "Scaling", "Turbulence",
+    "Euler", "Stress & NS", "Exact flows", "External flow",
+    "Turbomachinery", "Compressible", "CFD", "Reference",
+)
+
+# title, question, prerequisites, route, core equation, interpretation, experiment
 LESSONS = [
     (
-        "Energy & Bernoulli", "01 / PLANT BALANCES",
+        "Energy & Bernoulli",
         "Where does a pump's energy go?",
         "Conservation of energy; pressure and flow rate.",
         "Energy stores → injection work p/ρ → head balance → first-law derivation → heating example",
@@ -17,7 +48,7 @@ LESSONS = [
         "For water, compare a 100 kPa frictional drop at 10 and 20 m³/h. The temperature rise stays about 0.024 K; hydraulic power doubles from 0.278 to 0.556 kW. Flow rate matters even when pressure drop is held fixed.",
     ),
     (
-        "Pipe flow & pumping", "01 / PLANT BALANCES",
+        "Pipe flow & pumping",
         "How much pressure and power will a transfer line need?",
         "Chapter 1: mechanical head; mean speed is Q/A.",
         "Darcy & Fanning → friction chart → pump sizing → suction head → schedules → network solver → open channels",
@@ -26,7 +57,7 @@ LESSONS = [
         "Keep flow rate, length, fluid, and fittings fixed; increase the pipe diameter. Observe the lower speed and pressure loss. Then raise the suction tank by 1 m: available NPSH should rise by exactly 1 m. For a canal at fixed depth, section and Manning roughness, quadrupling bed slope doubles capacity because Q grows as the square root of slope. The calculator instead holds discharge fixed: quadruple its slope and observe a lower normal depth.",
     ),
     (
-        "Dimensional analysis", "02 / SCALING & REGIMES",
+        "Dimensional analysis",
         "When can one experiment describe many different fluids and pipes?",
         "Chapter 2: pressure loss and Reynolds number; powers of M, L, and T.",
         "Why scale → Buckingham's method → matrix kernel → named groups → information",
@@ -35,7 +66,7 @@ LESSONS = [
         "Choose the pipe-pressure-drop preset. Identify Eu as the response and Re, ε/D, L/D as inputs. Inspect the raw SVD basis: different-looking dimensionless products can describe the same space.",
     ),
     (
-        "Laminar flow & turbulence", "02 / SCALING & REGIMES",
+        "Laminar flow & turbulence",
         "Would many small laminar pipes cost less to pump through?",
         "Chapters 2–3: Darcy friction factor, fixed flow rate, and Reynolds number.",
         "Dye experiment → laminar force balance → profiles → wall layers → straw bundle",
@@ -44,7 +75,7 @@ LESSONS = [
         "In the straw lab, increase the number of straws while keeping total flow and outer diameter fixed. Read both plots: individual Reynolds number falls while pumping power can rise. Check whether each straw is actually laminar before using the exact laminar formula.",
     ),
     (
-        "Euler & fluid acceleration", "03 / LOCAL MOMENTUM",
+        "Euler & fluid acceleration",
         "Can a steady flow still accelerate?",
         "Chapter 1: Bernoulli; Newton's second law and the chain rule.",
         "Continuity → small-element force balance → material derivative → Euler → Venturi",
@@ -53,7 +84,7 @@ LESSONS = [
         "Narrow the Venturi throat at fixed inlet conditions. Use continuity to predict the speed increase, then Bernoulli to predict the pressure decrease. A low throat pressure is an ideal-model result; check the displayed validity warnings.",
     ),
     (
-        "Stress & Navier–Stokes", "03 / LOCAL MOMENTUM",
+        "Stress & Navier–Stokes",
         "Which part of a fluid's motion produces viscous stress?",
         "Chapter 5: local momentum; matrix transpose and velocity gradients.",
         "Surface traction → Cauchy balance → deformation vs rotation → viscosity → Navier–Stokes",
@@ -62,7 +93,7 @@ LESSONS = [
         "Compare Pure rotation with Simple shear in the deformation lab. Rotation gives D = 0 and zero viscous stress even though vorticity is nonzero. Simple shear contains both strain and spin. Then select Pure shear (symmetric): D is nonzero but Ω is zero. All three preserve area because their divergence is zero.",
     ),
     (
-        "Exact flows & boundary layers", "04 / SOLUTIONS & VERIFICATION",
+        "Exact flows & boundary layers",
         "Which assumptions make Navier–Stokes solvable by hand?",
         "Chapter 6: viscous momentum balance, no-slip walls, and derivatives.",
         "Channel & pipe profiles → transient diffusion → Prandtl scaling → similarity → Blasius → adverse gradients",
@@ -71,7 +102,7 @@ LESSONS = [
         "Set the channel pressure gradient to zero to recover a straight Couette profile. Set wall speed to zero with a favorable gradient to recover a parabola. In the Stokes lab, quadrupling time should double the diffusion depth — the same square root that makes the Blasius layer grow as the square root of distance.",
     ),
     (
-        "External flow & drag", "04 / FLOW AROUND OBJECTS",
+        "External flow & drag",
         "How do viscosity and separation set the force on an object?",
         "Chapters 3 and 7: Reynolds number and boundary layers.",
         "Surface forces → Stokes derivation → settling → finite inertia → drag crisis",
@@ -80,7 +111,7 @@ LESSONS = [
         "Double sphere diameter at fixed speed. Stokes drag doubles, but predicted settling speed quadruples; check the terminal Reynolds number before accepting that prediction.",
     ),
     (
-        "Euler & turbomachinery", "05 / WORK & THERMODYNAMICS",
+        "Turbomachinery & shaft work",
         "How does a rotating blade heat a gas or extract work from it?",
         "Chapters 1 and 5: energy, momentum and velocity components.",
         "Angular momentum → blade geometry and angles → velocity triangles → Euler work → efficiency → intercooling → air separation plant",
@@ -89,7 +120,7 @@ LESSONS = [
         "Switch the machine from compressor to turbine at the same high/low pressure ratio. Lower the efficiency: compression becomes hotter, while expansion produces less cooling and less work. Then in the impeller lab raise the outlet blade angle towards 90 degrees and watch the head curve flatten — that is the surge risk a real compressor is designed away from.",
     ),
     (
-        "Compressible flows", "05 / WORK & THERMODYNAMICS",
+        "Compressible flows",
         "Why can lowering downstream pressure stop increasing gas flow?",
         "Chapters 1, 5 and 9: conservation laws, ideal-gas energy and stagnation properties.",
         "Sound speed → mass, momentum and energy → nozzle → choking → shocks → friction and heating",
@@ -98,7 +129,7 @@ LESSONS = [
         "Lower nozzle back pressure through the sonic threshold. Mass flow plateaus. Then double exit diameter: the ideal choked mass flow quadruples because area quadruples.",
     ),
     (
-        "Numerical CFD", "06 / SOLUTIONS & VERIFICATION",
+        "Numerical solution & verification",
         "How does a numerical solver enforce mass conservation?",
         "Chapters 6–7: momentum balance, boundary conditions, and transient flow.",
         "Coupled equations → predictor → pressure solve → correction → residuals & benchmark",
@@ -107,7 +138,7 @@ LESSONS = [
         "At Re = 100, compare Quick look with Longer run. Read elapsed nondimensional time, divergence, and benchmark error together. Change the grid as a separate experiment; longer integration alone is not a grid-convergence study.",
     ),
     (
-        "Reference & model selection", "REFERENCE DESK",
+        "Reference & model selection",
         "Which model's assumptions fit the problem in front of you?",
         "Use this chapter whenever a symbol or assumption is unfamiliar.",
         "Model map → symbols & units → tensor notation → assumptions and failure modes",
@@ -118,9 +149,40 @@ LESSONS = [
 ]
 
 
+def part_for(number: int) -> Tuple[int, str, Tuple[int, int]]:
+    """The part a chapter belongs to. Raises rather than guessing."""
+    for part in PARTS:
+        first, last = part[2]
+        if first <= number <= last:
+            return part
+    raise ValueError(f"chapter {number} is not in any part; check PARTS")
+
+
+def chapter_label(number: int) -> str:
+    """The navigation label, e.g. '7 · Exact flows'."""
+    return f"{number} · {NAV_LABELS[number - 1]}"
+
+
+def chapter_labels() -> List[str]:
+    return [chapter_label(n) for n in range(1, len(LESSONS) + 1)]
+
+
+def part_route() -> List[str]:
+    """The banner's route strip: parts with the chapters they actually cover."""
+    return [
+        f"Part {n} · {name} · ch {first}–{last}"
+        for n, name, (first, last) in PARTS
+    ]
+
+
 def render_chapter_header(number: int) -> None:
-    title, stage, question, prereq, route, equation, idea, _ = LESSONS[number - 1]
-    st.markdown(f'<div class="chapter-eyebrow">CHAPTER {number:02d} / {len(LESSONS):02d} · {stage.split(" / ")[-1]}</div>', unsafe_allow_html=True)
+    title, question, prereq, route, equation, idea, _ = LESSONS[number - 1]
+    part_number, part_name, _span = part_for(number)
+    st.markdown(
+        f'<div class="chapter-eyebrow">CHAPTER {number:02d} / {len(LESSONS):02d}'
+        f' · PART {part_number} · {part_name.upper()}</div>',
+        unsafe_allow_html=True,
+    )
     st.markdown(f"## {number}. {title}")
     st.markdown(f"**{question}**")
     st.caption(f"Start with: {prereq}")
@@ -132,12 +194,26 @@ def render_chapter_header(number: int) -> None:
 
 
 def render_chapter_recap(number: int) -> None:
-    lesson = LESSONS[number - 1]
+    _title, _question, _prereq, _route, _equation, idea, experiment = LESSONS[number - 1]
     st.divider()
     with st.container(border=True, key=f"chapter-recap-{number}"):
         st.markdown("### Put it together")
         st.markdown("**One experiment to try**")
-        render_prose_and_latex(lesson[7])
-        st.markdown(f"**Take away:** {lesson[6]}")
+        render_prose_and_latex(experiment)
+        st.markdown(f"**Take away:** {idea}")
         if number < len(LESSONS):
-            st.caption(f"Continue with {number + 1}. {LESSONS[number][0]} — {LESSONS[number][2]}")
+            next_title, next_question = LESSONS[number][0], LESSONS[number][1]
+            st.caption(f"Continue with {number + 1}. {next_title} — {next_question}")
+
+
+def render_concept_map() -> None:
+    """The sidebar map: parts, chapters, and what each chapter asks.
+
+    Built from LESSONS so it cannot invent a thirteenth name for a chapter,
+    which is what the previous hand-written copy of this list did.
+    """
+    st.markdown("**Course map** · easier plant story → harder mathematics")
+    for part_number, part_name, (first, last) in PARTS:
+        st.markdown(f"**Part {part_number} · {part_name}**")
+        for number in range(first, last + 1):
+            st.caption(f"{chapter_label(number)} — {LESSONS[number - 1][1]}")

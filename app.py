@@ -1,10 +1,11 @@
-"""Fluid Mechanics: From Euler's Equation to Navier-Stokes.
+"""Euler to Navier-Stokes: a derivation-first fluid mechanics course.
 
-Interactive educational platform with step-by-step physical derivations,
-textbook-quality vector schematics, exact analytical solutions, and a live
-2D Incompressible Navier-Stokes CFD solver.
+Twelve chapters in six parts. Every equation is reached from a stated
+conservation balance rather than quoted, with vector schematics, exact
+analytical solutions and a live 2D incompressible CFD solver as the labs.
 
-Modeled after the pedagogical and visual rigor of the reference distillation project.
+src/ui/learning_path.py names the parts and chapters; this module only
+arranges them.
 """
 
 import hashlib
@@ -38,7 +39,6 @@ _MODULE_RELOAD_ORDER = (
     "src.ui.state",
     "src.ui.pedagogy",
     "src.ui.learning_path",
-    "src.ui.top_bar",
     "src.ui.tab_cheme_energy",
     "src.ui.tab_pipe_flow",
     "src.ui.pipe_network_lab",
@@ -90,9 +90,13 @@ _refresh_source_modules(_source_fingerprint())
 import src.theme as theme
 import src.units as units
 from src.ui.state import persistent_input
-from src.ui.top_bar import render_top_bar
-from src.ui.pedagogy import render_concept_map
-from src.ui.learning_path import render_chapter_header, render_chapter_recap
+from src.ui.learning_path import (
+    chapter_labels,
+    part_route,
+    render_chapter_header,
+    render_chapter_recap,
+    render_concept_map,
+)
 from src.ui.tab_cheme_energy import render_tab_cheme_energy
 from src.ui.tab_pipe_flow import render_tab_pipe_flow
 from src.ui.tab_dimensional_analysis import render_tab_dimensional_analysis
@@ -108,7 +112,7 @@ from src.ui.tab_turbomachinery import render_tab_turbomachinery
 from src.ui.tab_compressible import render_tab_compressible
 
 st.set_page_config(
-    page_title="Fluid Mechanics: Euler to Navier-Stokes",
+    page_title="Euler to Navier–Stokes · a fluid mechanics course",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -122,21 +126,17 @@ units.init_units()
 
 # Sidebar controls & information
 with st.sidebar:
-    st.markdown("### 🌊 Fluid Mechanics Simulator")
-    st.markdown(
-        """
-        **Interactive Educational Platform**
-        
-        *From first-principles Euler to incompressible Navier–Stokes.*
-        """
-    )
+    st.markdown("### 🌊 Euler to Navier–Stokes")
+    st.caption("A derivation-first fluid mechanics course. Twelve chapters, six parts.")
     st.markdown("---")
 
-    st.markdown("#### Global Physical Properties")
-    st.caption("Shared by liquid, external-flow and incompressible labs. Gas-machine and compressible labs have separate thermodynamic inputs.")
-    u_ref = persistent_input(st.number_input, "Reference Velocity U₀ [m/s]", min_value=0.1, max_value=50.0, value=2.0, step=0.5, key="app_reference_velocity_u_m_s")
-    l_ref = persistent_input(st.number_input, "Characteristic Length L [m]", min_value=0.001, max_value=5.0, value=0.05, step=0.01, key="app_characteristic_length_l_m")
-    fluid_preset = persistent_input(st.selectbox, "Fluid Preset", options=["Water (20°C)", "Air (20°C)", "Glycerin", "Custom"], key="app_fluid_preset")
+    st.markdown("#### Shared fluid")
+    st.caption(
+        "Sets ρ, μ, a and vapour pressure for the liquid, incompressible and "
+        "external-flow labs. The gas-machine and compressible chapters take their "
+        "own thermodynamic inputs and ignore this."
+    )
+    fluid_preset = persistent_input(st.selectbox, "Fluid preset", options=["Water (20°C)", "Air (20°C)", "Glycerin", "Custom"], key="app_fluid_preset")
 
     if fluid_preset == "Custom":
         rho_ref = persistent_input(st.number_input, "Density ρ [kg/m³]", min_value=0.1, max_value=20000.0, value=1000.0, key="app_density_kg_m")
@@ -158,6 +158,34 @@ with st.sidebar:
             f"({fluid_preset})"
         )
 
+    st.markdown("#### Display units")
+    unit_choice = persistent_input(
+        st.selectbox,
+        "Show quantities as",
+        options=["SI (metric)", "Nondimensional [-]"],
+        key="unit_toggle_select",
+        help=(
+            "Nondimensional mode divides displayed metrics and plot axes by the "
+            "reference scales below. Every slider stays in SI."
+        ),
+    )
+    # Set it, but do NOT st.rerun() here. The sidebar runs before every chapter,
+    # so the new system is already in force for this pass. Rerunning from this
+    # point aborts the script before the chapter radio is instantiated, and
+    # Streamlit then garbage-collects the state of a widget that no completed
+    # run created -- which silently threw the reader back to chapter 1.
+    selected_unit_sys = "SI" if "SI" in unit_choice else "NONDIM"
+    if selected_unit_sys != units.get_unit_system():
+        units.set_unit_system(selected_unit_sys)
+
+    with st.expander("Reference scales for nondimensional display", expanded=False):
+        st.caption(
+            "These two numbers scale the *display* only. No lab reads them: every "
+            "chapter builds its own velocity and length from its own inputs."
+        )
+        u_ref = persistent_input(st.number_input, "Reference velocity U₀ [m/s]", min_value=0.1, max_value=50.0, value=2.0, step=0.5, key="app_reference_velocity_u_m_s")
+        l_ref = persistent_input(st.number_input, "Reference length L [m]", min_value=0.001, max_value=5.0, value=0.05, step=0.01, key="app_characteristic_length_l_m")
+
     units.set_fluid_state(
         name=fluid_preset,
         u_ref=u_ref,
@@ -175,27 +203,47 @@ with st.sidebar:
     st.markdown(
         """
         <div style="font-size: 11px; color: #94a3b8;">
-            <b>Pedagogical Principles:</b><br>
-            • Every step derived without skipping algebra.<br>
-            • Physical intuition and geometric diagrams first.<br>
-            • Display units convert; sliders stay in SI.<br>
-            • Code written directly to read as mathematics.
+            <b>How this course is written:</b><br>
+            • Every equation is derived from a stated balance.<br>
+            • The physical picture and the geometry come before the algebra.<br>
+            • Claimed constants are computed, not quoted.<br>
+            • Display units convert; sliders stay in SI.
         </div>
         """,
         unsafe_allow_html=True
     )
 
-# A short orientation before the controls and chapter navigation.
-st.markdown('''<div class="course-intro"><div class="chapter-eyebrow">THE FLUID MECHANICS LAB</div>
-<h1>From a pressure drop<br>to the equations of motion.</h1>
-<p>Twelve connected lessons. Build the physical picture, follow the mathematics,
-then test your prediction in a live experiment.</p>
-<div class="course-route"><span>01 · Plant balances</span><span>02 · Scaling &amp; regimes</span>
-<span>03 · Local momentum</span><span>04 · External flow</span><span>05 · Gas &amp; shaft work</span><span>06 · CFD verification</span></div></div>''', unsafe_allow_html=True)
-st.caption("Start at chapter 1, or choose a chapter below. Detailed proofs unfold on demand. Open the sidebar to change the shared fluid.")
+# The landing banner is orientation, so it is shown to a reader who has not yet
+# chosen a chapter (and on chapter 1). From chapter 2 onward it is dead weight
+# above the fold on every rerun, and "start at chapter 1" is no longer advice.
+_current_chapter = st.session_state.get("chapter_nav")
+if _current_chapter is None or _current_chapter.startswith("1 "):
+    _route = "".join(f"<span>{step}</span>" for step in part_route())
+    st.markdown(
+        '<div class="course-intro">'
+        '<div class="chapter-eyebrow">A DERIVATION-FIRST FLUID MECHANICS COURSE</div>'
+        "<h1>From a pressure drop<br>to the equations of motion.</h1>"
+        "<p>Twelve chapters in six parts. Build the physical picture, derive the "
+        "result from a conservation law, then test your prediction in a live "
+        "experiment.</p>"
+        f'<div class="course-route">{_route}</div></div>',
+        unsafe_allow_html=True,
+    )
+    st.caption(
+        "Start at chapter 1, or choose any chapter below. Derivations unfold on "
+        "demand inside each panel."
+    )
 
-# Render persistent top KPI strip
-render_top_bar(u_ref=u_ref, l_ref=l_ref, rho_ref=rho_ref, mu_ref=mu_ref)
+# The only genuinely global state, stated once, instead of a strip of KPI cards
+# computing a Reynolds number from reference scales that no chapter reads.
+_units_note = (
+    "SI" if units.get_unit_system() == "SI"
+    else f"nondimensional on U₀ = {u_ref:g} m/s, L = {l_ref:g} m"
+)
+st.caption(
+    f"**Shared fluid:** {fluid_preset} · ρ = {rho_ref:g} kg/m³ · μ = {mu_ref:.3e} Pa·s "
+    f"· a = {a_sound:.0f} m/s · **display:** {_units_note}. Change it in the sidebar."
+)
 
 # Difficulty order that still tells a plant story:
 # energy → pipe design → experiments/Π → laminar f & straws → Euler → tensors → BL → CFD
@@ -210,19 +258,27 @@ render_top_bar(u_ref=u_ref, l_ref=l_ref, rho_ref=rho_ref, mu_ref=mu_ref)
 # reproduced on a freshly started server and confirmed by bisection — skipping
 # chapters 1–6 let chapter 9 render to completion. Rendering one chapter is the
 # fix; see docs/DEVELOPMENT_NOTES.md before changing it back.
-CHAPTERS = (
-    ("1 · Energy", 1, lambda: render_tab_cheme_energy()),
-    ("2 · Pipes", 2, lambda: (render_tab_pipe_flow(), render_network_lab())),
-    ("3 · Scaling", 3, lambda: render_tab_dimensional_analysis()),
-    ("4 · Turbulence", 4, lambda: render_tab_turbulence()),
-    ("5 · Euler", 5, lambda: render_tab_euler()),
-    ("6 · Stress & NS", 6, lambda: render_tab_stress_ns()),
-    ("7 · Exact flows", 7, lambda: render_tab_solving_ns()),
-    ("8 · External flow", 8, lambda: render_tab_external_flow()),
-    ("9 · Turbomachinery", 9, lambda: render_tab_turbomachinery()),
-    ("10 · Compressible", 10, lambda: render_tab_compressible()),
-    ("11 · CFD", 11, lambda: render_tab_cfd()),
-    ("12 · Reference", 12, lambda: render_tab_reference()),
+#
+# The labels come from src.ui.learning_path, which also names the six parts and
+# titles each chapter, so the navigation, the banner route and the chapter
+# headings cannot drift apart.
+RENDERERS = (
+    lambda: render_tab_cheme_energy(),
+    lambda: (render_tab_pipe_flow(), render_network_lab()),
+    lambda: render_tab_dimensional_analysis(),
+    lambda: render_tab_turbulence(),
+    lambda: render_tab_euler(),
+    lambda: render_tab_stress_ns(),
+    lambda: render_tab_solving_ns(),
+    lambda: render_tab_external_flow(),
+    lambda: render_tab_turbomachinery(),
+    lambda: render_tab_compressible(),
+    lambda: render_tab_cfd(),
+    lambda: render_tab_reference(),
+)
+CHAPTERS = tuple(
+    (label, number, render)
+    for number, (label, render) in enumerate(zip(chapter_labels(), RENDERERS), 1)
 )
 
 selected = st.radio(

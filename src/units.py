@@ -5,7 +5,7 @@ metrics and plot axes. Slider widgets stay in SI so stored values do
 not jump when the toggle changes. Physics always runs in SI.
 """
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional
 
 import streamlit as st
 
@@ -212,34 +212,3 @@ def calculate_cfl(u: float, dt: float, dx: float) -> float:
     if dx <= 0:
         return float("inf")
     return u * dt / dx
-
-
-def flow_regime_label(re: float) -> Tuple[str, str, str]:
-    """Return (label, badge_class, description) using *pipe* Re thresholds.
-
-    2300 / 4000 apply to circular pipes (Osborne Reynolds' apparatus),
-    not to cavities, cylinders, or boundary layers.
-    """
-    if re < 1.0:
-        return (
-            "Creeping / Stokes Flow (Re < 1)",
-            "pill-laminar",
-            "Pipe-style Re from sidebar U₀, L. Viscous forces dominate. Not a universal geometry threshold.",
-        )
-    if re < 2300:
-        return (
-            "Laminar Flow (1 ≤ Re < 2300)",
-            "pill-laminar",
-            "Pipe-style Re from sidebar U₀, L. 2300 is a circular-pipe threshold, not cavity/cylinder transition.",
-        )
-    if re < 4000:
-        return (
-            "Transitional Flow (2300 ≤ Re < 4000)",
-            "pill-warning",
-            "Pipe-style Re from sidebar U₀, L. Intermittent puffs in a circular pipe; other geometries differ.",
-        )
-    return (
-        "Turbulent Flow (Re ≥ 4000)",
-        "pill-turbulent",
-        "Pipe-style Re from sidebar U₀, L. Cavity and cylinder transition occur at different Re.",
-    )

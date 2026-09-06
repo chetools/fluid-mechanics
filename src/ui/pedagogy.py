@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import re
 import textwrap
-from typing import Iterator, List, Optional, Sequence, Tuple
+from typing import Iterator, Optional, Sequence, Tuple
 
 import streamlit as st
 from src.ui.state import persistent_input
@@ -216,24 +216,3 @@ def render_self_check(
             st.markdown(f":green[**Yes.**] {explanation}")
         else:
             st.markdown(f":orange[**Revisit the derivation.**] {explanation}")
-
-
-def render_concept_map() -> None:
-    """Tab order is the pedagogical path."""
-    steps: List[Tuple[str, str]] = [
-        ("1. ChemE energy", "Plant Δp/pumps; Bernoulli from the first law; friction as heat"),
-        ("2. Pipe & pumping", "Darcy, Moody, NPSH, entrance length"),
-        ("3. Dimensional analysis", "Experiments, SVD rotation onto Re/Eu, IT-π information"),
-        ("4. Laminar f & straws", "Force balance → 64/Re; packing capillaries vs turbulence cost"),
-        ("5. Euler", "Differential momentum; d'Alembert"),
-        ("6. Stress & NS", "Tensors and constitutive laws"),
-        ("7. Exact solutions & BL", "Couette, Hagen, Stokes, Blasius, separation"),
-        ("8. External flow", "Stokes drag, settling and drag crisis"),
-        ("9. Turbomachinery", "Euler work, compression and expansion"),
-        ("10. Compressible", "Nozzles, choking, shocks and heated ducts"),
-        ("11. CFD", "Incompressible projection and verification"),
-        ("12. Reference", "Nomenclature and validity matrix"),
-    ]
-    st.markdown("**Path (easier plant story → harder mathematics)**")
-    for title, blurb in steps:
-        st.caption(f"{title} — {blurb}")

@@ -60,6 +60,46 @@ def test_switching_chapter_renders_that_chapter():
     )
 
 
+def test_the_course_has_one_structure_and_one_set_of_names():
+    """The banner used to number the course 01-06 while the navigation below it
+    numbered the same twelve chapters 1-12, so "04 · External flow" in the
+    banner was chapter 8 in the radio. Everything now reads from PARTS /
+    NAV_LABELS / LESSONS, and this pins that they agree.
+    """
+    from src.ui import learning_path as lp
+
+    assert len(lp.LESSONS) == len(lp.NAV_LABELS) == 12
+
+    # Every chapter belongs to exactly one part, and the parts tile 1..12.
+    covered = [n for _, _, (first, last) in lp.PARTS for n in range(first, last + 1)]
+    assert covered == list(range(1, 13)), covered
+    for number in range(1, 13):
+        lp.part_for(number)  # raises if a chapter is orphaned
+
+    # Part names must be distinct: the old data used "SOLUTIONS & VERIFICATION"
+    # for two different parts and gave part 4 two different names.
+    names = [name for _, name, _ in lp.PARTS]
+    assert len(set(names)) == len(names), names
+
+    # The navigation labels are what app.py renders and the browser tests click.
+    assert lp.chapter_labels() == EXPECTED_TABS
+
+    # The banner route names real chapter spans, not a second numbering.
+    route = lp.part_route()
+    assert len(route) == len(lp.PARTS)
+    assert route[3] == "Part 4 · Viscous solutions & drag · ch 7–8"
+
+
+def test_chapter_header_eyebrow_agrees_with_the_navigation():
+    from src.ui import learning_path as lp
+
+    for number in range(1, 13):
+        part_number, part_name, (first, last) = lp.part_for(number)
+        assert first <= number <= last
+        assert lp.chapter_label(number).startswith(f"{number} · ")
+        assert part_name  # non-empty, and used verbatim in the chapter eyebrow
+
+
 @pytest.mark.parametrize("chapter", EXPECTED_TABS)
 def test_every_chapter_renders_without_exception(chapter):
     """One chapter at a time, because only the selected one executes.
@@ -71,6 +111,27 @@ def test_every_chapter_renders_without_exception(chapter):
     at.run()
     at.radio(key="chapter_nav").set_value(chapter).run()
     assert not at.exception, f"{chapter}: {at.exception}"
+
+
+def test_changing_display_units_keeps_the_reader_on_their_chapter():
+    """A sidebar st.rerun() used to abort the script before the chapter radio
+    was created, so Streamlit garbage-collected `chapter_nav` and the reader
+    was thrown back to chapter 1 just for switching units.
+    """
+    at = AppTest.from_file(APP, default_timeout=300)
+    at.run()
+    at.radio(key="chapter_nav").set_value("9 · Turbomachinery").run()
+    assert at.radio(key="chapter_nav").value == "9 · Turbomachinery"
+
+    at.selectbox(key="unit_toggle_select").set_value("Nondimensional [-]").run()
+    assert not at.exception, at.exception
+    assert at.radio(key="chapter_nav").value == "9 · Turbomachinery", (
+        "switching display units moved the reader off their chapter"
+    )
+    labels = [m.label for m in at.metric]
+    assert any("MAC shaft power" in label for label in labels), (
+        "chapter 9 stopped rendering after the unit change"
+    )
 
 
 def test_reload_list_matches_the_source_tree():
