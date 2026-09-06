@@ -60,9 +60,9 @@ def test_switching_chapter_renders_that_chapter():
     )
 
 
-def test_the_course_has_one_structure_and_one_set_of_names():
-    """The banner used to number the course 01-06 while the navigation below it
-    numbered the same twelve chapters 1-12, so "04 · External flow" in the
+def test_the_chapters_have_one_structure_and_one_set_of_names():
+    """A landing banner used to number the twelve chapters 01-06 while the
+    navigation below it numbered them 1-12, so "04 · External flow" in the
     banner was chapter 8 in the radio. Everything now reads from PARTS /
     NAV_LABELS / LESSONS, and this pins that they agree.
     """
@@ -84,10 +84,8 @@ def test_the_course_has_one_structure_and_one_set_of_names():
     # The navigation labels are what app.py renders and the browser tests click.
     assert lp.chapter_labels() == EXPECTED_TABS
 
-    # The banner route names real chapter spans, not a second numbering.
-    route = lp.part_route()
-    assert len(route) == len(lp.PARTS)
-    assert route[3] == "Part 4 · Viscous solutions & drag · ch 7–8"
+    # Part 4 spans chapters 7-8, which is what the chapter eyebrow announces.
+    assert lp.part_for(7) == lp.part_for(8) == (4, "Viscous solutions & drag", (7, 8))
 
 
 def test_chapter_header_eyebrow_agrees_with_the_navigation():

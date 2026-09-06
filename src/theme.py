@@ -57,15 +57,8 @@ def app_css() -> str:
         .stMarkdown p, .stMarkdown li {{ line-height: 1.7; }}
         .stMarkdown h2 {{ font-size: clamp(1.55rem, 2.6vw, 2.1rem); letter-spacing: -0.03em; }}
         .stMarkdown h3 {{ font-size: 1.25rem; margin-top: 1.2rem; letter-spacing: -0.015em; }}
-        .course-intro {{ padding: 1.6rem 1.8rem; border: 1px solid {BORDER};
-            border-radius: 16px; background: linear-gradient(115deg, #162d43, {BACKGROUND}); }}
-        .course-intro h1 {{ font-size: clamp(1.8rem, 3.4vw, 2.8rem); line-height: 1.15;
-            letter-spacing: -0.045em; padding: .6rem 0; font-weight: 650; }}
-        .course-intro p {{ color: {TEXT_MUTED}; max-width: 650px; margin: .4rem 0 1rem; }}
         .chapter-eyebrow {{ font-size: .7rem; font-weight: 700; letter-spacing: .13em;
             color: {ACCENT}; margin-top: .3rem; }}
-        .course-route {{ display: flex; flex-wrap: wrap; gap: .6rem 1.4rem;
-            color: {TEXT_MUTED}; font-size: .75rem; }}
         [role="tablist"] {{ flex-wrap: wrap; gap: .3rem; height: auto;
             border-bottom: 1px solid {BORDER}; padding: .4rem 0; }}
         [role="tab"] {{ height: auto; min-height: 42px; padding: .55rem .7rem;
@@ -108,7 +101,6 @@ def app_css() -> str:
         [class*="st-key-plot-"] [data-testid="stElementContainer"] {{ min-width: 960px; }}
         @media (max-width: 700px) {{
             .stMainBlockContainer {{ padding-left: 1rem; padding-right: 1rem; }}
-            .course-intro {{ padding: 1rem; }}
             [role="tab"] {{ padding: .4rem .55rem; }}
             .st-key-chapter_nav [data-testid="stRadioOption"] {{ padding: .4rem .55rem; }}
         }}

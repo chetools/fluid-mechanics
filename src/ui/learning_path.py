@@ -1,11 +1,11 @@
 """A consistent reading guide for the twelve lessons.
 
-This module is the single source of truth for how the course is named and
-divided. The banner, the chapter navigation, the chapter header and the sidebar
-map all read it. They used to carry three different names and two different
-numberings for the same twelve chapters -- the landing banner counted "01..06"
-while the navigation beneath it counted 1..12, so "04 · External flow" in one
-was chapter 8 in the other.
+This module is the single source of truth for how the chapters are named and
+divided. The navigation, the chapter header and the sidebar map all read it.
+They used to carry three different sets of names and two different numberings
+for the same twelve chapters -- a landing banner counted "01..06" while the
+navigation beneath it counted 1..12, so "04 · External flow" in one was
+chapter 8 in the other.
 """
 
 from typing import List, Tuple
@@ -167,14 +167,6 @@ def chapter_labels() -> List[str]:
     return [chapter_label(n) for n in range(1, len(LESSONS) + 1)]
 
 
-def part_route() -> List[str]:
-    """The banner's route strip: parts with the chapters they actually cover."""
-    return [
-        f"Part {n} · {name} · ch {first}–{last}"
-        for n, name, (first, last) in PARTS
-    ]
-
-
 def render_chapter_header(number: int) -> None:
     title, question, prereq, route, equation, idea, _ = LESSONS[number - 1]
     part_number, part_name, _span = part_for(number)
@@ -212,7 +204,7 @@ def render_concept_map() -> None:
     Built from LESSONS so it cannot invent a thirteenth name for a chapter,
     which is what the previous hand-written copy of this list did.
     """
-    st.markdown("**Course map** · easier plant story → harder mathematics")
+    st.markdown("**Chapters** · easier plant story → harder mathematics")
     for part_number, part_name, (first, last) in PARTS:
         st.markdown(f"**Part {part_number} · {part_name}**")
         for number in range(first, last + 1):

@@ -1,8 +1,7 @@
-"""Euler to Navier-Stokes: a derivation-first fluid mechanics course.
+"""Euler to Navier-Stokes.
 
-Twelve chapters in six parts. Every equation is reached from a stated
-conservation balance rather than quoted, with vector schematics, exact
-analytical solutions and a live 2D incompressible CFD solver as the labs.
+Twelve chapters in six parts: vector schematics, exact analytical solutions
+and a live 2D incompressible CFD solver.
 
 src/ui/learning_path.py names the parts and chapters; this module only
 arranges them.
@@ -92,7 +91,6 @@ import src.units as units
 from src.ui.state import persistent_input
 from src.ui.learning_path import (
     chapter_labels,
-    part_route,
     render_chapter_header,
     render_chapter_recap,
     render_concept_map,
@@ -112,7 +110,7 @@ from src.ui.tab_turbomachinery import render_tab_turbomachinery
 from src.ui.tab_compressible import render_tab_compressible
 
 st.set_page_config(
-    page_title="Euler to Navier–Stokes · a fluid mechanics course",
+    page_title="Euler to Navier–Stokes",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -127,7 +125,7 @@ units.init_units()
 # Sidebar controls & information
 with st.sidebar:
     st.markdown("### 🌊 Euler to Navier–Stokes")
-    st.caption("A derivation-first fluid mechanics course. Twelve chapters, six parts.")
+    st.caption("Twelve chapters, six parts.")
     st.markdown("---")
 
     st.markdown("#### Shared fluid")
@@ -203,35 +201,14 @@ with st.sidebar:
     st.markdown(
         """
         <div style="font-size: 11px; color: #94a3b8;">
-            <b>How this course is written:</b><br>
-            • Every equation is derived from a stated balance.<br>
+            <b>Conventions</b><br>
+            • Equations are derived from a stated balance.<br>
             • The physical picture and the geometry come before the algebra.<br>
             • Claimed constants are computed, not quoted.<br>
             • Display units convert; sliders stay in SI.
         </div>
         """,
         unsafe_allow_html=True
-    )
-
-# The landing banner is orientation, so it is shown to a reader who has not yet
-# chosen a chapter (and on chapter 1). From chapter 2 onward it is dead weight
-# above the fold on every rerun, and "start at chapter 1" is no longer advice.
-_current_chapter = st.session_state.get("chapter_nav")
-if _current_chapter is None or _current_chapter.startswith("1 "):
-    _route = "".join(f"<span>{step}</span>" for step in part_route())
-    st.markdown(
-        '<div class="course-intro">'
-        '<div class="chapter-eyebrow">A DERIVATION-FIRST FLUID MECHANICS COURSE</div>'
-        "<h1>From a pressure drop<br>to the equations of motion.</h1>"
-        "<p>Twelve chapters in six parts. Build the physical picture, derive the "
-        "result from a conservation law, then test your prediction in a live "
-        "experiment.</p>"
-        f'<div class="course-route">{_route}</div></div>',
-        unsafe_allow_html=True,
-    )
-    st.caption(
-        "Start at chapter 1, or choose any chapter below. Derivations unfold on "
-        "demand inside each panel."
     )
 
 # The only genuinely global state, stated once, instead of a strip of KPI cards
