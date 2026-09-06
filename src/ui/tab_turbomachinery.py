@@ -410,7 +410,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
     st.markdown('### 9.3 Pressure ratio, efficiency and heating/cooling')
     prose(r'''The Euler work equation alone does not determine the pressure ratio. Add an equation of state and a thermodynamic path. Here all inlet/outlet temperatures and pressures are **stagnation quantities**, with constant cp and γ.
 
-**1 · Derive the reversible reference.** Gibbs' relation gives Tds = dh − vdp. For an ideal gas dh = cp dT and v = RT/p; set ds = 0 and integrate.
+**1 · Derive the reversible reference.** Gibbs' relation gives Tds = dh − v dp. For an ideal gas dh = cp dT and v = RT/p; set ds = 0 and integrate. Here $v$ is **specific volume** $1/\rho$ (Tab 1), not a velocity component.
 $$0=c_p\frac{dT}{T}-R\frac{dp}{p}\quad\Rightarrow\quad\ln\frac{T_{02s}}{T_{01}}=\frac{R}{c_p}\ln\frac{p_{02}}{p_{01}}$$
 $$T_{02s}=T_{01}\left(\frac{p_{02}}{p_{01}}\right)^{(\gamma-1)/\gamma}$$
 **2 · Compression.** A real adiabatic compressor needs more work than the reversible reference to reach the same outlet pressure. Thus its actual temperature rise is larger.
@@ -454,8 +454,10 @@ $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)
                 $$\delta w_{\text{in}}=T\,ds+v\,dp-T\,ds=v\,dp
                 \;\Longrightarrow\; w_{\text{in}}=\int_{p_1}^{p_2}v\,dp$$
                 The closed-system result $\int p\,dv$ is a different quantity for a different
-                situation; using it for a compressor is a standard and expensive error. The
-                practical reading of $\int v\,dp$ is immediate: **work is proportional to
+                situation; using it for a compressor is a standard and expensive error.
+                The $v$ in $\int v\,dp$ is Tab 1's $1/\rho$, not a velocity — thermodynamics
+                reused the letter; this course keeps $1/\rho$ wherever a speed is nearby.
+                The practical reading is immediate: **work is proportional to
                 specific volume**, so anything that keeps the gas dense while you squeeze it
                 — cooling — reduces the bill.
                 """,

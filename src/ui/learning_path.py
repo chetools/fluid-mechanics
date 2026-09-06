@@ -11,7 +11,7 @@ LESSONS = [
         "Energy & Bernoulli", "01 / PLANT BALANCES",
         "Where does a pump's energy go?",
         "Conservation of energy; pressure and flow rate.",
-        "Energy stores → head balance → first-law derivation → heating example",
+        "Energy stores → injection work p/ρ → head balance → first-law derivation → heating example",
         r"H_1 + h_p = H_2 + h_L,\qquad H = \frac{p}{\rho g} + \frac{\alpha\bar{u}^2}{2g} + z",
         "A pump adds mechanical head. Elevation and pressure can store it; friction converts it into internal energy. Every term here is a length.",
         "For water, compare a 100 kPa frictional drop at 10 and 20 m³/h. The temperature rise stays about 0.024 K; hydraulic power doubles from 0.278 to 0.556 kW. Flow rate matters even when pressure drop is held fixed.",

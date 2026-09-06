@@ -3,7 +3,7 @@
 import streamlit as st
 
 from src.units import get_fluid_state
-from src.svg_diagrams import diagram_energy_budget, render_svg
+from src.svg_diagrams import diagram_energy_budget, diagram_injection_work, render_svg
 from src.ui.pedagogy import (
     render_derivation,
     render_objectives,
@@ -47,6 +47,7 @@ def render_tab_cheme_energy():
     render_objectives(
         [
             "State why $\\Delta p$, pump kW, and NPSH are the ChemE fluid-mechanics triad.",
+            r"Say why $p/\rho$ is **injection work per kilogram**, and why this course writes $1/\rho$ rather than $v$.",
             "Derive Bernoulli from a **steady mechanical energy balance**, not from Euler.",
             "Identify viscosity as **frictional heating**: irreversible conversion of $p/\\rho + u^2/2 + gz$ into internal energy.",
         ]
@@ -62,10 +63,142 @@ def render_tab_cheme_energy():
         """
     )
     render_latex(
-        r"\underbrace{\frac{p}{\rho}}_{\text{flow work / pressure energy}}"
+        r"\underbrace{\frac{p}{\rho}}_{\text{injection work}}"
         r" + \underbrace{\frac{\alpha u^{2}}{2}}_{\text{kinetic}}"
         r" + \underbrace{g z}_{\text{potential}}"
         r" + \underbrace{w_{\mathrm{shaft}}}_{\text{pump (in)}}"
+    )
+    st.markdown("#### Why $p/\\rho$ is injection work, and why the minus sits on $\\Delta V$")
+    render_prose_and_latex(
+        r"""
+        Kinetic energy $\alpha u^{2}/2$ and potential $gz$ are properties of the
+        moving fluid. The $p/\rho$ term is **boundary work**. This course takes work
+        done *on* the system as positive, so a volume *increase* (expansion) must
+        enter with a minus: the piston's push on the fluid is inward, while
+        positive $\Delta V$ is outward. The figure is a true side view of that
+        piston. The two arrows are drawn, not described.
+        """
+    )
+    render_svg(
+        diagram_injection_work(),
+        "True side view of a piston-cylinder. Height stands for face area A "
+        "(unit-depth channel, or a pipe with A = πD²/4). Lengths are schematic. "
+        "The force on the system is inward; positive ΔV is expansion (outward). "
+        "Those two directions oppose, which is the minus in W_on = −p ΔV.",
+    )
+    p_demo = 100e3
+    w_inj = p_demo / float(fluid["rho"])
+    v_hat = 1.0 / float(fluid["rho"])
+    render_derivation(
+        r"why $W_{\mathrm{on}}=-p\Delta V$, and how that is $+p/\rho$ per kilogram",
+        [
+            (
+                "Work is force times the displacement of that force",
+                r"""
+                Take the fluid in the cylinder as the system. The piston presses on it
+                with magnitude $pA$. Work done **on** the system is
+                $$W_{\mathrm{on}}=\mathbf F_{\text{on system}}\cdot\Delta\mathbf x_{\text{of that force}}.$$
+                That is the whole definition. The figure draws both vectors.
+                """,
+            ),
+            (
+                r"Positive $\Delta V$ is expansion, which is the opposite direction",
+                r"""
+                The force on the fluid is **inward** (the piston pushes the system).
+                We measure volume change as **outward**: $\Delta V=+A\Delta x$ when the
+                piston moves out and the system grows. Those two arrows oppose, so
+                $$W_{\mathrm{on}}=(pA)\,(-\Delta x)=-p\,(A\Delta x)=-p\,\Delta V.$$
+                The minus is not an extra convention piled on later. It is force and
+                positive $\Delta x$ pointing opposite ways, once work-on-the-system is
+                the positive sign.
+                """,
+            ),
+            (
+                r"Compression: $\Delta V<0$, so $-p\Delta V>0$",
+                r"""
+                Move the piston in. The force on the system is still inward, and now
+                the piston's displacement is inward too: the arrows are parallel and
+                $W_{\mathrm{on}}>0$. Equivalently $\Delta V<0$, and
+                $$W_{\mathrm{on}}=-p\,(\text{a negative number})>0.$$
+                Work is done *on* the fluid because its volume fell. That is the
+                statement the user of $\Delta U=Q+W$ with $W=-p\Delta V$ is making.
+                """,
+            ),
+            (
+                r"One kilogram occupies $1/\rho$, so pushing it in is $+p/\rho$",
+                rf"""
+                Specific volume is volume per unit mass, $V/m=1/\rho$ — not a
+                velocity. Push one kilogram in and the system's volume falls by
+                exactly that amount: $\Delta V=-1/\rho$ per kilogram. Then
+                $$\frac{{W_{{\mathrm{{on}}}}}}{{m}}=-p\left(-\frac{{1}}{{\rho}}\right)=\frac{{p}}{{\rho}}.$$
+                The minus in $-p\Delta V$ and the minus in $\Delta V=-1/\rho$ cancel,
+                which is why the open-system energy balance carries **$+p/\rho$** at
+                an inlet. For the sidebar fluid ({fluid['name']},
+                $\rho={fluid['rho']:.4g}\ \mathrm{{kg/m^3}}$) one kilogram occupies
+                $1/\rho={v_hat:.6f}\ \mathrm{{m^3/kg}}$, and a $100\ \mathrm{{kPa}}$
+                injection is $p/\rho={w_inj:.1f}\ \mathrm{{J/kg}}$.
+                """,
+            ),
+            (
+                r"Why this course writes $1/\rho$ instead of $v$",
+                r"""
+                Thermodynamics texts name specific volume $v$, and then write
+                $W_{\mathrm{on}}=-\int p\,dv$ per kilogram and $h=\hat u_{\mathrm{int}}+pv$.
+                That $v$ is **not** a velocity. This course already uses $u,v,w$ for
+                the three velocity components (Tabs 5–7), so $pv$ would collide with
+                a momentum term. Keeping $1/\rho$ makes the units (m³/kg) and the
+                meaning (volume of one kilogram) visible.
+                """,
+            ),
+            (
+                r"This is why enthalpy already contains $p/\rho$",
+                r"""
+                Specific enthalpy is
+                $$h=\hat u_{\mathrm{int}}+\frac{p}{\rho}.$$
+                The second term is the boundary work of the last step, packaged so a
+                steady open-system balance can be written as a flux of
+                $h+\alpha\bar u^{2}/2+gz$ without a separate $W_{\mathrm{on}}=-p\Delta V$
+                term. Inlet: volume of the CV's contents is not changing, but mass
+                *crosses* the face; that crossing still costs $p/\rho$ per kilogram,
+                with the same minus-on-$\Delta V$ origin.
+                """,
+            ),
+        ],
+        symbols=[
+            (r"p", r"static pressure at the piston face (Pa)."),
+            (r"A", r"face area (m²)."),
+            (
+                r"\Delta x",
+                r"piston displacement, positive *outward* (expansion) (m).",
+            ),
+            (r"\Delta V=A\Delta x", r"system volume change, positive for expansion (m³)."),
+            (
+                r"W_{\mathrm{on}}=-p\Delta V",
+                r"work done *on* the system (J). Expansion $\Rightarrow W_{\mathrm{on}}<0$.",
+            ),
+            (
+                r"1/\rho",
+                r"specific volume (m³/kg). Thermodynamics often calls this $v$; "
+                r"here $v$ is reserved for a velocity component.",
+            ),
+            (
+                r"W_{\mathrm{on}}/m=p/\rho",
+                r"work to push one kilogram in (J/kg). The two minuses cancel.",
+            ),
+        ],
+    )
+    render_self_check(
+        "energy_self_check_injection",
+        "The term p/ρ in the mechanical energy equation is…",
+        [
+            "the elastic energy stored by compressing the liquid, like ½kx²",
+            "the work to push one kilogram across a face at pressure p",
+            "another name for the velocity head u²/2",
+        ],
+        "the work to push one kilogram across a face at pressure p",
+        "Work on the system is F · Δx. F is inward; positive ΔV is outward, so "
+        "W_on = −p ΔV. Pushing one kilogram in is ΔV = −1/ρ, hence +p/ρ. "
+        "A liquid stores almost no compression energy — this is boundary work, not a spring.",
     )
     st.markdown(
         r"""
@@ -81,8 +214,12 @@ def render_tab_cheme_energy():
     )
     render_symbols(
         [
-            (r"p", "static pressure (Pa). Flow work per unit mass is $p/\\rho$."),
-            (r"\rho", "mass density (kg/m³). Sidebar fluid."),
+            (
+                r"p",
+                r"static pressure (Pa). Injection work per unit mass is $p/\rho$, "
+                r"with $1/\rho$ the specific volume.",
+            ),
+            (r"\rho", "mass density (kg/m³). Sidebar fluid. Specific volume is $1/\\rho$, not $v$."),
             (r"u", "local axial speed (m/s). $\\bar{u}$ (also $u_{\\mathrm{avg}}$) is the area-mean speed $Q/A$."),
             (
                 r"\alpha",
@@ -147,7 +284,7 @@ def render_tab_cheme_energy():
                 (r"\dot{m}", "mass flow rate (kg/s). Steady: one $\\dot{m}$ in and out."),
                 (
                     r"h",
-                    r"specific enthalpy (J/kg). $h = \hat{u}_{\mathrm{int}} + p/\rho$ already contains flow work.",
+                    r"specific enthalpy (J/kg). $h = \hat{u}_{\mathrm{int}} + p/\rho$: the second term is the injection work derived in §1.1, not a new store of energy.",
                 ),
                 (r"\hat{u}_{\mathrm{int}}", "specific internal energy (J/kg). Not the velocity $u$."),
                 (r"\dot{W}_{\mathrm{shaft}}", r"shaft power (W). Per unit mass: $w_{\mathrm{shaft}}=\dot{W}_{\mathrm{shaft}}/\dot{m}$."),
@@ -339,12 +476,15 @@ Viscosity is not an extra force we forgot: it is the mechanism that
     )
 
     st.markdown("### 1.3 Frictional heating is usually small in temperature, large in kW")
+    dt_est = w_inj / 4180.0
     render_prose_and_latex(
-        r"""
+        rf"""
         Order of magnitude: $e_f \approx c_p \Delta T$ if the pipe is adiabatic.
-        A 100 kPa frictional drop in water is $e_f = \Delta p/\rho \approx 100$ J/kg,
-        so $\Delta T \approx 0.024\,\mathrm{K}$. You will not feel it on the pipe wall.
-        The *power* $\dot{m}\,e_f = Q\,\Delta p$ is the pump bill — tens of kW on a
+        A $100\ \mathrm{{kPa}}$ frictional drop in {fluid['name']} is
+        $e_f=\Delta p/\rho={w_inj:.1f}\ \mathrm{{J/kg}}$,
+        so $\Delta T\approx {dt_est:.3f}\,\mathrm{{K}}$ at $c_p=4180\ \mathrm{{J/(kg\cdot K)}}$.
+        You will not feel it on the pipe wall.
+        The *power* $\dot{{m}}\,e_f = Q\,\Delta p$ is the pump bill — tens of kW on a
         long header. That is why ChemE fluid mechanics is an energy subject first,
         and a tensor subject later (Tabs 5–7).
         """
@@ -363,5 +503,6 @@ Viscosity is not an extra force we forgot: it is the mechanism that
             "a change in density that invalidates Bernoulli",
         ],
         "a tiny ΔT but a pump power Q·Δp that can dominate OPEX",
-        "e_f = Δp/ρ ~ 100 J/kg per 100 kPa; c_p of water is 4180 J/(kg·K). The money is in kW, not in °C.",
+        f"e_f = Δp/ρ = {w_inj:.1f} J/kg per 100 kPa for this sidebar fluid; "
+        f"c_p of water is 4180 J/(kg·K), so ΔT ≈ {dt_est:.3f} K. The money is in kW, not in °C.",
     )

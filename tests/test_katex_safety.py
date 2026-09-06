@@ -139,6 +139,14 @@ def test_alpha_defined_in_energy_tab():
     assert r"\alpha = \frac{1}{A}" in src
 
 
+def test_injection_work_is_derived_not_named():
+    src = (UI_DIR / "tab_cheme_energy.py").read_text(encoding="utf-8")
+    assert "diagram_injection_work" in src
+    assert r"W_{\mathrm{on}}=-p\Delta V" in src
+    assert r"\Delta V=-1/\rho" in src
+    assert "velocity component" in src
+
+
 def test_churchill_formula_is_displayed():
     src = (UI_DIR / "tab_pipe_flow.py").read_text(encoding="utf-8")
     assert "37530" in src

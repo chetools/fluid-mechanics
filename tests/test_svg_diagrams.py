@@ -3,6 +3,7 @@
 import xml.etree.ElementTree as ET
 from src.svg_diagrams import (
     diagram_energy_budget,
+    diagram_injection_work,
     diagram_model_selection,
     diagram_continuity_streamtube,
     diagram_1d_euler_element,
@@ -41,6 +42,7 @@ def test_svg_diagrams_render_valid_xml():
     """Verify all diagram functions return well-formed SVG strings."""
     diagrams = [
         diagram_energy_budget(),
+        diagram_injection_work(),
         diagram_model_selection(),
         diagram_continuity_streamtube(),
         diagram_1d_euler_element(),
@@ -122,6 +124,15 @@ def test_new_physical_diagrams_state_their_conventions_and_limits():
     assert "u − a < 0" in nozzle and "u − a = 0" in nozzle
     assert "velocities in the laboratory frame" in nozzle
     assert "the nozzle unchokes" in nozzle
+    inject = text(diagram_injection_work())
+    assert "Work on the system is positive" in inject
+    assert "F on system" in inject
+    assert "inward" in inject
+    assert "expansion" in inject
+    assert "−p" in inject or "-p" in inject
+    assert "specific volume" in inject
+    assert "velocity" in inject
+    assert "True side view" in inject
 
 
 def test_kinematic_spin_label_matches_its_component_formula():

@@ -230,6 +230,87 @@ def diagram_energy_budget() -> str:
     </svg>'''
 
 
+def diagram_injection_work() -> str:
+    """True side view: W_on = F dx = -p ΔV because positive ΔV is expansion."""
+    return f'''
+    <svg viewBox="0 0 880 520" width="100%" height="520" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+      {_arrow_defs()}
+      <text x="24" y="28" fill="{ACCENT}" font-size="16" font-weight="bold">Work on the system is positive, so volume change enters with a minus</text>
+      <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">True side view of a piston-cylinder. Height is area A (unit depth). Lengths schematic; the signs are the point.</text>
+
+      <rect x="16" y="60" width="848" height="248" rx="8" fill="{SURFACE_RAISED}"/>
+      <text x="32" y="84" fill="{ACCENT}" font-size="13" font-weight="700">1 · Force &#215; distance, with the two arrows drawn</text>
+
+      <rect x="48" y="100" width="500" height="12" fill="url(#hatch-wall)" stroke="{TEXT_DIM}"/>
+      <rect x="48" y="252" width="500" height="12" fill="url(#hatch-wall)" stroke="{TEXT_DIM}"/>
+      <line x1="48" y1="112" x2="548" y2="112" stroke="{TEXT}" stroke-width="2"/>
+      <line x1="48" y1="252" x2="548" y2="252" stroke="{TEXT}" stroke-width="2"/>
+      <line x1="48" y1="112" x2="48" y2="252" stroke="{TEXT}" stroke-width="2"/>
+
+      <rect x="50" y="112" width="310" height="140" fill="{rgba(ACCENT, 0.14)}" stroke="{ACCENT}" stroke-width="1"/>
+      <text x="140" y="188" fill="{ACCENT}" font-size="14" font-weight="700">system (fluid)</text>
+
+      <rect x="360" y="112" width="44" height="140" fill="{rgba(PRESSURE, 0.35)}" stroke="{PRESSURE}" stroke-width="2"/>
+      <text x="366" y="188" fill="{PRESSURE}" font-size="12" font-weight="700">piston</text>
+      <rect x="404" y="168" width="70" height="28" fill="{SURFACE_RAISED}" stroke="{PRESSURE}" stroke-width="2"/>
+
+      <line x1="360" y1="112" x2="360" y2="252" stroke="{SUCCESS}" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <rect x="360" y="112" width="80" height="140" fill="none" stroke="{SUCCESS}" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="448" y="130" fill="{SUCCESS}" font-size="12">expanded</text>
+      <text x="448" y="146" fill="{SUCCESS}" font-size="12">position</text>
+
+      <line x1="348" y1="168" x2="250" y2="168" stroke="{PRESSURE}" stroke-width="3" marker-end="url(#arrow-red)"/>
+      <text x="258" y="158" fill="{PRESSURE}" font-size="13" font-weight="700">F on system = pA, inward</text>
+
+      <line x1="382" y1="230" x2="430" y2="230" stroke="{SUCCESS}" stroke-width="3" marker-end="url(#arrow-green)"/>
+      <text x="390" y="222" fill="{SUCCESS}" font-size="12" font-weight="700">+&#916;x, expansion</text>
+
+      <line x1="32" y1="112" x2="32" y2="252" stroke="{TEXT_DIM}" stroke-width="1.5" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+      <text x="18" y="188" fill="{TEXT}" font-size="13">A</text>
+
+      <line x1="360" y1="276" x2="440" y2="276" stroke="{TEXT_DIM}" stroke-width="1.5" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+      <text x="384" y="296" fill="{SUCCESS}" font-size="13">+&#916;x</text>
+      <text x="448" y="280" fill="{TEXT_DIM}" font-size="12">&#916;V = +A &#916;x</text>
+
+      <text x="570" y="118" fill="{TEXT}" font-size="13" font-weight="700">Work on the system = F · (displacement of F)</text>
+      <text x="570" y="148" fill="{TEXT}" font-size="13">F on the fluid points in. Positive &#916;x is out.</text>
+      <text x="570" y="168" fill="{TEXT}" font-size="13">The arrows oppose, so the product is negative:</text>
+      <text x="570" y="200" fill="{TEXT}" font-size="15" font-family="'JetBrains Mono', monospace">W_on = (pA)(−&#916;x)</text>
+      <text x="570" y="228" fill="{TEXT}" font-size="15" font-family="'JetBrains Mono', monospace">     = −p (A &#916;x)</text>
+      <text x="570" y="256" fill="{TEXT}" font-size="15" font-family="'JetBrains Mono', monospace">     = −p &#916;V</text>
+      <text x="570" y="286" fill="{TEXT_DIM}" font-size="12">&#916;V &gt; 0 means the system grew. Expansion:</text>
+      <text x="570" y="304" fill="{TEXT_DIM}" font-size="12">the fluid does work on the piston, W_on &lt; 0.</text>
+
+      <rect x="16" y="320" width="420" height="180" rx="8" fill="{SURFACE_RAISED}"/>
+      <rect x="444" y="320" width="420" height="180" rx="8" fill="{SURFACE_RAISED}"/>
+
+      <text x="32" y="344" fill="{ACCENT}" font-size="13" font-weight="700">2 · Compression: &#916;V is negative</text>
+      <rect x="48" y="358" width="280" height="10" fill="url(#hatch-wall)" stroke="{TEXT_DIM}"/>
+      <rect x="48" y="456" width="280" height="10" fill="url(#hatch-wall)" stroke="{TEXT_DIM}"/>
+      <line x1="48" y1="368" x2="328" y2="368" stroke="{TEXT}" stroke-width="2"/>
+      <line x1="48" y1="456" x2="328" y2="456" stroke="{TEXT}" stroke-width="2"/>
+      <line x1="48" y1="368" x2="48" y2="456" stroke="{TEXT}" stroke-width="2"/>
+      <rect x="50" y="368" width="200" height="88" fill="{rgba(ACCENT, 0.14)}"/>
+      <rect x="250" y="368" width="36" height="88" fill="{rgba(PRESSURE, 0.35)}" stroke="{PRESSURE}" stroke-width="2"/>
+      <line x1="286" y1="368" x2="286" y2="456" stroke="{SUCCESS}" stroke-width="1.5" stroke-dasharray="5,4"/>
+      <text x="294" y="400" fill="{SUCCESS}" font-size="11">was here</text>
+      <line x1="268" y1="412" x2="210" y2="412" stroke="{PRESSURE}" stroke-width="3" marker-end="url(#arrow-red)"/>
+      <line x1="268" y1="440" x2="210" y2="440" stroke="{SHEAR}" stroke-width="3" marker-end="url(#arrow-orange)"/>
+      <text x="160" y="404" fill="{PRESSURE}" font-size="12">F still in</text>
+      <text x="142" y="452" fill="{SHEAR}" font-size="12">piston moves in</text>
+      <text x="32" y="486" fill="{TEXT}" font-size="12">Now force and displacement are parallel: W_on &gt; 0.</text>
+
+      <text x="460" y="344" fill="{ACCENT}" font-size="13" font-weight="700">3 · Per kilogram that is the +p/&#961; term</text>
+      <text x="460" y="372" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">W_on = −p &#916;V</text>
+      <text x="460" y="396" fill="{TEXT}" font-size="13">Push in one kilogram: the system volume falls</text>
+      <text x="460" y="416" fill="{TEXT}" font-size="13">by that kilogram's volume, &#916;V = −1/&#961;.</text>
+      <text x="460" y="444" fill="{TEXT}" font-size="15" font-family="'JetBrains Mono', monospace">W_on/m = −p (−1/&#961;) = p/&#961;</text>
+      <text x="460" y="470" fill="{TEXT}" font-size="12">1/&#961; is specific volume (m³/kg). Thermodynamics</text>
+      <text x="460" y="488" fill="{TEXT}" font-size="12">calls it v; here v is a velocity, so we keep 1/&#961;.</text>
+    </svg>'''
+
+
 def diagram_model_selection() -> str:
     """Connect an engineering question to the model and checks it needs."""
     rows = [
