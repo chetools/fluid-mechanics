@@ -36,14 +36,14 @@ if __name__ == '__main__':
             page.goto('http://127.0.0.1:8501/')
             wait_for_chapter(page, 1)
 
-            select_chapter(page, '9 · Turbomachinery')
+            select_chapter(page, '11 · Turbomachinery')
             feed = page.get_by_role('spinbutton', name='Air feed ṁ [kg/s]', exact=True)
             feed.fill('60')
             feed.press('Enter')
             expect(feed).to_have_value('60.00')
-            wait_for_chapter(page, 9)
+            wait_for_chapter(page, 10)
             select_chapter(page, '1 · Energy')
-            select_chapter(page, '9 · Turbomachinery')
+            select_chapter(page, '11 · Turbomachinery')
             expect(feed).to_have_value('60.00')
 
             select_chapter(page, '2 · Pipes')
@@ -61,8 +61,8 @@ if __name__ == '__main__':
 
             for title in [
                 '3 · Scaling', '4 · Turbulence', '5 · Euler', '6 · Stress & NS',
-                '7 · Exact flows', '8 · External flow', '10 · Compressible',
-                '11 · CFD', '12 · Reference',
+                '7 · Non-Newtonian', '8 · Exact flows', '9 · External flow',
+                '10 · Momentum', '12 · Compressible', '13 · CFD', '14 · Reference',
             ]:
                 select_chapter(page, title)
             assert not errors, errors

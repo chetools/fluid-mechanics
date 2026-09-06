@@ -7,6 +7,7 @@ grid and near-black tick labels on the dark #1e293b surface. These tests pin the
 template-based fix.
 """
 
+import numpy as np
 import plotly.graph_objects as go
 import pytest
 from plotly.subplots import make_subplots
@@ -26,6 +27,13 @@ from src.physics.exact_solutions import (
 )
 from src.physics.impeller import head_flow_curve, velocity_triangles
 from src.physics.gas_dynamics import relief_capacity_curve
+from src.physics.non_newtonian import (
+    flow_curve,
+    power_law_pipe,
+    herschel_bulkley_pipe,
+    maxwell_startup,
+    thixotropic_step,
+)
 from src.physics.numerical_solver import run_lid_driven_cavity
 from src.physics.stress_tensor import compute_cauchy_stress_2d, deform_fluid_element_2d
 from src.physics.open_channel import MANNING_N, channel_state, rating_curve
@@ -75,6 +83,20 @@ def _figures():
              sweep_reynolds("Flat plate, laminar (local)", 7.0)],
             transport_correlation("Sphere (Ranz-Marshall)", 100.0, 7.0),
         ),
+        "power_law": plotting.plot_power_law_pipe(
+            power_law_pipe(radius=0.025, dp_dz=-40.0, K=0.1, n=0.6),
+            hagen_poiseuille_pipe(radius=0.025, dp_dx=-40.0, mu=1e-3),
+        ),
+        "flow_curves": plotting.plot_flow_curves([
+            flow_curve("Newtonian", np.logspace(-2, 3, 50), mu=0.05),
+            flow_curve("Bingham plastic", np.logspace(-2, 3, 50), tau_y=5.0, mu_p=0.05),
+        ]),
+        "yield_pipe": plotting.plot_yield_stress_pipe(
+            herschel_bulkley_pipe(radius=0.025, dp_dz=-40.0, K=0.02, n=0.7, tau_y=0.2),
+            hagen_poiseuille_pipe(radius=0.025, dp_dx=-40.0, mu=1e-3),
+        ),
+        "thixotropy": plotting.plot_thixotropy(thixotropic_step()),
+        "viscoelastic": plotting.plot_viscoelastic_startup(maxwell_startup()),
     }
 
 
@@ -82,6 +104,7 @@ FIGURE_NAMES = (
     "venturi", "cylinder", "channel", "stokes", "hagen", "cavity",
     "moody", "profiles", "wall", "blasius", "separation", "straws",
     "impeller", "canal", "thermal", "transport", "relief",
+    "power_law", "flow_curves", "yield_pipe", "thixotropy", "viscoelastic",
 )
 
 

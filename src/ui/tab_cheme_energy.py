@@ -226,7 +226,7 @@ def render_tab_cheme_energy():
                 "kinetic-energy correction: $\\alpha=(1/A)\\int(u/\\bar{u})^3\\,dA$. "
                 "Circular pipe: $\\alpha=2$ exactly if laminar (parabola); "
                 r"$\alpha\approx 1.06$ if turbulent (Tab 4 integrates the profile); "
-                "$\\alpha=1$ only for a uniform plug. Plane channel: $\\alpha=54/35\\approx 1.54$ (Tab 7).",
+                "$\\alpha=1$ only for a uniform plug. Plane channel: $\\alpha=54/35\\approx 1.54$ (Tab 8).",
             ),
             (r"g", r"gravitational acceleration, $9.81\,\mathrm{m/s^2}$."),
             (r"z", "elevation of the station above a chosen datum (m)."),
@@ -255,7 +255,7 @@ def render_tab_cheme_energy():
     render_symbols(
         [
             (r"h_{\mathrm{shaft}}", r"pump head $w_{\mathrm{shaft}}/g$ (m). Left-hand side: we add it."),
-            (r"h_f", r"major (skin-friction) head loss (m). Darcy–Weisbach: $h_f = f_D (L/D) u^2/(2g)$."),
+            (r"h_f", r"major (skin-friction) head loss (m). Darcy–Weisbach in Fanning form: $h_f = 4f_F (L/D) u^2/(2g)$."),
             (r"h_{\mathrm{minor}}", r"fitting / entrance / exit head loss (m), $\sum K_L\, u^2/(2g)$."),
             (r"\text{subscripts }1,2", "upstream and downstream stations on the same streamtube."),
         ]
@@ -264,7 +264,7 @@ def render_tab_cheme_energy():
         r"""
         This is the **engineering mechanical energy equation** (extended Bernoulli).
         Tab 2 evaluates every term for a real transfer line. Tab 4 shows that in
-        laminar pipe flow a force balance *computes* $h_f$ exactly ($f_D = 64/\mathrm{Re}$).
+        laminar pipe flow a force balance *computes* $h_f$ exactly ($f_F = 16/\mathrm{Re}$).
         """
     )
 
@@ -492,7 +492,7 @@ Viscosity is not an extra force we forgot: it is the mechanism that
     render_what_to_notice(
         "Next: Tab 2 sizes $h_f$ with Darcy–Weisbach and a pump. "
         "Tab 3 explains why one Moody chart covers every Newtonian fluid. "
-        "Tab 4 derives $f=64/\\mathrm{Re}$ from a force balance and asks whether packing the pipe with straws would beat turbulence."
+        "Tab 4 derives $f_F=16/\\mathrm{Re}$ from a force balance and asks whether packing the pipe with straws would beat turbulence."
     )
     render_self_check(
         "energy_self_check_friction",

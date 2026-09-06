@@ -42,7 +42,7 @@ def render_tab_cfd():
         ]
     )
 
-    st.markdown("### 11.1 The Two Fundamental Mathematical Roadblocks")
+    st.markdown("### 13.1 The Two Fundamental Mathematical Roadblocks")
     col_rb1, col_rb2 = st.columns(2)
     with col_rb1:
         render_callout(
@@ -69,7 +69,7 @@ def render_tab_cfd():
         )
 
     st.markdown("---")
-    st.markdown("### 11.2 Chorin's Projection (Fractional Step) Method")
+    st.markdown("### 13.2 Chorin's Projection (Fractional Step) Method")
     st.markdown(
         """
         In 1968 Alexandre Chorin invented the **Projection Method**, still the
@@ -231,7 +231,7 @@ def render_tab_cfd():
     )
 
     st.markdown("---")
-    st.markdown("### 11.3 Live 2D CFD: Lid-Driven Cavity (transient demo)")
+    st.markdown("### 13.3 Live 2D CFD: Lid-Driven Cavity (transient demo)")
     st.markdown(
         """
         A unit square has three no-slip walls and a lid at $u = 1$. This is the canonical

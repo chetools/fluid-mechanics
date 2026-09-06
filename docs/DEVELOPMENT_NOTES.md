@@ -57,13 +57,16 @@ running past the viewBox.
 | `src/physics/impeller.py` | Blade camberline from the angle definition, 3D blade surfaces, slip, velocity triangles, isometric projection |
 | `src/svg_impeller.py` | Impeller diagrams projected from that computed geometry (needs NumPy, so kept out of `svg_diagrams.py`) |
 | `src/physics/gas_dynamics.py` | Perfect-gas nozzle, normal shock, compressor/turbine and sphere-drag calculations |
+| `src/physics/rocket_nozzle.py` | Expansion ratio, thrust coefficient and c*, US Standard Atmosphere, Prandtl-Meyer, method-of-characteristics contour, cone/bell/converging geometry |
 | `src/ui/pipe_network_lab.py` | Chapter 2 schedule calculator, editable node/pipe tables and network results |
-| `src/ui/tab_external_flow.py` | Chapter 8: Stokes flow, settling and drag crisis |
-| `src/ui/tab_turbomachinery.py` | Chapter 9: angular momentum, velocity triangles, work and thermal effects |
-| `src/ui/tab_compressible.py` | Chapter 10: compressible derivations, nozzle/shock labs, Fanno and Rayleigh flow |
-| `src/ui/tab_cfd.py` | Chapter 11: incompressible projection solver and benchmark interpretation |
+| `src/ui/tab_non_newtonian.py` | Chapter 7: constitutive behaviour — flow curves, Herschel–Bulkley pipe flow, thixotropy kinetics, Weissenberg/Deborah |
+| `src/ui/tab_external_flow.py` | Chapter 9: Stokes flow, settling and drag crisis |
+| `src/ui/tab_turbomachinery.py` | Chapter 11: angular momentum, velocity triangles, work and thermal effects |
+| `src/ui/tab_compressible.py` | Chapter 12: compressible derivations, nozzle/shock labs, Fanno and Rayleigh flow |
+| `src/ui/rocket_nozzle_lab.py` | Chapter 12 section 5: rocket nozzle performance, altitude behaviour, sizing march and contour design |
+| `src/ui/tab_cfd.py` | Chapter 13: incompressible projection solver and benchmark interpretation |
 
-Current order: 1 Energy, 2 Pipes, 3 Scaling, 4 Turbulence, 5 Euler, 6 Stress & NS, 7 Exact flows, 8 External flow, 9 Turbomachinery, 10 Compressible, 11 CFD, 12 Reference. Keep compressible flow before CFD, while explicitly explaining that the existing CFD solver is incompressible.
+Current order: 1 Energy, 2 Pipes, 3 Scaling, 4 Turbulence, 5 Euler, 6 Stress & NS, 7 Non-Newtonian, 8 Exact flows, 9 External flow, 10 Momentum, 11 Turbomachinery, 12 Compressible, 13 CFD, 14 Reference. Chapter 7 sits directly after the chapter that states the Newtonian constitutive law, because it is that law being taken apart. Keep compressible flow before CFD, while explicitly explaining that the existing CFD solver is incompressible.
 
 `app.py` owns chapter headers/recaps. Avoid duplicate main headings inside individual renderers. Adding a module also requires adding it to `_MODULE_RELOAD_ORDER`: the fingerprint only includes `app.py` and modules named in that list. Keep dependency reloads before their consumers. The current reload guard catches import/reload exceptions, so it is not a substitute for a compile/import check or AppTest.
 
@@ -79,6 +82,7 @@ Streamlit can mishandle multiline `$$...$$` in `st.markdown`, displaying raw TeX
 - The helper flattens whitespace before rendering each equation.
 - `tests/test_katex_safety.py` checks source patterns; browser checks additionally look for `.katex-error`.
 - A syntactically valid equation can still be too wide: verify small-screen overflow and readability visually.
+- **A prose literal whose first line is flush against the opening quotes is never dedented.** `textwrap.dedent` strips the *common* leading whitespace, so `prose(r'''First line...` with later lines indented to match the code has a common prefix of `""` and nothing is removed. Every paragraph after the first blank line then arrives with four spaces and renders as a monospace code block with its `$math$` and `**bold**` intact -- it looks like a KaTeX failure and is a markdown one. Start the literal with a newline so every line shares one indent. `tests/test_markdown_indentation.py::test_prose_literals_survive_dedenting` scans every `prose`/`render_callout` literal in `src/ui` for this, including plain paragraphs, which the older `accidental_code_blocks` scan deliberately ignores.
 
 ### SVG diagrams
 
@@ -95,6 +99,8 @@ Check labels, arrows, geometry and clipping, not just XML validity. The prior vi
 - The installed Streamlit tab DOM uses role-based/React Aria selectors. Old `data-baseweb` tab selectors did not apply.
 - A minimum width on only `stPlotlyChart` did not reliably resize Plotly's internal SVG. The existing CSS sets a minimum width on the element container inside `st-key-plot-*`, with an outer horizontal scroll area.
 - The wide plot is intentional on narrow screens. Check that scrolling is available and that labels are readable across the entire figure.
+- **A shape on a log axis is positioned in log10 of the data value.** `add_hline(y=101.3)` on a `type="log"` axis asks Plotly for `y = 10^101.3`, which drags the axis range out to `10^110` and flattens the real curve onto the floor of the panel. Pass `np.log10(value)` for `add_hline`, `add_vline` and `add_shape` whenever that axis is logarithmic. Traces are unaffected -- they take data coordinates as usual, which is what makes the mistake easy to miss in review and obvious on screen.
+- An honest curve can still be a useless picture: a sea-level `C_F` curve continues to zero and below far past its optimum, compressing every peak into the top of the frame. Clip the view to the region the comparison lives in and say why in the prose, rather than letting autoscale decide.
 - Network node labels needed explicit axis padding. Automatic ranges clipped the second line of the lowest node label. Direction arrows follow actual signed flow; table `from`/`to` remains the reference convention.
 
 ## Live-browser rerun problem: observations and working configuration
@@ -162,6 +168,23 @@ Schiller–Naumann is used only up to Re = 1000 in this demonstration. The dotte
 - Fanno and Rayleigh sections are derivations and model explanations, not a combined heated compressible-pipe network solver. The Fanno length expression uses **Darcy** friction; avoid an extra factor of four.
 
 Primary references linked in the lessons: [MIT Euler turbine equation](https://web.mit.edu/course/16/16.unified/www/SPRING/thermodynamics/notes/node91.html), [NASA isentropic relations](https://www.grc.nasa.gov/www/k-12/airplane/isentrop.html), [NASA normal shocks](https://www.grc.nasa.gov/WWW/k-12/airplane/normal.html), [NPTEL Fanno flow](https://archive.nptel.ac.in/content/storage2/courses/112103021/module2/lec15/1.html), and [NPTEL Rayleigh flow](https://archive.nptel.ac.in/content/storage2/courses/112103021/module2/lec14/1.html).
+
+### Rocket nozzles
+
+- Chamber conditions are stagnation conditions. Combustion, finite nozzle-inlet Mach number, boundary layers, wall heat transfer, chemical recombination during the expansion and two-phase (condensed-oxide) flow are all outside the model. Real engines report a `c*` efficiency of roughly 0.92-0.99 and a nozzle efficiency of roughly 0.95-0.99 against exactly these ideal numbers; do not present the ideal value as a prediction of hardware.
+- Split performance as `Isp = C_F c* / g0`. `c* = sqrt(R T_c)/Gamma` is a statement about the **chamber alone** and contains no area but the throat, which cancels. `C_F` is a statement about the **nozzle alone** and contains no chamber temperature. The split is what lets a test stand blame the injector or the bell separately, and the tests pin both invariances.
+- Thrust is `F = mdot ve + (pe - pa) Ae`. That equation is derived in chapter 10 §10.7 from a control volume; chapter 12 must not re-derive it. What chapter 12 adds is the gas dynamics that supply `ve`, `pe` and `Ae`, which a momentum balance takes as given.
+- `pe` is fixed by the area ratio and the chamber state; `pa` is fixed by altitude. They are equal at one altitude only. The matched condition follows from `dF/dAe = pe - pa` -- a differential ring of bell -- and the app checks that argument against the algebra by marking the independently computed matched ratio on each `C_F` curve, where it must land on the peak.
+- Momentum thrust is altitude-blind. The whole sea-level/vacuum difference is `pa Ae`, and a test asserts that the vacuum-minus-pad thrust equals it exactly.
+- Separation criteria (Summerfield `pe ~ 0.4 pa`, Schmucker) are **correlations of test data, not results of the model**. The ideal model will happily report thrust for a deeply over-expanded nozzle that would in reality be flowing separated with side loads. Always report the separation check beside the number; the lesson's `eps = 165` row exists to show the model being wrong without complaint.
+- The method-of-characteristics contour is **planar (2D)**, which is the case whose arithmetic can be followed by hand. Axisymmetric nozzles carry an extra term. Within the planar construction every `(theta, nu)` is exact and closed form -- `theta = j dtheta`, `nu = (2k+j) dtheta` -- and only the *positions* carry discretisation error from averaging characteristic slopes between points. So refining the wave count refines the wall shape while the exit Mach number stays pinned at its imposed value; the convergence table in the lesson is computed live rather than asserted.
+- `theta_max = nu(Me)/2` for a minimum-length nozzle, exactly. For M = 2.4 and gamma = 1.4 that is 18.37 degrees, matching Anderson's worked example, and the last wall point comes out axial at exactly the design Mach number. That is the construction's own success criterion and is tested as such.
+- Rao's `theta_n` and `theta_e` are **inputs, not outputs**. Reproducing his optimisation needs an axisymmetric characteristics solve with a variational condition on a control surface. What `bell_contour` guarantees is a tangent-continuous contour that hits the requested area ratio exactly; the 1.5 `r_t` and 0.382 `r_t` throat arcs are workshop conventions, not derivations, and the lesson says so.
+- The cone divergence efficiency `lambda = (1 + cos a)/2` is derived by averaging axial momentum over a spherical cap, and the test checks the closed form against the integral rather than against a remembered 0.983.
+- `march_along_contour` is quasi-one-dimensional and deliberately ignores the two-dimensionality that the characteristics method exists to capture. It shows *where* the expansion happens; it is not a design result.
+- Atmosphere is US Standard 1976 to 71 km, extrapolated above. Only pressure is returned, because that is the only atmospheric property a thrust calculation needs -- the nozzle's working fluid is the propellant, not the air. The test re-derives each layer's published base pressure by chaining the barometric formula.
+
+Primary references linked in the lesson: [NASA rocket thrust](https://www.grc.nasa.gov/www/k-12/airplane/rockth.html), [NASA nozzle design](https://www.grc.nasa.gov/www/k-12/airplane/nozzle.html), and G. V. R. Rao, "Exhaust nozzle contour for optimum thrust", *Jet Propulsion* 28 (1958). Propellant numbers in the worked examples are representative teaching values, not a manufacturer's data sheet.
 
 ### Existing CFD regressions
 

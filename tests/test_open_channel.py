@@ -145,7 +145,7 @@ def test_darcy_and_manning_agree_through_the_equivalence_relation():
 def test_darcy_route_satisfies_its_own_force_balance():
     result = darcy_discharge(1.5, 5.0, 1.0, roughness=0.01, bed_slope=0.0012)
     implied_slope = (
-        result["f_darcy"] * result["velocity"] ** 2
+        4.0 * result["f_fanning"] * result["velocity"] ** 2
         / (result["hydraulic_diameter"] * 2 * G)
     )
     assert implied_slope == pytest.approx(0.0012, rel=1e-8)

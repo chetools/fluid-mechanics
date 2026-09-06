@@ -1,4 +1,4 @@
-"""UI module for chapter 7: Exact NS solutions and laminar boundary layers."""
+"""UI module for chapter 8: Exact NS solutions and laminar boundary layers."""
 
 import math
 import streamlit as st
@@ -51,7 +51,7 @@ def render_tab_solving_ns():
         Navier–Stokes solution exists**. Here the convective term vanishes or is
         absorbed into a similarity variable. The Blasius plate is the payoff of
         d'Alembert's paradox from Tab 5: viscosity lives in a thin layer, and
-        an adverse outer gradient separates it. Projection CFD is Tab 11.
+        an adverse outer gradient separates it. Projection CFD is Tab 13.
         """
     )
     render_objectives(
@@ -63,7 +63,7 @@ def render_tab_solving_ns():
         ]
     )
 
-    st.markdown("### 7.1 Exact Analytical Solutions (When Non-Linearity Vanishes)")
+    st.markdown("### 8.1 Exact Analytical Solutions (When Non-Linearity Vanishes)")
     st.markdown(
         """
         For fully developed parallel flow ($v = w = 0$ and $\\partial u/\\partial x = 0$),
@@ -400,7 +400,7 @@ def render_tab_solving_ns():
     # PART 2: Blasius
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 7.2 Blasius Flat-Plate Boundary Layer")
+    st.markdown("### 8.2 Blasius Flat-Plate Boundary Layer")
     render_objectives(
         [
             "Say why a *thin* layer lets you delete two terms from Navier–Stokes, and which two.",
@@ -464,7 +464,7 @@ def render_tab_solving_ns():
         that governs heat spreading into a wall, or ink in still water. A fluid parcel that
         entered at the leading edge has been near the plate for a time $t \approx x/U_\infty$.
         Substituting gives $\delta \sim \sqrt{\nu x / U_\infty}$ immediately. **Blasius is
-        Stokes' first problem carried downstream by the flow**: the moving plate of §7.1
+        Stokes' first problem carried downstream by the flow**: the moving plate of §8.1
         replaced by a stationary plate and a moving observer.
         """
     )
@@ -519,7 +519,7 @@ def render_tab_solving_ns():
         boundary layer stops being a coupled problem: solve Euler outside, hand the
         resulting $p(x)$ down, and integrate the layer with it. For a flat plate at zero
         incidence the outer flow is uniform, so $dp/dx = 0$ and the equation above loses its
-        pressure term entirely. Chapter 7.3 shows what happens when $dp/dx > 0$ instead.
+        pressure term entirely. Chapter 8.3 shows what happens when $dp/dx > 0$ instead.
         """,
         title="Why the boundary layer became solvable",
     )
@@ -668,7 +668,7 @@ def render_tab_solving_ns():
     render_what_to_notice(
         "Left: u/U rises from 0 to 1 by η ≈ 5, with no inflection point inside the layer. "
         "At the wall the curvature is exactly zero, because f''' = -(1/2) f f'' and f(0) = 0 "
-        "— the marginal case that dp/dx = 0 buys you, and the reason 7.3's adverse "
+        "— the marginal case that dp/dx = 0 buys you, and the reason 8.3's adverse "
         "gradient is so destructive. Above the wall the profile bends over monotonically. "
         f"Right: δ, δ* and θ all grow like √x, holding fixed ratios "
         f"1 : {sim['delta_star_coeff']/sim['eta_99']:.2f} : {sim['theta_coeff']/sim['eta_99']:.3f}."
@@ -738,7 +738,7 @@ def render_tab_solving_ns():
         Blasius. $H$ is a health check on a boundary layer: it **rises as the
         profile becomes *less* full** — more retarded near the wall, carrying proportionally
         less momentum — and laminar separation is approached around $H \approx 3.5$. Turbulent layers run near $H \approx 1.4$ — far more
-        resistant to separation, which is the whole point of chapter 8's drag crisis.
+        resistant to separation, which is the whole point of chapter 9's drag crisis.
         """
     )
     render_derivation(
@@ -826,7 +826,7 @@ def render_tab_solving_ns():
         from the leading edge that $\\delta \\ll x$. Transition on a smooth plate typically
         begins near $\\mathrm{Re}_x \\approx 5\\times10^5$ but roughness or free-stream
         turbulence can bring it forward by an order of magnitude. Nothing here applies once
-        the layer separates — that is chapter 7.3.
+        the layer separates — that is chapter 8.3.
         """
     )
 
@@ -834,7 +834,7 @@ def render_tab_solving_ns():
     # PART 3: Cylinder separation
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 7.3 Cylinder: Adverse Gradient and Laminar Separation")
+    st.markdown("### 8.3 Cylinder: Adverse Gradient and Laminar Separation")
     st.markdown(
         r"""
         Tab 5's potential cylinder has $U_e = 2 U_\infty \sin\theta$ and $C_p = 1-4\sin^2\theta$.

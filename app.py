@@ -1,6 +1,6 @@
 """Fluid Mechanics.
 
-Twelve chapters in six parts: vector schematics, exact analytical solutions
+Thirteen chapters in six parts: vector schematics, exact analytical solutions
 and a live 2D incompressible CFD solver.
 
 src/ui/learning_path.py names the parts and chapters; this module only
@@ -30,6 +30,8 @@ _MODULE_RELOAD_ORDER = (
     "src.physics.turbulence",
     "src.physics.dimensional_analysis",
     "src.physics.boundary_layer",
+    "src.physics.momentum",
+    "src.physics.rocket_nozzle",
     "src.physics.transport_analogy",
     "src.physics.non_newtonian",
     "src.physics.impeller",
@@ -42,12 +44,15 @@ _MODULE_RELOAD_ORDER = (
     "src.ui.tab_pipe_flow",
     "src.ui.pipe_network_lab",
     "src.ui.tab_external_flow",
+    "src.ui.tab_momentum",
     "src.ui.tab_turbomachinery",
     "src.ui.tab_compressible",
+    "src.ui.rocket_nozzle_lab",
     "src.ui.tab_dimensional_analysis",
     "src.ui.tab_turbulence",
     "src.ui.tab_euler",
     "src.ui.tab_stress_ns",
+    "src.ui.tab_non_newtonian",
     "src.ui.tab_solving_ns",
     "src.ui.tab_cfd",
     "src.ui.tab_reference",
@@ -101,11 +106,13 @@ from src.ui.tab_dimensional_analysis import render_tab_dimensional_analysis
 from src.ui.tab_turbulence import render_tab_turbulence
 from src.ui.tab_euler import render_tab_euler
 from src.ui.tab_stress_ns import render_tab_stress_ns
+from src.ui.tab_non_newtonian import render_tab_non_newtonian
 from src.ui.tab_solving_ns import render_tab_solving_ns
 from src.ui.tab_cfd import render_tab_cfd
 from src.ui.tab_reference import render_tab_reference
 from src.ui.pipe_network_lab import render_network_lab
 from src.ui.tab_external_flow import render_tab_external_flow
+from src.ui.tab_momentum import render_tab_momentum
 from src.ui.tab_turbomachinery import render_tab_turbomachinery
 from src.ui.tab_compressible import render_tab_compressible
 
@@ -225,7 +232,7 @@ st.caption(
 # energy → pipe design → experiments/Π → laminar f & straws → Euler → tensors → BL → CFD
 #
 # One chapter is rendered at a time, and this is not a cosmetic choice.
-# `st.tabs` executes every panel body on every script run, so all twelve
+# `st.tabs` executes every panel body on every script run, so all thirteen
 # chapters — every Plotly figure, every SVG, every solver call — were rebuilt
 # whenever any widget moved. Once the course grew past roughly a hundred
 # elements the browser stopped finishing the render: the script completed in
@@ -245,8 +252,10 @@ RENDERERS = (
     lambda: render_tab_turbulence(),
     lambda: render_tab_euler(),
     lambda: render_tab_stress_ns(),
+    lambda: render_tab_non_newtonian(),
     lambda: render_tab_solving_ns(),
     lambda: render_tab_external_flow(),
+    lambda: render_tab_momentum(),
     lambda: render_tab_turbomachinery(),
     lambda: render_tab_compressible(),
     lambda: render_tab_cfd(),

@@ -9,21 +9,21 @@ from src.physics.pipe_flow import (
     hydraulic_diameter,
     entrance_length,
     npsh_available,
-    laminar_darcy_from_force_balance,
+    laminar_fanning_from_force_balance,
     straw_bundle_comparison,
 )
 
 def test_churchill_laminar_asymptote():
-    """Verify Churchill correlation strictly matches f = 64/Re for laminar flow."""
+    """Verify Churchill returns the Fanning f_F = 16/Re in laminar flow."""
     re_test = 1000.0
     f_churchill = friction_factor_churchill(re_test, rel_roughness=0.0)
-    f_exact = 64.0 / re_test
+    f_exact = 16.0 / re_test
     assert np.isclose(f_churchill, f_exact, rtol=1e-3)
 
 
 @pytest.mark.parametrize("reynolds", [1e-20, 1e-6, 0.1])
 def test_churchill_creeping_flow(reynolds):
-    assert friction_factor_churchill(reynolds, 0.0) == pytest.approx(64.0 / reynolds)
+    assert friction_factor_churchill(reynolds, 0.0) == pytest.approx(16.0 / reynolds)
 
 
 def test_colebrook_zero_reynolds_is_undefined():
@@ -119,11 +119,11 @@ def test_entrance_length_laminar_and_turbulent():
     assert turb["L_e_over_D"] < lam["L_e_over_D"]
 
 
-def test_laminar_darcy_matches_churchill_below_2300():
+def test_laminar_fanning_matches_churchill_below_2300():
     re = 800.0
-    f_bal = laminar_darcy_from_force_balance(re)
+    f_bal = laminar_fanning_from_force_balance(re)
     f_ch = friction_factor_churchill(re, 0.0)
-    assert np.isclose(f_bal, 64.0 / re)
+    assert np.isclose(f_bal, 16.0 / re)
     assert np.isclose(f_bal, f_ch, rtol=1e-3)
 
 

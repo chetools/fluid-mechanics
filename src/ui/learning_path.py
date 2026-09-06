@@ -1,4 +1,4 @@
-"""A consistent reading guide for the twelve lessons.
+"""A consistent reading guide for the fourteen lessons.
 
 This module is the single source of truth for how the chapters are named and
 divided. The navigation, the chapter header and the sidebar map all read it.
@@ -15,25 +15,30 @@ import streamlit as st
 from src.ui.pedagogy import render_latex, render_prose_and_latex
 
 
-# Six parts of two chapters each. Part names must not repeat: the old data had
-# "SOLUTIONS & VERIFICATION" on both part 4 and part 6, and part 4 itself
-# carried two different names on its two chapters.
+# Six parts. Part 3 carries three chapters because the constitutive law added
+# in chapter 6 is what chapter 7 then takes apart; they are one argument. Part 5
+# carries three because the control-volume momentum balance of chapter 10 is the
+# tool chapters 11 and 12 spend on machines and on gases. Part
+# names must not repeat: the old data had "SOLUTIONS & VERIFICATION" on both
+# part 4 and part 6, and part 4 itself carried two different names on its two
+# chapters.
 PARTS: Tuple[Tuple[int, str, Tuple[int, int]], ...] = (
     (1, "Plant balances", (1, 2)),
     (2, "Scaling & regimes", (3, 4)),
-    (3, "Local momentum", (5, 6)),
-    (4, "Viscous solutions & drag", (7, 8)),
-    (5, "Work & thermodynamics", (9, 10)),
-    (6, "Computation & reference", (11, 12)),
+    (3, "Local momentum & material behaviour", (5, 7)),
+    (4, "Viscous solutions & drag", (8, 9)),
+    (5, "Momentum, work & machines", (10, 12)),
+    (6, "Computation & reference", (13, 14)),
 )
 
 # Short labels for the horizontal chapter navigation. Kept separate from the
-# lesson titles because a twelve-option radio needs one or two words, while a
+# lesson titles because a fourteen-option radio needs one or two words, while a
 # chapter heading can afford a full title.
 NAV_LABELS: Tuple[str, ...] = (
     "Energy", "Pipes", "Scaling", "Turbulence",
-    "Euler", "Stress & NS", "Exact flows", "External flow",
-    "Turbomachinery", "Compressible", "CFD", "Reference",
+    "Euler", "Stress & NS", "Non-Newtonian", "Exact flows",
+    "External flow", "Momentum", "Turbomachinery", "Compressible", "CFD",
+    "Reference",
 )
 
 # title, question, prerequisites, route, core equation, interpretation, experiment
@@ -51,8 +56,8 @@ LESSONS = [
         "Pipe flow & pumping",
         "How much pressure and power will a transfer line need?",
         "Chapter 1: mechanical head; mean speed is Q/A.",
-        "Darcy & Fanning → friction chart → pump sizing → suction head → schedules → network solver → open channels",
-        r"h_L = \left(f_D\frac{L}{D}+\sum K\right)\frac{\bar{u}^2}{2g},\qquad P_{\mathrm{shaft}}=\frac{\rho g Q h_p}{\eta_p}",
+        "Fanning (and Darcy) → friction chart → pump sizing → suction head → schedules → network solver → open channels",
+        r"h_L = \left(4f_F\frac{L}{D}+\sum K\right)\frac{\bar{u}^2}{2g},\qquad P_{\mathrm{shaft}}=\frac{\rho g Q h_p}{\eta_p}",
         "Find velocity first, then Reynolds number, then friction factor. Add static head after calculating losses. NPSH is a separate check on the pump inlet.",
         "Keep flow rate, length, fluid, and fittings fixed; increase the pipe diameter. Observe the lower speed and pressure loss. Then raise the suction tank by 1 m: available NPSH should rise by exactly 1 m. For a canal at fixed depth, section and Manning roughness, quadrupling bed slope doubles capacity because Q grows as the square root of slope. The calculator instead holds discharge fixed: quadruple its slope and observe a lower normal depth.",
     ),
@@ -68,9 +73,9 @@ LESSONS = [
     (
         "Laminar flow & turbulence",
         "Would many small laminar pipes cost less to pump through?",
-        "Chapters 2–3: Darcy friction factor, fixed flow rate, and Reynolds number.",
+        "Chapters 2–3: Fanning friction factor, fixed flow rate, and Reynolds number.",
         "Dye experiment → laminar force balance → profiles → wall layers → straw bundle",
-        r"f_D=\frac{64}{\mathrm{Re}},\qquad \Delta p=\frac{128\mu LQ}{\pi D^4}\quad\text{(fully developed laminar pipe)}",
+        r"f_F=\frac{16}{\mathrm{Re}},\qquad \Delta p=\frac{128\mu LQ}{\pi D^4}\quad\text{(fully developed laminar pipe)}",
         "Laminar describes orderly motion, not necessarily low pumping cost. At fixed flow rate, a small diameter has a strong fourth-power penalty in laminar flow.",
         "In the straw lab, increase the number of straws while keeping total flow and outer diameter fixed. Read both plots: individual Reynolds number falls while pumping power can rise. Check whether each straw is actually laminar before using the exact laminar formula.",
     ),
@@ -93,6 +98,15 @@ LESSONS = [
         "Compare Pure rotation with Simple shear in the deformation lab. Rotation gives D = 0 and zero viscous stress even though vorticity is nonzero. Simple shear contains both strain and spin. Then select Pure shear (symmetric): D is nonzero but Ω is zero. All three preserve area because their divergence is zero.",
     ),
     (
+        "Newtonian & non-Newtonian fluids",
+        "What has to be true of a fluid for τ = μγ̇ to hold at all?",
+        "Chapter 6: the Newtonian constitutive law, strain rate and wall shear.",
+        "Momentum across a plane → structures that break the law → flow curves → yield-stress pipe flow → design Δp → thixotropy → Weissenberg & Deborah",
+        r"\tau=\tau_y+K\dot\gamma^{\,n},\qquad \mathrm{Wi}=\lambda\dot\gamma,\quad \mathrm{De}=\lambda/t_{proc}",
+        "Viscosity is constant only while shear has nothing to orient and the structure relaxes faster than the flow deforms it. The momentum balance survives every material; the constitutive law is what changes.",
+        "In the pipe lab keep n = 1.00, K = 0.001 and τ_y = 0.2 Pa. At dp/dz = −40 Pa/m the wall stress is τ_w = R|dp/dz|/2 = 0.5 Pa, so the plug fills r/R = τ_y/τ_w = 0.40 of the pipe; the flow rate must match Buckingham–Reiner, and the panel reports the agreement. Now double the gradient to −80 Pa/m: τ_w doubles and the plug halves to 0.20. Then lower τ_y to 0 and confirm the profile becomes the Newtonian parabola. Separately, in 7.7 hold λγ̇ fixed and change only the residence time: Wi does not move and De does — the two numbers are not interchangeable.",
+    ),
+    (
         "Exact flows & boundary layers",
         "Which assumptions make Navier–Stokes solvable by hand?",
         "Chapter 6: viscous momentum balance, no-slip walls, and derivatives.",
@@ -111,9 +125,18 @@ LESSONS = [
         "Double sphere diameter at fixed speed. Stokes drag doubles, but predicted settling speed quadruples; check the terminal Reynolds number before accepting that prediction.",
     ),
     (
+        "Momentum balances in practice",
+        "What force does this device carry, when nobody can model its insides?",
+        "Chapters 1 and 5: mechanical energy, and Newton's second law on a fluid element.",
+        "Reynolds transport → jets & vanes → bend anchors → sudden expansion → hydraulic jump → weirs & gates → rockets & the Betz limit",
+        r"\sum\mathbf F=\sum_{\mathrm{out}}\dot m\,\mathbf u-\sum_{\mathrm{in}}\dot m\,\mathbf u",
+        "A control-volume momentum balance needs nothing but the boundary, so it works where the interior separates, dissipates or burns. It gives a resultant force — never a loss and never a distribution.",
+        "In the jet lab set the arrangement to a wheel of buckets and sweep the vane speed: power peaks at U = V/2. Switch to a single vane and the peak moves to V/3 with a best efficiency of 16/27, because a runaway vane never catches most of the water. Then in the gate lab compare the computed load with the hydrostatic thrust on a solid wall: the gate carries markedly less, and the difference is the momentum the flow takes away with it.",
+    ),
+    (
         "Turbomachinery & shaft work",
         "How does a rotating blade heat a gas or extract work from it?",
-        "Chapters 1 and 5: energy, momentum and velocity components.",
+        "Chapters 1, 5 and 9: energy, control-volume momentum and velocity components.",
         "Angular momentum → blade geometry and angles → velocity triangles → Euler work → efficiency → intercooling → air separation plant",
         r"\Delta h_0=U_2C_{\theta2}-U_1C_{\theta1}",
         "Changing angular momentum exchanges shaft work. Compression raises stagnation temperature; an adiabatic turbine lowers it by exporting work.",
@@ -122,7 +145,7 @@ LESSONS = [
     (
         "Compressible flows",
         "Why can lowering downstream pressure stop increasing gas flow?",
-        "Chapters 1, 5 and 9: conservation laws, ideal-gas energy and stagnation properties.",
+        "Chapters 1, 5 and 10: conservation laws, ideal-gas energy and stagnation properties.",
         "Sound speed → mass, momentum and energy → nozzle → choking → shocks → friction and heating",
         r"\frac{dA}{A}=(M^2-1)\frac{du}{u},\qquad h_0=h+u^2/2",
         "Density, speed and temperature change together. Sonic conditions constrain mass flow; irreversibility can destroy stagnation pressure even when stagnation temperature is conserved.",

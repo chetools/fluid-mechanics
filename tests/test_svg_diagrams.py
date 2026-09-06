@@ -19,6 +19,10 @@ from src.svg_diagrams import (
     diagram_blasius_plate,
     diagram_npsh,
     diagram_power_law,
+    diagram_newtonian_origin,
+    diagram_microstructure_gallery,
+    diagram_viscoelastic_effects,
+    diagram_deborah_timescales,
     diagram_blasius_scaling,
     diagram_blasius_similarity,
     diagram_canal_section,
@@ -30,6 +34,14 @@ from src.svg_diagrams import (
     diagram_sphere_forces,
     diagram_sphere_separation,
     diagram_nozzle_information,
+    diagram_momentum_control_volume,
+    diagram_hydraulic_jump,
+    diagram_weir_and_gate,
+    diagram_rocket_control_volume,
+    diagram_nozzle_expansion_regimes,
+    diagram_rocket_pressure_thrust,
+    diagram_bell_contour_construction,
+    diagram_moc_wave_logic,
     clean_svg
 )
 from src.svg_impeller import (
@@ -58,6 +70,10 @@ def test_svg_diagrams_render_valid_xml():
         diagram_blasius_plate(),
         diagram_npsh(),
         diagram_power_law(),
+        diagram_newtonian_origin(),
+        diagram_microstructure_gallery(),
+        diagram_viscoelastic_effects(),
+        diagram_deborah_timescales(),
         diagram_blasius_scaling(),
         diagram_blasius_similarity(),
         diagram_canal_section(),
@@ -69,6 +85,14 @@ def test_svg_diagrams_render_valid_xml():
         diagram_sphere_forces(),
         diagram_sphere_separation(),
         diagram_nozzle_information(),
+        diagram_momentum_control_volume(),
+        diagram_hydraulic_jump(),
+        diagram_weir_and_gate(),
+        diagram_rocket_control_volume(),
+        diagram_nozzle_expansion_regimes(),
+        diagram_rocket_pressure_thrust(),
+        diagram_bell_contour_construction(),
+        diagram_moc_wave_logic(),
         # Generated from the computed geometry, including non-default cases: a
         # near-radial blade and a two-blade rotor exercise the projection and
         # the painter's ordering differently from the defaults.
@@ -133,6 +157,88 @@ def test_new_physical_diagrams_state_their_conventions_and_limits():
     assert "specific volume" in inject
     assert "velocity" in inject
     assert "True side view" in inject
+
+
+def test_rocket_nozzle_diagrams_state_the_claims_the_lesson_relies_on():
+    """Each of these figures carries a claim the prose leans on; pin the claim.
+
+    A diagram that quietly loses its labels still renders, still parses as XML,
+    and still passes every other test in this file while teaching nothing.
+    """
+    def text(svg):
+        return " ".join(ET.fromstring(svg).itertext())
+
+    regimes = text(diagram_nozzle_expansion_regimes())
+    # All four regimes must be named, and named by the pressure comparison.
+    for label in ("Under-expanded", "Matched", "Over-expanded, still attached",
+                  "Over-expanded to separation"):
+        assert label in regimes
+    assert "the exit pressure never changes, only what meets it" in regimes
+    assert "one place in the sky" in regimes
+    assert "Side loads" in regimes
+
+    thrust = text(diagram_rocket_pressure_thrust())
+    assert "not a push against the air" in thrust
+    assert "pressure integral over the inside of the engine" in thrust
+    assert "sea level" in thrust and "vacuum" in thrust
+    assert "the same force, counted two ways" in thrust.lower()
+
+    bell = text(diagram_bell_contour_construction())
+    # The construction is five decisions; losing one silently breaks the recipe.
+    for fragment in ("Fix the expansion ratio", "Fix the length", "Round the throat",
+                     "Sweep to", "Join N to E"):
+        assert fragment in bell
+    assert "0.382 r" in bell and "1.5 r" in bell
+    assert "meridional section, not a projection" in bell, (
+        "angles may only be marked where they are true"
+    )
+
+    moc = text(diagram_moc_wave_logic())
+    assert "corner sets the total turn" in moc
+    assert "axis reflects" in moc
+    assert "wall cancels" in moc
+    assert "planar minimum-length nozzle" in moc, "the 2D restriction must be visible"
+
+
+def test_rocket_nozzle_diagram_text_stays_inside_its_viewbox():
+    """A label that runs past the viewBox is clipped in half, silently.
+
+    This caught a real one: the three method-of-characteristics formulas were
+    placed at x = 806 in a 1000-unit frame and rendered as "K+ = -" with the
+    rest cut off. Nothing else notices -- the XML is valid, the currency scan is
+    clean, and the figure still draws.
+
+    The width estimate is deliberately crude (a per-character factor, larger for
+    the monospace stack), so it is applied only to the figures added with it
+    rather than repo-wide, where several older diagrams sit close enough to the
+    edge that this approximation would flag them without their being wrong.
+    Anchored text is skipped because its x is not its left edge.
+    """
+    figures = {
+        "nozzle_expansion_regimes": diagram_nozzle_expansion_regimes(),
+        "rocket_pressure_thrust": diagram_rocket_pressure_thrust(),
+        "bell_contour_construction": diagram_bell_contour_construction(),
+        "moc_wave_logic": diagram_moc_wave_logic(),
+    }
+    problems = []
+    for name, svg in figures.items():
+        root = ET.fromstring(svg)
+        width = float(root.get("viewBox").split()[2])
+        for node in root.iter("{http://www.w3.org/2000/svg}text"):
+            if node.get("x") is None or node.get("text-anchor") in ("middle", "end"):
+                continue
+            size = float(node.get("font-size", 12))
+            monospace = "monospace" in (node.get("font-family") or "")
+            content = "".join(node.itertext())
+            estimated_end = (
+                float(node.get("x")) + len(content) * size * (0.62 if monospace else 0.52)
+            )
+            if estimated_end > width:
+                problems.append(
+                    f"{name}: {content[:52]!r} ends near {estimated_end:.0f} "
+                    f"in a {width:.0f}-unit frame"
+                )
+    assert not problems, "text clipped at the right edge:\n" + "\n".join(problems)
 
 
 def test_kinematic_spin_label_matches_its_component_formula():

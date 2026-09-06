@@ -260,7 +260,7 @@ def chilton_colburn(
     reynolds: float,
     prandtl: float,
     schmidt: Optional[float] = None,
-    friction_factor_darcy: Optional[float] = None,
+    friction_factor_fanning: Optional[float] = None,
     nusselt: Optional[float] = None,
 ) -> Dict:
     """The j-factors, and the friction factor they are supposed to equal.
@@ -285,11 +285,11 @@ def chilton_colburn(
         result["j_h"] = stanton * prandtl ** (2.0 / 3.0)
     if schmidt is not None:
         result["schmidt"] = schmidt
-    if friction_factor_darcy is not None:
-        friction_factor_darcy = _positive(friction_factor_darcy, "Darcy friction factor")
-        result["friction_factor_darcy"] = friction_factor_darcy
-        result["friction_factor_fanning"] = friction_factor_darcy / 4.0
-        result["j_from_friction"] = friction_factor_darcy / 8.0
+    if friction_factor_fanning is not None:
+        friction_factor_fanning = _positive(friction_factor_fanning, "Fanning friction factor")
+        result["friction_factor_fanning"] = friction_factor_fanning
+        result["friction_factor_darcy"] = 4.0 * friction_factor_fanning
+        result["j_from_friction"] = friction_factor_fanning / 2.0
         if "j_h" in result:
             result["analogy_ratio"] = result["j_h"] / result["j_from_friction"]
     return result

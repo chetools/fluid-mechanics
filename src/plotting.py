@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots
 
 from src.theme import (
     apply_plotly_theme, SURFACE, SURFACE_RAISED, BORDER_STRONG,
-    TEXT, TEXT_MUTED, TEXT_DIM, ACCENT, PRESSURE, SHEAR, VORTICITY, SUCCESS, WARNING, INERTIA, SERIES, rgba
+    TEXT, TEXT_MUTED, TEXT_DIM, ACCENT, PRESSURE, SHEAR, VORTICITY, SUCCESS, WARNING, INERTIA, VISCOUS, SERIES, rgba
 )
 from src.units import unit_label, is_nondimensional
 
@@ -594,20 +594,20 @@ def plot_cavity_cfd(res: Dict[str, np.ndarray]) -> go.Figure:
 def plot_moody_chart(
     re_operating: float = 50000.0,
     eps_d_operating: float = 0.001,
-    f_operating: float = 0.022
+    f_operating: float = 0.0055
 ) -> go.Figure:
-    """Create complete interactive Moody Diagram with dynamic operating point."""
+    """Interactive Moody diagram in Fanning f_F, with a dynamic operating point."""
     from src.physics.pipe_flow import generate_moody_chart_data
     data = generate_moody_chart_data()
     
     fig = go.Figure()
     
-    # 1. Laminar Line f = 64/Re
+    # 1. Laminar Line f_F = 16/Re
     fig.add_trace(
         go.Scatter(
             x=data["re_lam"], y=data["f_lam"],
             mode="lines", line=dict(color=SUCCESS, width=3),
-            name="Laminar (f = 64/Re)"
+            name="Laminar (f_F = 16/Re)"
         )
     )
     
@@ -645,7 +645,7 @@ def plot_moody_chart(
             x=[re_operating], y=[f_operating],
             mode="markers+text",
             marker=dict(size=14, color=PRESSURE, symbol="diamond", line=dict(width=2, color=TEXT)),
-            text=[f"  Operating Point: Re = {re_operating:,.0f}, f = {f_operating:.4f}"],
+            text=[f"  Operating Point: Re = {re_operating:,.0f}, f_F = {f_operating:.4f}"],
             textposition="top right",
             textfont=dict(color=PRESSURE, size=12, family="'JetBrains Mono', monospace"),
             name="Current Operating Point"
@@ -660,13 +660,13 @@ def plot_moody_chart(
     )
     fig.update_yaxes(
         type="log",
-        title_text="Darcy Friction Factor f_D [-]",
-        range=[np.log10(0.007), np.log10(0.11)],
+        title_text="Fanning Friction Factor f_F [-]  (Darcy f_D = 4 f_F)",
+        range=[np.log10(0.007 / 4.0), np.log10(0.11 / 4.0)],
         dtick=np.log10(2)
     )
     
     fig.update_layout(
-        title="Interactive Moody Diagram (Darcy Friction Factor f_D)",
+        title="Interactive Moody Diagram (Fanning Friction Factor f_F = f_D / 4)",
         height=540,
         legend=dict(x=0.02, y=0.05, bgcolor=rgba(SURFACE, 0.85))
     )
@@ -1209,4 +1209,500 @@ def plot_relief_capacity(curve: Dict, operating_ratio: float = None) -> go.Figur
     fig.update_xaxes(title_text="Back pressure / upstream stagnation pressure [-]")
     fig.update_yaxes(title_text="Mass flux G [kg/(s m2)]")
     fig.update_layout(title="", height=400)
+    return apply_plotly_theme(fig)
+
+
+def plot_flow_curves(curves: List[Dict], log_axes: bool = True) -> go.Figure:
+    """Rheograms: shear stress and apparent viscosity against strain rate.
+
+    Both panels are drawn from the same curves because they answer different
+    questions. tau(gamma_dot) shows what the material *resists* with; the
+    apparent viscosity tau/gamma_dot shows how that resistance would be
+    mislabelled if someone insisted on quoting a single viscosity. A Newtonian
+    fluid is the only one whose second panel is flat.
+    """
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=(
+            "Flow curve: shear stress τ(γ̇)",
+            "Apparent viscosity μ_app = τ/γ̇",
+        ),
+        horizontal_spacing=0.11,
+    )
+    for index, curve in enumerate(curves):
+        color = SERIES[index % len(SERIES)]
+        fig.add_trace(
+            go.Scatter(
+                x=curve["gamma_dot"], y=curve["tau"],
+                mode="lines", line=dict(color=color, width=3),
+                name=curve["model"], legendgroup=curve["model"],
+            ),
+            row=1, col=1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=curve["gamma_dot"], y=curve["mu_app"],
+                mode="lines", line=dict(color=color, width=3),
+                name=curve["model"], legendgroup=curve["model"], showlegend=False,
+            ),
+            row=1, col=2,
+        )
+    axis_type = "log" if log_axes else "linear"
+    fig.update_xaxes(title_text="Shear rate γ̇ [1/s]", type=axis_type, row=1, col=1)
+    fig.update_xaxes(title_text="Shear rate γ̇ [1/s]", type=axis_type, row=1, col=2)
+    fig.update_yaxes(title_text="τ [Pa]", type=axis_type, row=1, col=1)
+    fig.update_yaxes(title_text="μ_app [Pa·s]", type=axis_type, row=1, col=2)
+    fig.update_layout(
+        title="Two views of the same material: stress, and the viscosity it would be given",
+        height=440,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.34, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_yield_stress_pipe(res: Dict, newtonian: Dict = None) -> go.Figure:
+    """Pipe profile with the unyielded plug marked, beside the linear τ(r).
+
+    The right panel is the reason the left one has a flat core: the momentum
+    balance fixes τ(r) as a straight line for *every* fluid, so a yield stress
+    is a horizontal cut across that line, and where it cuts is a radius.
+    """
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=(
+            "Velocity profile u(r)",
+            "Shear stress τ(r) = (r/2)(−dp/dz) — the same line for any fluid",
+        ),
+        horizontal_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=res["u"], y=res["r_norm"],
+            mode="lines", line=dict(color=SHEAR, width=3),
+            name=f"n = {res['n']:.2f}, τ_y = {res['tau_y']:.3g} Pa",
+        ),
+        row=1, col=1,
+    )
+    if newtonian is not None:
+        fig.add_trace(
+            go.Scatter(
+                x=newtonian["u"], y=newtonian["r_norm"],
+                mode="lines", line=dict(color=SUCCESS, width=2, dash="dash"),
+                name="Newtonian, same τ_w",
+            ),
+            row=1, col=1,
+        )
+    plug = float(res["plug_fraction"])
+    if plug > 1e-6:
+        fig.add_hrect(
+            y0=0.0, y1=plug,
+            fillcolor=rgba(VORTICITY, 0.18), line_width=0,
+            annotation_text=f"unyielded plug, r/R < {plug:.2f}",
+            annotation_position="top left",
+            row=1, col=1,
+        )
+    fig.add_trace(
+        go.Scatter(
+            x=res["tau_r"], y=res["r_norm"],
+            mode="lines", line=dict(color=ACCENT, width=3),
+            name="τ(r)", showlegend=False,
+        ),
+        row=1, col=2,
+    )
+    if res["tau_y"] > 0:
+        fig.add_vline(
+            x=float(res["tau_y"]),
+            line=dict(color=VORTICITY, width=2, dash="dot"),
+            annotation_text=f"τ_y = {res['tau_y']:.3g} Pa",
+            row=1, col=2,
+        )
+    fig.add_vline(
+        x=float(res["tau_wall"]),
+        line=dict(color=PRESSURE, width=1.5, dash="dash"),
+        annotation_text=f"τ_w = {res['tau_wall']:.3g} Pa",
+        row=1, col=2,
+    )
+    fig.update_xaxes(title_text="Axial velocity u(r) [m/s]", row=1, col=1)
+    fig.update_xaxes(title_text="Shear stress τ [Pa]", row=1, col=2)
+    fig.update_yaxes(title_text="r / R [-]", row=1, col=1)
+    fig.update_yaxes(title_text="r / R [-]", row=1, col=2)
+    fig.update_layout(
+        title="A yield stress turns a stress threshold into a radius",
+        height=440,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_thixotropy(res: Dict) -> go.Figure:
+    """Structure and stress following a step up and back down in shear rate."""
+    fig = make_subplots(
+        rows=3, cols=1, shared_xaxes=True, vertical_spacing=0.07,
+        subplot_titles=(
+            "Imposed shear rate γ̇(t) — a step up, then back down",
+            "Intact structure λ(t) — broken quickly, rebuilt slowly",
+            "Measured stress τ(t) — the same γ̇ gives two different stresses",
+        ),
+    )
+    fig.add_trace(
+        go.Scatter(x=res["t"], y=res["gamma_dot"], mode="lines",
+                   line=dict(color=ACCENT, width=2.5, shape="hv"), name="γ̇"),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=res["t"], y=res["structure"], mode="lines",
+                   line=dict(color=VORTICITY, width=3), name="λ"),
+        row=2, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=res["t"], y=res["tau"], mode="lines",
+                   line=dict(color=SHEAR, width=3), name="τ"),
+        row=3, col=1,
+    )
+    for row in (1, 2, 3):
+        fig.add_vline(
+            x=float(res["t_hold"]),
+            line=dict(color=TEXT_DIM, width=1.5, dash="dot"),
+            row=row, col=1,
+        )
+    fig.update_xaxes(title_text="Time t [s]", row=3, col=1)
+    fig.update_yaxes(title_text="γ̇ [1/s]", row=1, col=1)
+    fig.update_yaxes(title_text="λ [-]", row=2, col=1)
+    fig.update_yaxes(title_text="τ [Pa]", row=3, col=1)
+    fig.update_layout(
+        title="Thixotropy: the stress depends on what the sample was doing a minute ago",
+        height=620, showlegend=False,
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_viscoelastic_startup(res: Dict) -> go.Figure:
+    """Stress growth on startup, and the normal stress the same stretching makes."""
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=(
+            "Startup of steady shear: τ(t)",
+            "Steady state: shear stress vs first normal stress difference",
+        ),
+        horizontal_spacing=0.12,
+    )
+    fig.add_trace(
+        go.Scatter(x=res["t"], y=res["tau"], mode="lines",
+                   line=dict(color=VISCOUS, width=3), name="Viscoelastic (Maxwell)"),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=res["t"], y=res["tau_newtonian"], mode="lines",
+                   line=dict(color=SUCCESS, width=2, dash="dash"),
+                   name="Newtonian: instantaneous"),
+        row=1, col=1,
+    )
+    fig.add_vline(
+        x=float(res["relax_time"]),
+        line=dict(color=TEXT_DIM, width=1.5, dash="dot"),
+        annotation_text=f"λ = {res['relax_time']:.2g} s",
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Bar(
+            x=["τ (shear)", "N₁ (along streamlines)"],
+            y=[res["tau_steady"], res["n1_steady"]],
+            marker=dict(color=[SHEAR, VORTICITY]),
+            text=[f"{res['tau_steady']:.3g} Pa", f"{res['n1_steady']:.3g} Pa"],
+            textposition="auto", showlegend=False,
+        ),
+        row=1, col=2,
+    )
+    fig.update_xaxes(title_text="Time t [s]", row=1, col=1)
+    fig.update_yaxes(title_text="τ [Pa]", row=1, col=1)
+    fig.update_yaxes(title_text="Stress [Pa]", row=1, col=2)
+    fig.update_layout(
+        title=f"Elastic memory: Wi = λγ̇ = {res['weissenberg']:.2f}, N₁/τ = 2Wi = {res['n1_over_tau']:.2f}",
+        height=430,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+# =============================================================================
+# Rocket nozzles: contour geometry, the characteristic mesh, and altitude
+# =============================================================================
+
+def plot_moc_nozzle(moc: Dict, mirror: bool = True) -> go.Figure:
+    """The method-of-characteristics mesh that produced a wall contour.
+
+    Three things are meant to be legible at once: the fan of waves leaving the
+    sharp throat corner, their reflection off the axis of symmetry, and their
+    cancellation at the wall -- which is the wall's design condition, not a
+    consequence of it. The wall points are coloured by local Mach number so the
+    expansion can be read along the contour.
+    """
+    fig = go.Figure()
+
+    wave_x, wave_y = [], []
+    for (x0, y0), (x1, y1) in moc["waves"]:
+        wave_x.extend([x0, x1, None])
+        wave_y.extend([y0, y1, None])
+    fig.add_trace(
+        go.Scatter(x=wave_x, y=wave_y, mode="lines",
+                   line=dict(color=rgba(TEXT_DIM, 0.55), width=1),
+                   name="characteristics", hoverinfo="skip")
+    )
+    if mirror:
+        fig.add_trace(
+            go.Scatter(x=wave_x, y=[None if y is None else -y for y in wave_y],
+                       mode="lines", line=dict(color=rgba(TEXT_DIM, 0.22), width=1),
+                       name="mirror image", hoverinfo="skip", showlegend=False)
+        )
+
+    wall_x = [point["x"] for point in moc["wall"]]
+    wall_y = [point["y"] for point in moc["wall"]]
+    wall_m = [point["mach"] for point in moc["wall"]]
+    fig.add_trace(
+        go.Scatter(
+            x=wall_x, y=wall_y, mode="lines+markers",
+            line=dict(color=ACCENT, width=3.5),
+            marker=dict(size=9, color=wall_m, colorscale="Turbo", showscale=True,
+                        colorbar=dict(title="wall M", thickness=12)),
+            name="contour", customdata=wall_m,
+            hovertemplate="x=%{x:.3f}, r=%{y:.3f}<br>M=%{customdata:.3f}<extra></extra>",
+        )
+    )
+    if mirror:
+        fig.add_trace(
+            go.Scatter(x=wall_x, y=[-y for y in wall_y], mode="lines",
+                       line=dict(color=rgba(ACCENT, 0.45), width=3.5),
+                       name="contour (mirrored)", showlegend=False, hoverinfo="skip")
+        )
+    fig.add_hline(y=0, line=dict(color=TEXT_DIM, width=1, dash="dashdot"))
+    fig.add_annotation(
+        x=0, y=moc["wall"][0]["y"], ax=40, ay=-34,
+        text=f"sharp corner turns the flow {np.degrees(moc['theta_max']):.1f}° at once",
+        showarrow=True, arrowcolor=WARNING, font=dict(color=WARNING, size=11),
+    )
+    fig.add_annotation(
+        x=moc["length"], y=moc["exit_half_height"], ax=-56, ay=-28,
+        text=f"exit: M = {moc['design_mach']:.2f}, wall back to axial",
+        showarrow=True, arrowcolor=SUCCESS, font=dict(color=SUCCESS, size=11),
+    )
+    fig.update_xaxes(title_text="Axial distance from the throat / throat half-height")
+    fig.update_yaxes(title_text="y / throat half-height")
+    fig.update_layout(
+        title=f"Minimum-length planar nozzle · {len(moc['wall']) - 1} waves · "
+              f"half-height ratio {moc['achieved_area_ratio']:.3f} against the "
+              f"ideal {moc['ideal_area_ratio']:.3f}",
+        height=470,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.28, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_nozzle_geometry(bell: Dict, cone: Dict, converging: Dict = None) -> go.Figure:
+    """Bell against cone at equal expansion ratio, with the bell's construction.
+
+    Both walls end at the same exit radius, so the only visible differences are
+    the ones that matter: the bell is shorter, it turns hard immediately after
+    the throat, and it arrives at the exit nearly axial while the cone is still
+    throwing gas sideways at its full half-angle.
+    """
+    fig = go.Figure()
+    if converging is not None:
+        fig.add_trace(
+            go.Scatter(x=converging["x"], y=converging["r"], mode="lines",
+                       line=dict(color=TEXT_MUTED, width=3), name="converging section")
+        )
+        fig.add_trace(
+            go.Scatter(x=converging["x"], y=[-r for r in converging["r"]], mode="lines",
+                       line=dict(color=TEXT_MUTED, width=3), showlegend=False,
+                       hoverinfo="skip")
+        )
+    for contour, color, label in ((cone, SHEAR, f"{cone['half_angle_deg']:.0f}° cone"),
+                                  (bell, ACCENT,
+                                   f"{100 * bell['length_fraction']:.0f}% bell")):
+        fig.add_trace(
+            go.Scatter(x=contour["x"], y=contour["r"], mode="lines",
+                       line=dict(color=color, width=3.5), name=label)
+        )
+        fig.add_trace(
+            go.Scatter(x=contour["x"], y=[-r for r in contour["r"]], mode="lines",
+                       line=dict(color=rgba(color, 0.45), width=3.5),
+                       showlegend=False, hoverinfo="skip")
+        )
+    attach, control = bell["attachment_point"], bell["control_point"]
+    fig.add_trace(
+        go.Scatter(
+            x=[attach[0], control[0], bell["x"][-1]],
+            y=[attach[1], control[1], bell["r"][-1]],
+            mode="lines+markers+text",
+            line=dict(color=VORTICITY, width=1.5, dash="dot"),
+            marker=dict(color=VORTICITY, size=9, symbol="x"),
+            text=["N · arc ends at θn", "tangents meet", "E · exit at θe"],
+            textposition="top center", textfont=dict(color=VORTICITY, size=11),
+            name="Bezier control polygon",
+        )
+    )
+    fig.add_hline(y=0, line=dict(color=TEXT_DIM, width=1, dash="dashdot"))
+    fig.add_vline(x=0, line=dict(color=WARNING, width=1.5, dash="dash"),
+                  annotation_text="throat", annotation_position="bottom right")
+    fig.update_xaxes(title_text="Axial distance from the throat / throat radius")
+    fig.update_yaxes(title_text="r / throat radius", scaleanchor="x", scaleratio=1)
+    fig.update_layout(
+        title=f"Same exit area in {100 * bell['length'] / bell['cone_length']:.0f}% "
+              "of the length: the bell buys back the cone's divergence loss",
+        height=470,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_nozzle_expansion(march: Dict, ambient_pressures: Dict = None) -> go.Figure:
+    """Mach and static pressure along the wall, with the ambient lines that
+    decide whether the same nozzle is over- or under-expanded.
+
+    The pressure curve belongs to the nozzle alone. Each horizontal ambient line
+    belongs to an altitude. Where a line sits above the exit pressure the plume
+    is squeezed back by shocks; below it, the plume keeps expanding into the sky.
+    """
+    fig = make_subplots(
+        rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.09,
+        subplot_titles=("Mach number along the contour",
+                        "Static pressure, against the ambient it has to meet"),
+    )
+    fig.add_trace(
+        go.Scatter(x=march["x"], y=march["mach"], mode="lines",
+                   line=dict(color=ACCENT, width=3), name="M(x)"),
+        row=1, col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=march["x"], y=[p / 1000 for p in march["pressure"]],
+                   mode="lines", line=dict(color=PRESSURE, width=3), name="p(x)"),
+        row=2, col=1,
+    )
+    if ambient_pressures:
+        for (label, pressure), color in zip(ambient_pressures.items(),
+                                            (WARNING, SUCCESS, VORTICITY, INERTIA)):
+            # A shape on a log axis is positioned in *log10* of the data value.
+            # Passing kPa directly asks Plotly for y = 10^101, which drags the
+            # axis range out to 10^110 and flattens the real curve onto the
+            # floor of the panel.
+            fig.add_hline(
+                y=np.log10(pressure / 1000), row=2, col=1,
+                line=dict(color=color, width=1.8, dash="dot"),
+                annotation_text=label, annotation_position="top left",
+                annotation_font=dict(color=color, size=11),
+            )
+    fig.update_yaxes(title_text="M [-]", row=1, col=1)
+    fig.update_yaxes(title_text="p [kPa abs]", type="log", row=2, col=1)
+    fig.update_xaxes(title_text="Axial distance from the throat / throat radius",
+                     row=2, col=1)
+    fig.update_layout(
+        title="", height=530,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_thrust_vs_altitude(sweeps: Dict[str, Dict],
+                            matched_altitudes: Dict[str, float] = None) -> go.Figure:
+    """One nozzle per curve, flown from the pad to vacuum.
+
+    Nothing inside any engine changes along its curve. Every rise is the
+    atmosphere getting out of the way of the exit plane, which is why the
+    steepest curve belongs to the largest exit area.
+    """
+    fig = make_subplots(
+        rows=1, cols=2, horizontal_spacing=0.11,
+        subplot_titles=("Thrust", "Specific impulse"),
+    )
+    for (label, sweep), color in zip(sweeps.items(), SERIES):
+        altitude_km = [a / 1000 for a in sweep["altitude"]]
+        fig.add_trace(
+            go.Scatter(x=altitude_km, y=[t / 1000 for t in sweep["thrust"]],
+                       mode="lines", line=dict(color=color, width=3), name=label),
+            row=1, col=1,
+        )
+        fig.add_trace(
+            go.Scatter(x=altitude_km, y=sweep["specific_impulse"], mode="lines",
+                       line=dict(color=color, width=3), name=label,
+                       showlegend=False),
+            row=1, col=2,
+        )
+        separated = [a / 1000 for a, flag in
+                     zip(sweep["altitude"], sweep["separation_predicted"]) if flag]
+        if separated:
+            fig.add_vrect(
+                x0=min(separated), x1=max(separated), row=1, col=1,
+                fillcolor=PRESSURE, opacity=0.12, line_width=0,
+                annotation_text="separation predicted", annotation_position="top left",
+                annotation_font=dict(color=PRESSURE, size=10),
+            )
+    for label, altitude in (matched_altitudes or {}).items():
+        fig.add_vline(x=altitude / 1000, row=1, col=1,
+                      line=dict(color=SUCCESS, width=1.5, dash="dash"),
+                      annotation_text=label,
+                      annotation_font=dict(color=SUCCESS, size=10))
+    fig.update_xaxes(title_text="Altitude [km]", row=1, col=1)
+    fig.update_xaxes(title_text="Altitude [km]", row=1, col=2)
+    fig.update_yaxes(title_text="Thrust [kN]", row=1, col=1)
+    fig.update_yaxes(title_text="Isp [s]", row=1, col=2)
+    fig.update_layout(
+        title="", height=440,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.3, xanchor="left", x=0),
+    )
+    return apply_plotly_theme(fig)
+
+
+def plot_thrust_coefficient_map(curves: List[Dict], operating: Dict = None) -> go.Figure:
+    """C_F against expansion ratio, one curve per pressure ratio p_c/p_a.
+
+    Each curve has a genuine maximum, and the locus of those maxima is exactly
+    the matched-exit condition p_e = p_a. Left of its peak a nozzle is
+    under-expanded and simply leaving pressure unused; right of it the nozzle is
+    over-expanded and the last of the bell is being pushed backwards.
+    """
+    fig = go.Figure()
+    for curve, color in zip(curves, SERIES):
+        fig.add_trace(
+            go.Scatter(x=curve["expansion_ratio"], y=curve["thrust_coefficient"],
+                       mode="lines", line=dict(color=color, width=3),
+                       name=curve["label"])
+        )
+        if curve.get("optimum") is not None:
+            fig.add_trace(
+                go.Scatter(x=[curve["optimum"][0]], y=[curve["optimum"][1]],
+                           mode="markers",
+                           marker=dict(color=color, size=13, symbol="circle-open",
+                                       line=dict(width=3)),
+                           name=f"{curve['label']} matched", showlegend=False)
+            )
+    optima = [c["optimum"] for c in curves if c.get("optimum") is not None]
+    if len(optima) > 1:
+        fig.add_trace(
+            go.Scatter(x=[o[0] for o in optima], y=[o[1] for o in optima],
+                       mode="lines", line=dict(color=SUCCESS, width=2, dash="dash"),
+                       name="locus of pe = pa")
+        )
+    if operating is not None:
+        fig.add_trace(
+            go.Scatter(x=[operating["expansion_ratio"]],
+                       y=[operating["thrust_coefficient"]],
+                       mode="markers",
+                       marker=dict(color=WARNING, size=15, symbol="diamond"),
+                       name="your engine")
+        )
+    fig.update_xaxes(title_text="Expansion ratio A_e/A_t [-]", type="log")
+    # Far past its optimum a sea-level curve dives towards zero and below, which
+    # is arithmetically true and visually useless: it compresses every peak into
+    # the top centimetre of the frame. Clip the view to the region where the
+    # comparison lives. Deep over-expansion has separated long before this
+    # anyway, which is the point the lesson makes beside the figure.
+    peaks = [max(curve["thrust_coefficient"]) for curve in curves]
+    fig.update_yaxes(
+        title_text="Thrust coefficient C_F = F/(p_c A_t) [-]",
+        range=[0.9, max(peaks) + 0.1] if peaks else None,
+    )
+    fig.update_layout(
+        title="", height=450,
+        legend=dict(orientation="h", yanchor="bottom", y=-0.32, xanchor="left", x=0),
+    )
     return apply_plotly_theme(fig)

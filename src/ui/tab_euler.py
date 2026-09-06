@@ -531,6 +531,6 @@ def render_tab_euler():
             * The flow negotiates the rear of the cylinder with perfect fore-and-aft symmetry without boundary layer separation.
             * High pressure at the front stagnation point ($C_p = +1$) is perfectly balanced by high pressure at the rear stagnation point ($C_p = +1$), yielding **zero net drag**.
 
-            To capture realistic drag, separation, and a wake, we **must incorporate viscous stresses** — Navier–Stokes in Tab 6, and a boundary-layer story in Tab 7.
+            To capture realistic drag, separation, and a wake, we **must incorporate viscous stresses** — Navier–Stokes in Tab 6, and a boundary-layer story in Tab 8.
             """
         )

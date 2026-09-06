@@ -12,6 +12,7 @@ from src.physics.gas_dynamics import (
 )
 from src.plotting import plot_relief_capacity
 from src.svg_diagrams import diagram_nozzle_information, diagram_relief_valve, render_svg
+from src.ui.rocket_nozzle_lab import render_rocket_nozzle_lab
 from src.ui.pedagogy import (
     render_callout,
     render_derivation,
@@ -24,7 +25,7 @@ from src.theme import apply_plotly_theme
 
 
 def render_tab_compressible():
-    st.markdown('### 10.1 Why density becomes an unknown')
+    st.markdown('### 12.1 Why density becomes an unknown')
     prose(r'''Compressible flow couples momentum to thermodynamics. A tire hiss, a gas jet and a process nitrogen restriction can accelerate gas until pressure, density and temperature change together. The incompressible approximation is often useful below Mach 0.3 **when heating and imposed density changes are also small**; low Mach alone does not imply constant density.
 
 We start with steady, one-dimensional, single-phase flow of a calorically perfect ideal gas. Cross-section averages describe the stream, gravity is negligible and cp and γ are constant. All gas pressures are **absolute**, all temperatures kelvin. The gas controls below are independent of the liquid-property sidebar.
@@ -44,7 +45,7 @@ $$a^2=\left(\frac{\partial p}{\partial\rho}\right)_s=\frac{\gamma p}{\rho}=\gamm
                 $a-du$, while its pressure rises $p\to p+dp$ and density
                 $\rho\to\rho+d\rho$. Nothing physical changed; we only removed the clock.
                 This change of frame is the whole trick, and it is the same one used for
-                the shock in §10.4.
+                the shock in §12.4.
                 """,
             ),
             (
@@ -112,7 +113,7 @@ $$a^2=\left(\frac{\partial p}{\partial\rho}\right)_s=\frac{\gamma p}{\rho}=\gamm
         ],
     )
 
-    st.markdown('### 10.2 Derive the nozzle equations, one balance at a time')
+    st.markdown('### 12.2 Derive the nozzle equations, one balance at a time')
     prose(r'''**1 · Mass conservation.** The same mass crosses every section. Differentiate the product and divide by ρuA.
 $$\dot m=\rho uA,\qquad\frac{d\rho}{\rho}+\frac{du}{u}+\frac{dA}{A}=0$$
 **2 · Momentum.** The axial pressure force accelerates the gas. For negligible wall friction and no body force, cancellation of the pressure-area terms gives
@@ -299,7 +300,7 @@ For A/A* > 1 there are subsonic and supersonic mathematical branches. Boundary c
             ),
         ],
     )
-    st.markdown('### 10.3 Choking · a converging-nozzle calculator')
+    st.markdown('### 12.3 Choking · a converging-nozzle calculator')
     render_svg(diagram_nozzle_information())
     prose(r'''A weak pressure disturbance travels at speed a relative to the gas. Its upstream-travelling branch moves at u − a in the laboratory frame: negative in subsonic flow, zero at a sonic throat. Once this ideal converging passage chokes, lowering back pressure changes the external jet rather than increasing throat mass flow. Raising back pressure enough to unchoke it restores upstream communication.''')
     prose(r'''Write mass flux using the same substitutions. At fixed reservoir p₀ and T₀, differentiating its logarithm with respect to M gives a maximum at M = 1.
@@ -412,7 +413,7 @@ $$\dot m_* =A\frac{p_0}{\sqrt{T_0}}\sqrt{\frac{\gamma}{R}}\left(\frac{2}{\gamma+
     fig.update_layout(title='One area ratio, two possible Mach numbers',xaxis_title='Mach number',yaxis_title='A / A*',height=360)
     apply_plotly_theme(fig); render_plot(fig,'area-mach')
     st.caption('[NASA: isentropic flow relations](https://www.grc.nasa.gov/www/k-12/airplane/isentrop.html). Real orifices, valves and relief devices need geometry-dependent discharge coefficients and appropriate property models; this calculator represents an ideal converging nozzle.')
-    st.markdown('### 10.4 A shock breaks the isentropic assumption')
+    st.markdown('### 12.4 A shock breaks the isentropic assumption')
     prose(r'''A normal shock is a very thin irreversible compression in supersonic flow. Integrate conservation across it instead of applying a smooth isentropic relation through it. Let 1 be upstream and 2 downstream, with equal cross-sectional areas.
 $$\rho_1u_1=\rho_2u_2,\quad p_1+\rho_1u_1^2=p_2+\rho_2u_2^2,\quad c_pT_1+u_1^2/2=c_pT_2+u_2^2/2$$
 **Eliminate velocity.** Set r = ρ₂/ρ₁ so u₂ = u₁/r. Momentum gives p₂/p₁ = 1 + γM₁²(1 − 1/r). The ideal-gas law gives T₂/T₁ = (p₂/p₁)/r. Substitute these into energy and solve the resulting quadratic; discard the unchanged-flow root r = 1 for M₁ > 1.
@@ -429,7 +430,7 @@ $$\frac{p_{02}}{p_{01}}=\frac{p_2}{p_1}\left[\frac{1+(\gamma-1)M_2^2/2}{1+(\gamm
                 r"""
                 A shock is a few mean free paths thick, and inside it the gradients are so
                 violent that viscous dissipation and heat conduction are *first-order* terms,
-                not corrections. Every smooth-flow relation of §10.2 fails there. But the
+                not corrections. Every smooth-flow relation of §12.2 fails there. But the
                 three conservation laws are integral statements: they relate the state on one
                 side to the state on the other and never ask what happened in between. So we
                 deliberately stop describing the interior and box it up.
@@ -528,14 +529,15 @@ $$\frac{p_{02}}{p_{01}}=\frac{p_2}{p_1}\left[\frac{1+(\gamma-1)M_2^2/2}{1+(\gamm
     a,b,c,e=st.columns(4)
     a.metric('Downstream Mach',f'{shock["mach2"]:.3f}'); b.metric('Static p₂ / p₁',f'{shock["pressure_ratio"]:.3f}'); c.metric('Static T₂ / T₁',f'{shock["temperature_ratio"]:.3f}'); e.metric('Stagnation p₀₂ / p₀₁',f'{shock["stagnation_pressure_ratio"]:.4f}')
     st.caption('[NASA: normal-shock conservation relations](https://www.grc.nasa.gov/WWW/k-12/airplane/normal.html).')
-    st.markdown('### 10.5 Long ducts: friction and heating can also choke flow')
-    prose(r'''**Fanno flow: constant area, adiabatic, friction present.** Continuity gives dρ/ρ = −du/u. Energy keeps T₀ constant. The wall force on a length dx of circular pipe is τwπDdx, so dividing by area gives 4τw dx/D. With Darcy fD = 8τw/(ρu²), momentum becomes
-$$dp+\rho u\,du+\frac{f_D}{D}\frac{\rho u^2}{2}dx=0,\quad c_p dT=-u\,du$$
+    render_rocket_nozzle_lab()
+    st.markdown('### 12.6 Long ducts: friction and heating can also choke flow')
+    prose(r'''**Fanno flow: constant area, adiabatic, friction present.** Continuity gives dρ/ρ = −du/u. Energy keeps T₀ constant. The wall force on a length dx of circular pipe is τwπDdx, so dividing by area gives 4τw dx/D. With the Fanning factor fF = 2τw/(ρu²) used throughout this course, momentum becomes
+$$dp+\rho u\,du+\frac{4f_F}{D}\frac{\rho u^2}{2}dx=0,\quad c_p dT=-u\,du$$
 Use the gas law, dp/p = dρ/ρ + dT/T. After substitution, the two velocity terms combine into (M²−1)du/u:
-$$\frac{du}{u}=\frac{\gamma M^2}{2(1-M^2)}\frac{f_D\,dx}{D}$$
+$$\frac{du}{u}=\frac{\gamma M^2}{2(1-M^2)}\frac{4f_F\,dx}{D}$$
 Friction accelerates a subsonic gas and decelerates a supersonic gas toward M = 1. Pressure energy, density and speed adjust together; the incompressible intuition “friction always slows flow downstream” is inadequate. The remaining nondimensional length to choking is
-$$\int_x^{x^*}\frac{f_D}{D}dx=\frac{1-M^2}{\gamma M^2}+\frac{\gamma+1}{2\gamma}\ln\left[\frac{(\gamma+1)M^2}{2+(\gamma-1)M^2}\right].$$
-For constant fD and D the left side is fD L*/D. Do not add an extra factor of four: many references instead use the Fanning factor. A specified inlet state cannot support an arbitrarily long duct at the same mass flow; the global boundary-value solution must adjust.
+$$\int_x^{x^*}\frac{4f_F}{D}dx=\frac{1-M^2}{\gamma M^2}+\frac{\gamma+1}{2\gamma}\ln\left[\frac{(\gamma+1)M^2}{2+(\gamma-1)M^2}\right].$$
+For constant fF and D the left side is 4fF L*/D. Aerospace tables print the same group as fD L*/D with the Darcy factor, fD = 4fF — identical numbers, so do not apply the factor of four twice. A specified inlet state cannot support an arbitrarily long duct at the same mass flow; the global boundary-value solution must adjust.
 
 **Rayleigh flow: constant area, heat transfer, negligible friction.** Mass flux G = ρu is constant; momentum gives p + ρu² constant. Divide momentum by p and compare with the sonic reference on the same Rayleigh line:
 $$\frac{p}{p^*}=\frac{\gamma+1}{1+\gamma M^2},\quad\frac{T}{T^*}=M^2\left(\frac{\gamma+1}{1+\gamma M^2}\right)^2$$
@@ -544,7 +546,7 @@ $$\frac{T_0}{T_0^*}=\frac{2(\gamma+1)M^2[1+(\gamma-1)M^2/2]}{(1+\gamma M^2)^2}.$
 Adding heat drives either branch toward sonic conditions, where T₀ is maximal along the line. Removing heat drives it away. Static temperature is not monotonic over the entire subsonic branch: it reaches a maximum at M = 1/√γ. Real heated rough pipes combine both effects; separate Fanno and Rayleigh formulas cannot simply be added.''')
 
     render_derivation(
-        r"Fanno flow: from a wall-shear force to $du/u=\frac{\gamma M^{2}}{2(1-M^{2})}\frac{f_D\,dx}{D}$",
+        r"Fanno flow: from a wall-shear force to $du/u=\frac{\gamma M^{2}}{2(1-M^{2})}\frac{4f_F\,dx}{D}$",
         [
             (
                 "Turn the wall shear into a term the momentum balance can use",
@@ -554,16 +556,16 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
                 momentum balance is written per unit flow area $\pi D^{2}/4$, so divide:
                 $$\frac{\tau_w\pi D\,dx}{\pi D^{2}/4}=\frac{4\tau_w}{D}dx$$
                 The factor $4/D$ is the surface-to-volume ratio of a cylinder — pure geometry,
-                and the reason small pipes are so much more frictional. Now insert the Darcy
-                definition $\tau_w=f_D\rho u^{2}/8$ (Tab 2):
-                $$\frac{4}{D}\cdot\frac{f_D\rho u^{2}}{8}dx=\frac{f_D}{D}\frac{\rho u^{2}}{2}dx$$
+                and the reason small pipes are so much more frictional. Now insert the Fanning
+                definition $\tau_w=f_F\rho u^{2}/2$ (Tab 2):
+                $$\frac{4}{D}\cdot\frac{f_F\rho u^{2}}{2}dx=\frac{4f_F}{D}\frac{\rho u^{2}}{2}dx$$
                 """,
             ),
             (
                 "Collect the four statements that describe the duct",
                 r"""
                 Constant area, adiabatic, with friction:
-                $$\text{momentum: } dp+\rho u\,du+\frac{f_D}{D}\frac{\rho u^{2}}{2}dx=0$$
+                $$\text{momentum: } dp+\rho u\,du+\frac{4f_F}{D}\frac{\rho u^{2}}{2}dx=0$$
                 $$\text{mass: } \frac{d\rho}{\rho}+\frac{du}{u}=0 \quad(dA=0)$$
                 $$\text{energy: } c_p\,dT+u\,du=0 \quad(\text{no heat, no work}\Rightarrow T_0\text{ fixed})$$
                 $$\text{state: } \frac{dp}{p}=\frac{d\rho}{\rho}+\frac{dT}{T}$$
@@ -576,7 +578,7 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
                 "Express temperature and pressure changes through the velocity change",
                 r"""
                 From the energy equation, dividing by $c_pT$ and using
-                $u^{2}/(c_pT)=(\gamma-1)M^{2}$ exactly as in §10.2:
+                $u^{2}/(c_pT)=(\gamma-1)M^{2}$ exactly as in §12.2:
                 $$\frac{dT}{T}=-(\gamma-1)M^{2}\frac{du}{u}$$
                 and then from mass plus state:
                 $$\frac{dp}{p}=-\frac{du}{u}-(\gamma-1)M^{2}\frac{du}{u}
@@ -589,18 +591,18 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
                 Using $\rho u^{2}/p=\gamma M^{2}$ again:
                 $$-\left[1+(\gamma-1)M^{2}\right]\frac{du}{u}
                 +\gamma M^{2}\frac{du}{u}
-                +\frac{\gamma M^{2}}{2}\frac{f_D\,dx}{D}=0$$
+                +\frac{\gamma M^{2}}{2}\frac{4f_F\,dx}{D}=0$$
                 The two velocity coefficients collapse:
                 $\gamma M^{2}-1-(\gamma-1)M^{2}=M^{2}-1$, so
-                $$(M^{2}-1)\frac{du}{u}=-\frac{\gamma M^{2}}{2}\frac{f_D\,dx}{D}
+                $$(M^{2}-1)\frac{du}{u}=-\frac{\gamma M^{2}}{2}\frac{4f_F\,dx}{D}
                 \;\Longrightarrow\;
-                \boxed{\frac{du}{u}=\frac{\gamma M^{2}}{2(1-M^{2})}\frac{f_D\,dx}{D}}$$
+                \boxed{\frac{du}{u}=\frac{\gamma M^{2}}{2(1-M^{2})}\frac{4f_F\,dx}{D}}$$
                 """,
             ),
             (
                 "Read the sign, and abandon the incompressible intuition",
                 r"""
-                $f_D\,dx/D$ is positive. So for $M<1$ the bracket is positive and friction
+                $4f_F\,dx/D$ is positive. So for $M<1$ the bracket is positive and friction
                 **accelerates** the gas; for $M>1$ it is negative and friction **decelerates**
                 it. Both move the flow toward $M=1$. This is not paradoxical: friction drops
                 the pressure, the gas expands, and in a constant-area duct a less dense gas
@@ -615,7 +617,7 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
                 $T=T_0\left(1+\frac{\gamma-1}{2}M^{2}\right)^{-1}$,
                 $$\frac{du}{u}=\frac{dM}{M}\cdot\frac{1}{1+\frac{\gamma-1}{2}M^{2}}
                 \;\Longrightarrow\;
-                \frac{f_D}{D}dx=\frac{4(1-M^{2})}{\gamma M^{3}\left[2+(\gamma-1)M^{2}\right]}dM$$
+                \frac{4f_F}{D}dx=\frac{4(1-M^{2})}{\gamma M^{3}\left[2+(\gamma-1)M^{2}\right]}dM$$
                 The integrand is a rational function of $M$; partial fractions in $M^{2}$
                 give the closed form quoted above, whose value is $0$ at $M=1$ — the duct
                 length at which the flow chokes. A duct longer than $L^{*}$ cannot pass the
@@ -625,9 +627,11 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
             (
                 "One factor-of-four trap",
                 r"""
-                Everything here is **Darcy** $f_D$. Many gas-dynamics texts use Fanning
-                $f_F=f_D/4$ and write $4f_FL^{*}/D$, which is the same number. Mixing the two
-                conventions moves a predicted choking length by a factor of four.
+                Everything here is **Fanning** $f_F$, as everywhere else in this course, so
+                the choking group reads $4f_FL^{*}/D$. Most gas-dynamics tables and charts
+                print the same quantity as $f_DL^{*}/D$ with the Darcy factor $f_D=4f_F$ —
+                identical numbers, different label. Mixing the two conventions moves a
+                predicted choking length by a factor of four.
                 """,
             ),
         ],
@@ -710,7 +714,7 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
         ],
     )
     st.caption('[NPTEL: Fanno flow](https://archive.nptel.ac.in/content/storage2/courses/112103021/module2/lec15/1.html) · [Rayleigh flow](https://archive.nptel.ac.in/content/storage2/courses/112103021/module2/lec14/1.html).')
-    st.markdown('### 10.6 Use the model in everyday and process problems')
+    st.markdown('### 12.7 Use the model in everyday and process problems')
     st.dataframe([
         {'Situation':'Air escaping a tire','First model':'Reservoir + restriction; test choking','What changes':'Reservoir pressure and temperature fall with time; steady nozzle relation is an instantaneous approximation.'},
         {'Situation':'Blowing through a narrow nozzle','First model':'Mass + momentum + energy','What changes':'The accelerating gas cools statically even though its stagnation temperature stays nearly constant.'},
@@ -721,7 +725,7 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
     ],hide_index=True,width='stretch')
     st.markdown('**Before CFD.** The next chapter solves incompressible Navier–Stokes. Its pressure correction enforces approximately zero velocity divergence; it does not solve the gas energy equation, shock waves or sonic choking. Compressible CFD instead couples density, momentum and total energy with an equation of state and requires suitable wave-resolving numerical fluxes.')
 
-    st.markdown('### 10.7 Why choking is the foundation of pressure relief design')
+    st.markdown('### 12.8 Why choking is the foundation of pressure relief design')
     st.markdown(
         'The mass-flow plateau gives a useful first model for gas relief capacity. '
         'This section sizes an idealized fixed-area restriction for a specified mass rate, '
@@ -729,7 +733,7 @@ Adding heat drives either branch toward sonic conditions, where T₀ is maximal 
     )
     render_svg(diagram_relief_valve())
 
-    st.markdown('#### 10.7.1 The design fact')
+    st.markdown('#### 12.8.1 The design fact')
     prose(r'''Start with a defined gas-release scenario, such as a blocked outlet. The required release rate W comes from that scenario's mass and energy balances. The flow model then estimates the area needed to pass W at a specified upstream state.
 
 For an incompressible or unchoked gas flow, capacity depends on pressures on **both** sides. In a shared discharge header the downstream pressure is itself part of a network calculation.
@@ -743,16 +747,16 @@ with $W$ the required relief rate and $K_d$ the discharge coefficient. **This in
         r"the sizing equation $A=W/(K_d G)$, and what each symbol is carrying",
         [
             (
-                "G is not a new result; it is §10.3 evaluated at the throat",
+                "G is not a new result; it is §12.3 evaluated at the throat",
                 r"""
-                The mass flux above is the choked flux derived in §10.3 by maximising
+                The mass flux above is the choked flux derived in §12.3 by maximising
                 $\rho u$ over $M$ and finding the maximum at $M=1$:
                 $$G=\frac{\dot m_{*}}{A}=p_0\sqrt{\frac{\gamma}{RT_0}}
                 \left(\frac{2}{\gamma+1}\right)^{\frac{\gamma+1}{2(\gamma-1)}}$$
                 Nothing about relief hardware entered that derivation — it is a property of
                 the *gas and its upstream state*, with units of kg per second per square
                 metre. Note that $p_0$ enters linearly and $T_0$ as $T_0^{-1/2}$; those two
-                exponents are the whole of §10.7.2.
+                exponents are the whole of §12.8.2.
                 """,
             ),
             (
@@ -771,7 +775,7 @@ with $W$ the required relief rate and $K_d$ the discharge coefficient. **This in
                 "Rearrange for the unknown, then take the square root for a bore",
                 r"""
                 $$A=\frac{W}{K_d\,G},\qquad d=\sqrt{\frac{4A}{\pi}}$$
-                The second step is where the fourth-root behaviour of §10.7.2 comes from:
+                The second step is where the fourth-root behaviour of §12.8.2 comes from:
                 because $A\propto\sqrt{T_0}$ and $d\propto\sqrt{A}$, the required *bore*
                 grows only as $T_0^{1/4}$. Quadrupling the absolute relieving temperature
                 doubles the area but increases the diameter by only $41\%$.
@@ -800,7 +804,7 @@ with $W$ the required relief rate and $K_d$ the discharge coefficient. **This in
         title="Check the pressure ratio first",
     )
 
-    st.markdown('#### 10.7.2 What the formula tells a designer')
+    st.markdown('#### 12.8.2 What the formula tells a designer')
     prose(r'''Three consequences fall straight out of $G \propto p_0/\sqrt{T_0}$, and each one is a mistake someone has made.
 
 **1 · Lower back pressure does not increase ideal choked mass flux.** With upstream state, gas and coefficient fixed, lowering back pressure further adds no capacity. In this model a larger required rate needs more area. A real undersized system requires reassessing the release scenario, device and piping; changing a set pressure is not a general remedy.
@@ -809,7 +813,7 @@ with $W$ the required relief rate and $K_d$ the discharge coefficient. **This in
 
 **3 · Back pressure matters through two distinct mechanisms.** Once p_b/p_0 exceeds the critical ratio, flow unchokes and mass flux falls. Separately, back pressure can affect a real valve's opening and lift even while its flow is choked. Those effects depend on device design and service conditions; this fixed-area model cannot predict them.''')
 
-    st.markdown('#### 10.7.3 Sizing calculator')
+    st.markdown('#### 12.8.3 Sizing calculator')
     defaults = RELIEF_DEMO_DEFAULTS
     rl1, rl2, rl3 = st.columns(3)
     w_req = persistent_input(rl1.number_input, 'Required relief rate W [kg/s]', min_value=.001, max_value=500.,
@@ -873,7 +877,7 @@ with $W$ the required relief rate and $K_d$ the discharge coefficient. **This in
             'relief-capacity',
         )
 
-    st.markdown('#### 10.7.4 Worked example: a blocked-outlet case')
+    st.markdown('#### 12.8.4 Worked example: a blocked-outlet case')
     example = relief_sizing(**defaults)
     hot = relief_sizing(**dict(defaults, t0=811.0))
     high_back = relief_sizing(**dict(defaults, back_pressure=8e5))

@@ -11,7 +11,7 @@ from src.theme import apply_plotly_theme
 
 
 def render_tab_external_flow():
-    st.markdown('### 8.1 From wall shear to wake drag')
+    st.markdown('### 9.1 From wall shear to wake drag')
     prose(r'''An immersed object feels both pressure and viscous traction. Far upstream the fluid is nearly uniform; a boundary layer forms on the object and may separate into a wake. Use the object's diameter for a sphere, and the **projected frontal area** in its drag coefficient.
 $$F_D=\int_S(-p\mathbf n+\boldsymbol\tau\cdot\mathbf n)\cdot\mathbf e_U\,dS=\tfrac12\rho U^2C_D A,\quad A=\pi d^2/4,\quad Re_d=\rho Ud/\mu$$
 A flat plate aligned with flow is often dominated by skin friction; a bluff sphere or cylinder often has substantial pressure drag. Their coefficient curves and reference areas are different. Pipe transition thresholds do not classify these flows.''')
@@ -71,7 +71,7 @@ A flat plate aligned with flow is often dominated by skin friction; a bluff sphe
             ),
         ],
     )
-    st.markdown('### 8.2 Stokes flow · a derivation for a sphere')
+    st.markdown('### 9.2 Stokes flow · a derivation for a sphere')
     render_svg(diagram_sphere_forces())
     prose(r'''**1 · Scale the equations.** Compare inertia with viscous stress. If Re ≪ 1, discard inertia but retain viscosity everywhere. Assume steady incompressible Newtonian flow, an isolated rigid sphere and no slip.
 $$Re(\mathbf u^*\cdot\nabla^*)\mathbf u^*=-\nabla^*p^*+\nabla^{*2}\mathbf u^*\quad\longrightarrow\quad\nabla p=\mu\nabla^2\mathbf u,\quad\nabla\cdot\mathbf u=0$$
@@ -97,7 +97,7 @@ The coefficient diverges as U → 0, but the **force tends to zero linearly**. A
                 _{\text{inertia}}
                 =-\nabla^{*}p^{*}+\nabla^{*2}\mathbf u^{*}$$
                 For $\mathrm{Re}\ll1$ the left side is uniformly small, so we delete it —
-                and unlike the boundary-layer approximation of Tab 7, we keep the viscous
+                and unlike the boundary-layer approximation of Tab 8, we keep the viscous
                 term **everywhere**, including far from the sphere. What is left is linear:
                 $$\nabla p=\mu\nabla^{2}\mathbf u,\qquad \nabla\cdot\mathbf u=0$$
                 Linearity is why this problem has an exact closed-form answer while almost
@@ -206,7 +206,7 @@ The coefficient diverges as U → 0, but the **force tends to zero linearly**. A
             ),
         ],
     )
-    st.markdown('### 8.3 Settling and finite-inertia drag lab')
+    st.markdown('### 9.3 Settling and finite-inertia drag lab')
     fluid = get_fluid_state(); rho, mu = fluid['rho'], fluid['mu']
     c1,c2,c3 = st.columns(3)
     diameter = persistent_input(c1.number_input, 'Sphere diameter [mm]', min_value=.001, value=.1, key='sphere_d')/1000
@@ -276,7 +276,7 @@ $$C_D=\frac{24}{Re}\left(1+0.15Re^{0.687}\right).$$''')
             (
                 "Insert the three expressions",
                 r"""
-                With sphere volume $V=\pi d^{3}/6$ and Stokes drag from §8.2:
+                With sphere volume $V=\pi d^{3}/6$ and Stokes drag from §9.2:
                 $$\frac{\pi d^{3}}{6}\rho_p g-\frac{\pi d^{3}}{6}\rho g=3\pi\mu d\,U_t
                 \;\Longrightarrow\;
                 \frac{\pi d^{3}}{6}(\rho_p-\rho)g=3\pi\mu d\,U_t$$
@@ -312,7 +312,7 @@ $$C_D=\frac{24}{Re}\left(1+0.15Re^{0.687}\right).$$''')
             ),
         ],
     )
-    st.markdown('### 8.4 Drag crisis · why a turbulent layer can reduce drag')
+    st.markdown('### 9.4 Drag crisis · why a turbulent layer can reduce drag')
     render_svg(diagram_sphere_separation())
     st.markdown('As Reynolds number rises, a smooth sphere develops a separated wake. Near the drag crisis (often a few hundred thousand), transition within the boundary layer increases near-wall momentum transport. Separation moves downstream, the wake narrows, and pressure drag drops sharply even though skin friction increases. Surface roughness and free-stream turbulence shift the transition; there is no universal critical Reynolds number.')
     fig=go.Figure()

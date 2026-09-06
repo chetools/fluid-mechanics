@@ -40,6 +40,9 @@ UI_DIR = ROOT / "src" / "ui"
 # Calls that hand a string straight to Streamlit's markdown renderer.
 RAW_MARKDOWN_CALLS = {"markdown", "caption", "write"}
 
+# Helpers that dedent for you -- but only if the literal has a common indent.
+PROSE_CALLS = {"prose", "render_prose_and_latex", "render_callout"}
+
 # A line that markdown would treat as meaningful if it were not swallowed by an
 # indented code block: list bullets, ordered items, headings, math, tables.
 MEANINGFUL = re.compile(r"^(?:[*+-]\s|\d+[.)]\s|#{1,6}\s|\$|>|\|)")
@@ -108,6 +111,71 @@ def test_prose_after_display_math_is_also_dedented():
     for kind, text in chunks:
         if kind == "prose":
             assert accidental_code_blocks(text) == [], text[:120]
+
+
+def _prose_literals(path: Path):
+    """Yield (lineno, literal) for every prose-rendering call in a UI module.
+
+    f-strings are reduced to their literal fragments, which is enough here: the
+    indentation that causes the bug lives in the literal parts.
+    """
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if isinstance(node.func, ast.Name):
+            name = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            name = node.func.attr
+        else:
+            continue
+        if name not in PROSE_CALLS or not node.args:
+            continue
+        arg = node.args[0]
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            yield node.lineno, arg.value
+        elif isinstance(arg, ast.JoinedStr):
+            yield node.lineno, "".join(
+                part.value for part in arg.values
+                if isinstance(part, ast.Constant) and isinstance(part.value, str)
+            )
+
+
+@pytest.mark.parametrize("path", sorted(UI_DIR.glob("*.py")), ids=lambda p: p.name)
+def test_prose_literals_survive_dedenting(path):
+    """A prose literal whose first line is flush against the quotes is not dedented.
+
+    ``textwrap.dedent`` strips the *common* leading whitespace, so writing::
+
+        prose(r'''First line flush against the quotes
+        second line indented to match the code
+        ''')
+
+    gives a common prefix of ``""``. Nothing is stripped, every paragraph after
+    the first blank line arrives with four spaces of indentation, and it renders
+    as a monospace code block with its ``$math$`` and ``**bold**`` intact. The
+    block silently stops teaching while still looking present on the page.
+
+    Unlike :func:`accidental_code_blocks`, this flags *plain* paragraphs too,
+    because that is what the failure actually looked like -- ordinary prose in a
+    grey box, no list or heading involved. The fix is to begin the literal with
+    a newline so that every line shares one indent.
+    """
+    problems = []
+    for lineno, literal in _prose_literals(path):
+        previous_blank = True
+        for line in dedent_markdown(literal).split("\n"):
+            if not line.strip():
+                previous_blank = True
+                continue
+            if previous_blank and len(line) - len(line.lstrip(" ")) >= 4:
+                problems.append(f"{path.name}:{lineno}: {line[:80]!r}")
+            previous_blank = False
+    assert not problems, (
+        "these prose blocks reach markdown still indented and will render as "
+        "code blocks; start the literal with a newline so every line shares one "
+        "indent:\n" + "\n".join(problems)
+    )
 
 
 def _string_literals_passed_to_raw_markdown(path: Path):

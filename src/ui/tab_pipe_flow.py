@@ -63,34 +63,37 @@ def render_tab_pipe_flow():
     )
     render_objectives(
         [
-            "Never confuse Darcy $f_D$ with Fanning $f_F = f_D/4$.",
+            "Work in Fanning $f_F$, and convert with $f_D = 4 f_F$ when a chart or text is Darcy.",
             "Read a Moody operating point and see $f(Re, \\varepsilon/D)$.",
             "Write the mechanical energy equation, then size a pump from $\\Delta p$ and $\\eta$.",
             "Compute $D_H$ for an annulus or duct and reuse the same $f$.",
             "Compute $\\mathrm{NPSH}_A$ at a pump suction and compare it to $\\mathrm{NPSH}_R$.",
-            "Check that $L > L_e$ before trusting fully developed Darcy.",
+            "Check that $L > L_e$ before trusting a fully developed friction factor.",
         ]
     )
 
     # -------------------------------------------------------------------------
-    # PART 1: The Darcy-Weisbach Equation & Friction Factors
+    # PART 1: Frictional head loss and the Fanning friction factor
     # -------------------------------------------------------------------------
-    st.markdown("### 2.1 Frictional Head Loss: Darcy vs. Fanning")
+    st.markdown("### 2.1 Frictional Head Loss: the Fanning Friction Factor")
     st.markdown(
         """
-        The fundamental equation for frictional pressure drop in a circular pipe is the
-        **Darcy–Weisbach equation**:
+        This course works in the **Fanning** friction factor $f_F$ throughout — the
+        chemical engineering convention, and the one that *is* the dimensionless wall
+        shear stress. Frictional pressure drop in a circular pipe (Darcy–Weisbach,
+        written in Fanning form):
         """
     )
 
-    render_latex(r"\Delta p_f = f_D \frac{L}{D} \left(\frac{1}{2}\rho u^2\right)")
-    render_latex(r"h_f = \frac{\Delta p_f}{\rho g} = f_D \frac{L}{D} \frac{u^2}{2g}")
-    render_latex(r"f_F = \frac{\tau_{\mathrm{wall}}}{\frac{1}{2}\rho u^2} = \frac{f_D}{4}")
+    render_latex(r"f_F = \frac{\tau_{\mathrm{wall}}}{\frac{1}{2}\rho u^2}")
+    render_latex(r"\Delta p_f = 4 f_F \frac{L}{D} \left(\frac{1}{2}\rho u^2\right)")
+    render_latex(r"h_f = \frac{\Delta p_f}{\rho g} = 4 f_F \frac{L}{D} \frac{u^2}{2g}")
+    render_latex(r"f_D \equiv 4 f_F \qquad \text{(the Darcy factor, if your chart or text uses it)}")
     render_symbols(
         [
             (r"\Delta p_f", "frictional pressure drop along the pipe (Pa)."),
-            (r"f_D", "Darcy friction factor (dimensionless). Moody charts plot this. Laminar circular pipe: $f_D=64/\\mathrm{Re}$."),
-            (r"f_F", r"Fanning friction factor. ChemE texts (BSL, Perry) often use this. $f_F=f_D/4$; laminar: $f_F=16/\mathrm{Re}$."),
+            (r"f_F", r"Fanning friction factor (dimensionless) — the convention used everywhere in this app, as in BSL and Perry. Laminar circular pipe: $f_F=16/\mathrm{Re}$."),
+            (r"f_D", "Darcy (Moody) friction factor, $f_D=4f_F$. Published Moody charts are almost always in this. Laminar circular pipe: $f_D=64/\\mathrm{Re}$."),
             (r"L", "pipe length (m)."),
             (r"D", "inner diameter (m)."),
             (r"\rho", "mass density (kg/m³). Sidebar fluid."),
@@ -102,7 +105,7 @@ def render_tab_pipe_flow():
     )
 
     render_derivation(
-        r"Darcy–Weisbach: a momentum balance plus one definition",
+        r"The friction factor: a momentum balance plus one definition",
         [
             (
                 "Momentum balance on the whole pipe, not on a fluid particle",
@@ -148,11 +151,13 @@ def render_tab_pipe_flow():
                 $$\Delta p_f=\frac{4L}{D}\cdot f_F\cdot\frac{\rho\bar u^{2}}{2}
                 =\underbrace{(4f_F)}_{\textstyle f_D}\frac{L}{D}\frac{\rho\bar u^{2}}{2}$$
                 The factor of four is nothing but the $4$ from the surface-to-volume ratio in
-                Step 2, absorbed into the friction factor for tidiness. **That is the entire
+                Step 2. Leave it on display and the friction factor stays **Fanning**;
+                absorb it for tidiness and it becomes **Darcy**. **That is the entire
                 origin of the Darcy/Fanning confusion** — two communities chose to put the
-                same $4$ in different places, and $f_D=4f_F$ forever after.
-                $$\boxed{\Delta p_f=f_D\frac{L}{D}\frac{\rho\bar u^{2}}{2}},
-                \qquad h_f=\frac{\Delta p_f}{\rho g}=f_D\frac{L}{D}\frac{\bar u^{2}}{2g}$$
+                same $4$ in different places, and $f_D=4f_F$ forever after. This course
+                leaves it on display:
+                $$\boxed{\Delta p_f=4f_F\frac{L}{D}\frac{\rho\bar u^{2}}{2}},
+                \qquad h_f=\frac{\Delta p_f}{\rho g}=4f_F\frac{L}{D}\frac{\bar u^{2}}{2g}$$
                 """,
             ),
             (
@@ -160,9 +165,9 @@ def render_tab_pipe_flow():
                 r"""
                 Darcy–Weisbach is a definition wrapped around an exact force balance: it is
                 true for laminar, turbulent, smooth and rough pipes alike, and it predicts
-                nothing on its own. Every piece of physics sits in $f_D(\mathrm{Re},
+                nothing on its own. Every piece of physics sits in $f_F(\mathrm{Re},
                 \varepsilon/D)$ — computed exactly for laminar flow in Tab 4
-                ($f_D=64/\mathrm{Re}$), and measured for turbulent flow, which is what the
+                ($f_F=16/\mathrm{Re}$), and measured for turbulent flow, which is what the
                 Moody chart below plots. Dividing by $\rho g$ converts a pressure to a **head**
                 in metres of the flowing fluid, which is the currency pumps are sold in.
                 """,
@@ -170,19 +175,32 @@ def render_tab_pipe_flow():
         ],
     )
 
-    with st.expander("⚠️ Chemical Engineering Nomenclature Alert: Darcy vs. Fanning Friction Factors", expanded=False):
+    with st.expander("⚠️ Nomenclature Alert: Fanning (used here) vs. Darcy (used almost everywhere else)", expanded=False):
         st.markdown(
             r"""
-            One of the most frequent traps in chemical engineering calculations is the confusion between
-            **Darcy ($f_D$)** and **Fanning ($f_F$)** friction factors:
-            * **Darcy friction factor ($f_D$)**: Used predominantly in mechanical and civil engineering (and in the standard Moody diagram).
-              * Laminar flow: $f_D = \frac{64}{Re}$.
-            * **Fanning friction factor ($f_F$)**: Used extensively in chemical engineering textbooks (e.g., *Bird, Stewart, & Lightfoot (BSL)*, *Perry's Chemical Engineers' Handbook*).
-              * Laminar flow: $f_F = \frac{16}{Re}$.
-              * Relation: $f_D = 4 f_F$.
-            * Always check whether your design equation has a factor of 4 or not!
+            Two friction factors are in circulation and they differ by exactly a factor of
+            four. **This app reports Fanning $f_F$ everywhere**, the Moody chart included.
+            * **Fanning $f_F$** — the chemical engineering convention: *Bird, Stewart &
+              Lightfoot*, *Perry's Chemical Engineers' Handbook*, *McCabe, Smith & Harriott*,
+              and drilling / non-Newtonian pipeline hydraulics. It is the wall shear stress
+              made dimensionless, $f_F=\tau_w/(\tfrac12\rho u^2)$, so it drops straight into
+              the Chilton–Colburn analogy and into any wall-stress argument.
+              * Laminar flow: $f_F = \dfrac{16}{Re}$.
+            * **Darcy $f_D$** (Darcy–Weisbach, also called the Moody or Blasius factor) —
+              the convention in:
+              * **civil / environmental engineering** — water distribution, sewers, open
+                channels, hydrology (this is why Manning's $n$ maps to $f_D$);
+              * **mechanical engineering, HVAC and general piping design** — Crane TP-410,
+                ASHRAE duct design, the published Moody chart;
+              * **petroleum and gas pipeline engineering** — Weymouth, Panhandle, AGA;
+              * **aerospace and gas dynamics** — Fanno-line tables are printed as
+                $f_D L^*/D$, which Tab 6 writes as the identical $4 f_F L^*/D$.
+              * Laminar flow: $f_D = \dfrac{64}{Re}$, and $f_D = 4 f_F$.
 
-            The Chilton–Colburn analogy in Tab 4 is $j_H = j_D = f_F/2 = f_D/8$, **not** $f_D/2$.
+            Always check whether the design equation you copied carries the factor of 4.
+            The quick tell is the laminar line: **64/Re is Darcy, 16/Re is Fanning.**
+
+            The Chilton–Colburn analogy in Tab 4 is $j_H = j_D = f_F/2 = f_D/8$, **not** $f_F/8$.
             """
         )
 
@@ -205,7 +223,7 @@ def render_tab_pipe_flow():
         Circular pipe: $\alpha=2$ exactly if laminar; $\alpha\approx 1.06$ if turbulent
         (Tab 4 integrates the profile — do not round it back to a table).
         $h_{\mathrm{shaft}}$ is the pump head this lab solves for.
-        $h_f$ is Darcy–Weisbach; $h_{\mathrm{minor}}=\sum K_L\,u^2/(2g)$.
+        $h_f=4f_F(L/D)u^2/(2g)$ from §2.1; $h_{\mathrm{minor}}=\sum K_L\,u^2/(2g)$.
         For two large tanks, $u_1\approx u_2\approx 0$ and an outlet $K_L=1$ already dumps
         the exit kinetic head — do not add $\alpha u^2/2g$ on top of that $K_L$.
         """
@@ -241,7 +259,7 @@ def render_tab_pipe_flow():
                 \;\Longrightarrow\;\frac{p_1-p_2}{\rho}=u_2(u_2-u_1)$$
                 Momentum is used here rather than energy precisely because momentum does not
                 care that the interior is a violent mess — the same reasoning as the shock in
-                Tab 10.
+                Tab 12.
                 """,
             ),
             (
@@ -277,7 +295,7 @@ def render_tab_pipe_flow():
                 An elbow or a globe valve separates in a geometry no control volume can be
                 drawn around cleanly, so its $K_L$ comes from measurement. The equivalent-length
                 method ($L_e/D$) is the same information in different clothing: setting
-                $K_L=f_D L_e/D$ converts one to the other. Both are approximations at the
+                $K_L=4f_F L_e/D$ converts one to the other. Both are approximations at the
                 $\pm25\%$ level, and both depend on Reynolds number more than their tabulation
                 admits.
                 """,
@@ -339,19 +357,22 @@ def render_tab_pipe_flow():
     st.markdown("### 2.2 The Moody Diagram & Churchill (1977) Correlation")
     render_prose_and_latex(
         r"""
-        In 1944, Lewis Ferry Moody plotted the **Darcy** friction factor as a function of Reynolds number
-        and relative roughness $\varepsilon/D$.
+        In 1944, Lewis Ferry Moody plotted the friction factor against Reynolds number and
+        relative roughness $\varepsilon/D$. **The chart below is drawn in Fanning $f_F$;
+        Moody's original and most reprints of it are in Darcy $f_D = 4f_F$, so every
+        ordinate here is one quarter of the textbook value.**
 
-        * **Laminar Zone ($\mathrm{Re} < 2300$, circular pipe):** Independent of roughness! $f_D = 64/\mathrm{Re}$.
+        * **Laminar Zone ($\mathrm{Re} < 2300$, circular pipe):** Independent of roughness! $f_F = 16/\mathrm{Re}$.
         * **Critical Zone ($2000 < \mathrm{Re} < 4000$):** Flow is intermittently turbulent; highly sensitive.
-        * **Wholly Turbulent Rough Pipe Zone:** Viscous sublayer is thinner than wall asperities; $f_D$ becomes independent of $\mathrm{Re}$ and depends solely on $\varepsilon/D$.
+        * **Wholly Turbulent Rough Pipe Zone:** Viscous sublayer is thinner than wall asperities; $f_F$ becomes independent of $\mathrm{Re}$ and depends solely on $\varepsilon/D$.
         """
     )
     st.markdown(
         r"""
-        The live diamond uses **Churchill's 1977 explicit Darcy formula** — one expression
+        The live diamond uses **Churchill's 1977 explicit formula** — one expression
         from laminar through transition into fully rough turbulence, so we never switch
-        correlations by hand. Colebrook–White is the implicit turbulent cousin
+        correlations by hand. Churchill published it in Darcy form, so the code divides the
+        result by four before plotting. Colebrook–White is the implicit turbulent cousin
         (a root find for $f_D$); Churchill recovers it without iterating.
         S. W. Churchill, *Chem. Eng.* **84**(24) 91–92 (1977).
         """
@@ -361,7 +382,7 @@ def render_tab_pipe_flow():
     )
     render_latex(r"B_{\mathrm{Ch}} = \left(\frac{37530}{\mathrm{Re}}\right)^{16}")
     render_latex(
-        r"f_D = 8\left[\left(\frac{8}{\mathrm{Re}}\right)^{12} + (A_{\mathrm{Ch}}+B_{\mathrm{Ch}})^{-3/2}\right]^{1/12}"
+        r"f_F = \frac{f_D}{4} = 2\left[\left(\frac{8}{\mathrm{Re}}\right)^{12} + (A_{\mathrm{Ch}}+B_{\mathrm{Ch}})^{-3/2}\right]^{1/12}"
     )
     render_symbols(
         [
@@ -377,19 +398,19 @@ def render_tab_pipe_flow():
             ),
             (
                 r"(8/\mathrm{Re})^{12}",
-                r"laminar weight. When $\mathrm{Re}\ll 2300$ this term dominates and $f_D\to 64/\mathrm{Re}$.",
+                r"laminar weight. When $\mathrm{Re}\ll 2300$ this term dominates and $f_F\to 16/\mathrm{Re}$.",
             ),
             (
                 r"B_{\mathrm{Ch}}",
                 r"transition weight. Large near $\mathrm{Re}\sim 10^3$, then vanishes.",
             ),
-            (r"f_D", "Darcy friction factor returned by this formula and plotted on the Moody chart."),
+            (r"f_F", "Fanning friction factor returned by this formula and plotted on the Moody chart. Churchill's own expression returns $f_D=4f_F$."),
         ]
     )
     render_predict(
         "moody_predict",
-        "In fully rough turbulent flow, increasing Re at fixed ε/D will make f_D…",
-        ["keep falling as 64/Re", "become almost independent of Re", "jump discontinuously to zero"],
+        "In fully rough turbulent flow, increasing Re at fixed ε/D will make f_F…",
+        ["keep falling as 16/Re", "become almost independent of Re", "jump discontinuously to zero"],
         "become almost independent of Re",
         "The wholly rough regime is a horizontal Moody line: skin friction is set by ε/D, not viscosity.",
     )
@@ -411,10 +432,10 @@ def render_tab_pipe_flow():
 
     col_k1, col_k2, col_k3 = st.columns(3)
     col_k1.metric("Operating Re", f"{re_pipe_input:,.0f}")
-    col_k2.metric("Darcy Friction Factor f_D", f"{f_op:.4f}")
-    col_k3.metric("Fanning Friction Factor f_F = f_D/4", f"{f_op/4.0:.4f}")
+    col_k2.metric("Fanning Friction Factor f_F", f"{f_op:.4f}")
+    col_k3.metric("Darcy Friction Factor f_D = 4 f_F", f"{f_op * 4.0:.4f}")
 
-    render_what_to_notice("The diamond is (Re, f_D). Laminar is 64/Re; the shaded band is the pipe transition, not a law for cavities.")
+    render_what_to_notice("The diamond is (Re, f_F). Laminar is 16/Re; the shaded band is the pipe transition, not a law for cavities.")
     fig_moody = plot_moody_chart(re_pipe_input, eps_d_input, f_op)
     render_plot(fig_moody, key="tab_pipe_flow-fig_moody")
 
@@ -507,8 +528,8 @@ def render_tab_pipe_flow():
             f"→ α u²/2g = {kinetic_head:.2f} m"
         )
     st.caption(
-        f"Re_D = {re_line:,.0f} ({fluid['name']}) · f_D = {sys_res['f_darcy']:.4f} · "
-        f"f_F = {sys_res['f_fanning']:.4f} · {alpha_caption} "
+        f"Re_D = {re_line:,.0f} ({fluid['name']}) · f_F = {sys_res['f_fanning']:.4f} · "
+        f"f_D = 4 f_F = {sys_res['f_darcy']:.4f} · {alpha_caption} "
         "(shown for the energy equation; outlet K_L = 1 already accounts for exit kinetic dump)."
     )
 
@@ -521,24 +542,24 @@ def render_tab_pipe_flow():
     if ent["L_e"] > pipe_len_m:
         st.warning(
             f"Entrance length L_e ≈ {ent['L_e']:.1f} m ({ent['regime']}, L_e/D = {ent['L_e_over_D']:.0f}) "
-            f"exceeds this pipe L = {pipe_len_m:.0f} m. Darcy–Weisbach assumes fully developed flow."
+            f"exceeds this pipe L = {pipe_len_m:.0f} m. The friction factor assumes fully developed flow."
         )
     else:
         st.caption(
             f"Entrance length L_e ≈ {ent['L_e']:.1f} m = {ent['L_e_over_D']:.1f} D ({ent['regime']}). "
-            "Laminar: 0.06 Re. Turbulent: 4.4 Re^{1/6} (White). Fully developed Darcy applies after L_e."
+            "Laminar: 0.06 Re. Turbulent: 4.4 Re^{1/6} (White). The fully developed f_F applies after L_e."
         )
 
-    render_what_to_notice("Bars split major (skin), minor (K_L), and static lift. Switch the sidebar to Glycerin: Re collapses, f_D → 64/Re, power jumps.")
+    render_what_to_notice("Bars split major (skin), minor (K_L), and static lift. Switch the sidebar to Glycerin: Re collapses, f_F → 16/Re, power jumps.")
     fig_head = plot_cheme_head_loss_breakdown(sys_res)
     render_plot(fig_head, key="tab_pipe_flow-fig_head")
 
     render_self_check(
         "pipe_self_check_fanning",
-        "A ChemE handbook gives f = 16/Re in laminar flow. Which friction factor is that?",
-        ["Darcy f_D", "Fanning f_F", "Fanning times 4"],
-        "Fanning f_F",
-        "f_F = 16/Re and f_D = 64/Re = 4 f_F. Moody charts almost always plot Darcy.",
+        "A civil engineering handbook gives f = 64/Re in laminar flow. Which friction factor is that?",
+        ["Darcy f_D", "Fanning f_F", "Fanning divided by 4"],
+        "Darcy f_D",
+        "f_F = 16/Re (used here) and f_D = 64/Re = 4 f_F. Published Moody charts almost always plot Darcy.",
     )
 
     # -------------------------------------------------------------------------
@@ -729,7 +750,7 @@ def render_tab_pipe_flow():
         For non-circular cross sections (e.g., shell-and-tube or double-pipe heat exchanger annuli,
         rectangular HVAC ducts), friction factor correlations are evaluated using the **hydraulic diameter**:
         $$D_H = \frac{4 \times \text{Cross-Sectional Area}}{\text{Wetted Perimeter}} = \frac{4 A}{P_w}$$
-        Then $\mathrm{Re}_{D_H} = \rho u D_H/\mu$ and the same $f_D(\mathrm{Re}, \varepsilon/D_H)$ goes into Darcy–Weisbach.
+        Then $\mathrm{Re}_{D_H} = \rho u D_H/\mu$ and the same $f_F(\mathrm{Re}, \varepsilon/D_H)$ goes into $\Delta p_f = 4f_F(L/D_H)(\rho u^2/2)$.
         """
     )
     render_symbols(
@@ -855,11 +876,12 @@ def render_tab_pipe_flow():
 
         **Route A — Darcy–Weisbach, the one this course has been using.** Set the friction
         slope equal to the bed slope in uniform flow and use $D_H = 4R_h$:
-        $$S_0 = f_D\frac{1}{D_H}\frac{V^2}{2g}
-        \quad\Longrightarrow\quad V = \sqrt{\frac{2g D_H S_0}{f_D}}$$
-        with $f_D$ from Churchill exactly as in section 2.2. Dimensionally consistent,
-        roughness in metres, valid in any unit system and at any Reynolds number. The solve
-        is implicit because $f_D$ depends on $V$.
+        $$S_0 = 4f_F\frac{1}{D_H}\frac{V^2}{2g}
+        \quad\Longrightarrow\quad V = \sqrt{\frac{2g D_H S_0}{4f_F}}$$
+        with $f_F$ from Churchill exactly as in section 2.2 (civil texts write the same thing
+        with $f_D = 4f_F$ and no leading 4). Dimensionally consistent, roughness in metres,
+        valid in any unit system and at any Reynolds number. The solve is implicit because
+        $f_F$ depends on $V$.
 
         **Route B — Manning–Strickler, the one civil practice actually uses.**
         $$V = \frac{1}{n}R_h^{2/3}S_0^{1/2},
@@ -869,11 +891,11 @@ def render_tab_pipe_flow():
         factor rather than changing $n$.
 
         **The bridge.** Equating the two gives
-        $$n = R_h^{1/6}\sqrt{\frac{f_D}{8g}}$$
-        which is why Manning survives: in fully rough turbulent flow $f_D$ is nearly constant,
+        $$n = R_h^{1/6}\sqrt{\frac{f_F}{2g}} \;=\; R_h^{1/6}\sqrt{\frac{f_D}{8g}}$$
+        which is why Manning survives: in fully rough turbulent flow $f_F$ is nearly constant,
         so $n$ varies only as $R_h^{1/6}$ — a weak enough dependence to hide inside a
         tabulated constant. Manning is therefore reliable in rough, fully turbulent channels
-        and unreliable in smooth or small ones, where $f_D$ still depends on Reynolds number.
+        and unreliable in smooth or small ones, where $f_F$ still depends on Reynolds number.
         """
     )
     render_callout(
@@ -969,7 +991,7 @@ def render_tab_pipe_flow():
                 r"""
                 A long surface wave in shallow water travels at $c=\sqrt{gD_h}$ relative to the
                 water, so $\mathrm{Fr}=V/c$ compares how fast the flow moves with how fast news
-                can travel through it — precisely the role $M=u/a$ plays in Tab 10. Below
+                can travel through it — precisely the role $M=u/a$ plays in Tab 12. Below
                 critical, waves outrun the flow and a downstream gate controls the depth here;
                 above critical, nothing reaches upstream, and the return to subcritical must
                 happen discontinuously in a hydraulic jump. The hydraulic jump is the free-
@@ -980,7 +1002,7 @@ def render_tab_pipe_flow():
             (
                 "Why roughness is missing, and why that is useful",
                 r"""
-                Nothing in this derivation mentioned $n$, $f_D$ or $S_0$ — only $Q$ and the
+                Nothing in this derivation mentioned $n$, $f_F$ or $S_0$ — only $Q$ and the
                 cross-section. Critical depth is therefore a property of geometry and discharge
                 alone. That is exactly what makes a weir or flume a flow meter: force the flow
                 through critical, measure one depth, and read $Q$ without knowing anything
@@ -1156,7 +1178,7 @@ def render_tab_pipe_flow():
                 st.caption(
                     f"**Darcy cross-check at the same depth:** with ε = "
                     f"{CHANNEL_ROUGHNESS[ch_material] * 1000:.0f} mm, Churchill gives "
-                    f"f_D = {darcy['f_darcy']:.4f} at Re = {darcy['reynolds']:.2e}, hence "
+                    f"f_F = {darcy['f_fanning']:.4f} (f_D = {darcy['f_darcy']:.4f}) at Re = {darcy['reynolds']:.2e}, hence "
                     f"Q = {darcy['discharge']:.2f} m³/s versus Manning's {ch_q:.2f} m³/s. "
                     f"The Darcy route implies n = {darcy['equivalent_manning_n']:.4f} against "
                     f"the tabulated {MANNING_N[ch_material]:.3f}. Disagreement of this size is "

@@ -44,7 +44,7 @@ def render_network_lab():
         a, b, c, e = st.columns(4)
         a.metric('Inside diameter', f'{d*1000:.3f} mm')
         b.metric('Reynolds number', f'{re:,.0f}')
-        c.metric('Darcy friction factor', f'{f:.5f}' if q else 'Undefined at rest')
+        c.metric('Fanning friction factor', f'{f:.5f}' if q else 'Undefined at rest')
         e.metric('Frictional pressure drop', f'{rho*9.81*head/1000:.3f} kPa')
         st.caption(f'Velocity {velocity:.3f} m/s · loss {head:.3f} m · ε/D = {pipe["roughness_m"]/d:.6g}. Only the selected size and roughness definitions are used.')
         if mode == 'Schedule':
@@ -54,16 +54,16 @@ def render_network_lab():
     except ValueError as error:
         st.error(str(error))
     with st.expander('Churchill: evaluate each term in order'):
-        prose(r'''Start with the actual bore, then velocity and Reynolds number. Churchill returns the **Darcy** factor; the Fanning factor is one quarter of it.
+        prose(r'''Start with the actual bore, then velocity and Reynolds number. Churchill is published in **Darcy** form; this lab divides by four and reports **Fanning** $f_F$, as everywhere else in the app.
 $$u=4Q/(\pi D^2),\quad Re=\rho uD/\mu,\quad r=\varepsilon/D$$
 $$A=\left[2.457\ln\left(\frac{1}{(7/Re)^{0.9}+0.27r}\right)\right]^{16},\qquad B=(37530/Re)^{16}$$
-$$f_D=8\left[(8/Re)^{12}+(A+B)^{-3/2}\right]^{1/12},\quad f_F=f_D/4$$
-$$h_L=(f_D L/D+K)u^2/(2g),\qquad \Delta p_f=\rho gh_L$$
-At small Reynolds number this approaches 64/Re. At zero flow the pressure loss is zero although the friction factor is undefined. Elevation and endpoint velocity changes belong in the full energy balance; they are not frictional pressure loss.''')
+$$f_F=\frac{f_D}{4}=2\left[(8/Re)^{12}+(A+B)^{-3/2}\right]^{1/12}$$
+$$h_L=(4f_F L/D+K)u^2/(2g),\qquad \Delta p_f=\rho gh_L$$
+At small Reynolds number $f_F$ approaches 16/Re. At zero flow the pressure loss is zero although the friction factor is undefined. Elevation and endpoint velocity changes belong in the full energy balance; they are not frictional pressure loss.''')
         if pipe is not None and q and re >= 1:
             ach = (2.457*math.log(1/((7/re)**.9+.27*pipe['roughness_m']/d)))**16
             bch = (37530/re)**16
-            st.write(f'Current substitution: A = {ach:.4e}; B = {bch:.4e}; fD = {f:.6f}; fF = {f/4:.6f}.')
+            st.write(f'Current substitution: A = {ach:.4e}; B = {bch:.4e}; fF = {f:.6f}; fD = 4 fF = {f*4:.6f}.')
     st.caption(f'[Nominal steel-pipe dimensions: Wheatland manufacturer table]({PIPE_DATA_SOURCE}). ID is calculated from nominal OD and wall, not a pressure rating. Corrosion, lining and tolerances change the bore; material roughness values are illustrative estimates.')
 
     st.markdown('### 2.7 Solve a piping network')
@@ -72,7 +72,7 @@ At small Reynolds number this approaches 64/Re. At zero flow the pressure loss i
 **1 · Define nodes.** A Pressure node fixes gauge pressure and elevation; the solver finds its supply or withdrawal. A Junction fixes elevation and external demand; the solver finds pressure. Positive demand is withdrawal, negative demand is injection. A junction without demand has zero net flow.
 $$\sum Q_{\mathrm{out},i}-\sum Q_{\mathrm{in},i}+d_i=0$$
 **2 · Define edges.** Use piezometric head at junctions. The edge model includes straight-pipe and entered minor losses; it treats each junction as a common hydraulic-head connection.
-$$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{Q_{ij}|Q_{ij}|}{2gA^2}$$
+$$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(4f_F\frac{L}{D}+K\right)\frac{Q_{ij}|Q_{ij}|}{2gA^2}$$
 **3 · Iterate unknown heads.** Guess junction heads, invert each monotone pipe relation to obtain signed flows, calculate each junction imbalance, and adjust heads until those residuals vanish. Friction is recomputed at every flow. Summing head differences around a loop gives zero automatically.
 **4 · Verify.** Inspect continuity residuals, edge energy residuals and pressure plausibility. Every connected component needs a prescribed-pressure node. This is a steady, single-phase incompressible model with no pump curves or automatic valve logic.''')
     render_derivation(
@@ -96,9 +96,9 @@ $$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{Q_
                 r"""
                 The solver's unknowns are flows, not velocities, so substitute $u=Q/A$ into
                 Darcy–Weisbach plus the minor-loss sum of §2.1:
-                $$H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{u^{2}}{2g}
-                =\left(f_D\frac{L}{D}+K\right)\frac{Q^{2}}{2gA^{2}}$$
-                Note $f_D$ is **not** a constant here: it depends on $\mathrm{Re}$, hence on
+                $$H_i-H_j=\left(4f_F\frac{L}{D}+K\right)\frac{u^{2}}{2g}
+                =\left(4f_F\frac{L}{D}+K\right)\frac{Q^{2}}{2gA^{2}}$$
+                Note $f_F$ is **not** a constant here: it depends on $\mathrm{Re}$, hence on
                 $Q$, through Churchill. That is what makes the network problem non-linear.
                 """,
             ),
@@ -142,8 +142,8 @@ $$H_i=z_i+\frac{p_i}{\rho g},\quad H_i-H_j=\left(f_D\frac{L}{D}+K\right)\frac{Q_
                 Guess the junction heads. Each pipe relation is monotone in $\Delta H$, so it
                 can be inverted for a signed flow,
                 $$Q_{ij}=\operatorname{sign}(\Delta H)\,A
-                \sqrt{\frac{2g\,|\Delta H|}{f_D L/D+K}}$$
-                with $f_D$ re-evaluated at the resulting $\mathrm{Re}$. Substituting those
+                \sqrt{\frac{2g\,|\Delta H|}{4f_F L/D+K}}$$
+                with $f_F$ re-evaluated at the resulting $\mathrm{Re}$. Substituting those
                 flows into Step 4 gives one residual per junction, and the residuals are smooth
                 and monotone in the heads, so a Newton correction converges quickly. The
                 reported *mass residual* is how close Step 4 came to zero; the *energy

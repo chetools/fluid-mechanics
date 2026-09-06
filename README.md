@@ -1,6 +1,6 @@
 # Fluid Mechanics
 
-An interactive Streamlit application for fluid mechanics and transport phenomena, in twelve chapters.
+An interactive Streamlit application for fluid mechanics and transport phenomena, in fourteen chapters.
 
 [![Deploy with Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=chetools/fluid-mechanics&branch=master&mainModule=app.py)
 
@@ -10,7 +10,7 @@ The application guides students and engineers from first-principles momentum con
 
 ## What It Does
 
-The interface features a persistent physical KPI strip above twelve chapters, ordered from plant energy through gas dynamics and CFD. **One chapter renders at a time** — the chapter selector looks like a tab bar but only the selected chapter is built, which is what keeps a course this size responsive:
+The interface features a persistent physical KPI strip above fourteen chapters, ordered from plant energy through gas dynamics and CFD. **One chapter renders at a time** — the chapter selector looks like a tab bar but only the selected chapter is built, which is what keeps a course this size responsive:
 
 | Tab | Contents |
 |---|---|
@@ -19,13 +19,15 @@ The interface features a persistent physical KPI strip above twelve chapters, or
 | **📐 3. Dimensional Analysis** | Experimental collapse, SVD kernel **rotated** onto Re/Eu/$\varepsilon/D$, IT-π (maximum information) |
 | **🌪️ 4. Laminar $f$, Turbulence & Straws** | Force balance $\Rightarrow f_D=64/\mathrm{Re}$ vs Moody; straw-packing vs open-pipe pump kW |
 | **⚗️ 5. Euler (1D → 3D)** | Continuity, differential Euler, Venturi, d'Alembert |
-| **🧱 6. Stress & Navier–Stokes** | Cauchy stress, $\mathbf{D}+\boldsymbol{\Omega}$, Newtonian NS, power-law pipe |
-| **📏 7. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, step-by-step Blasius derivation, cylinder separation |
-| **8. External Flow** | Stokes derivation, settling, Schiller–Naumann and drag crisis |
-| **9. Turbomachinery** | Angular momentum, 3D impeller geometry and blade angles, velocity triangles, compressor/turbine efficiencies, intercooling, and a worked air-separation plant |
-| **10. Compressible Flow** | Stepwise nozzle derivation, choking calculator, normal shocks, Fanno and Rayleigh flow, and choked flow as the basis of pressure-relief sizing |
-| **💻 11. CFD (Projection)** | Incompressible Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
-| **📖 12. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
+| **🧱 6. Stress & Navier–Stokes** | Cauchy stress, $\mathbf{D}+\boldsymbol{\Omega}$, Newtonian NS, and the one assumption it leaves unpaid for |
+| **🧪 7. Newtonian & Non-Newtonian** | Where $\mu$ comes from and what the linear law assumes; shear thinning, thickening, yield stress and thixotropy as *structures*; flow-curve lab; Herschel–Bulkley pipe flow with an unyielded plug checked against Buckingham–Reiner; Metzner–Reed sizing; Weissenberg and Deborah |
+| **📏 8. Exact Solutions & BL** | Couette, Hagen–Poiseuille, Stokes, step-by-step Blasius derivation, cylinder separation |
+| **9. External Flow** | Stokes derivation, settling, Schiller–Naumann and drag crisis |
+| **⚖️ 10. Momentum Balances in Practice** | The integral (control-volume) balance and the classical devices it settles: jets on flat plates and Pelton buckets, anchor forces on reducing bends, the sudden expansion read for pressure recovery as well as loss, hydraulic jumps and conjugate depths, sharp-crested/V-notch/broad-crested weirs, sluice-gate loads, the rocket thrust and Tsiolkovsky equations, and the actuator disc up to the Betz limit |
+| **11. Turbomachinery** | Angular momentum, 3D impeller geometry and blade angles, velocity triangles, compressor/turbine efficiencies, intercooling, and a worked air-separation plant |
+| **12. Compressible Flow** | Stepwise nozzle derivation, choking calculator, normal shocks, rocket nozzles (thrust coefficient, sea-level against vacuum, and contour design by the method of characteristics), Fanno and Rayleigh flow, and choked flow as the basis of pressure-relief sizing |
+| **💻 13. CFD (Projection)** | Incompressible Chorin projection; cavity with $t^*$ and Ghia only at Re = 100 |
+| **📖 14. Reference & Audit** | Nomenclature, tensor primer, validity matrix |
 
 ---
 
@@ -34,9 +36,9 @@ The interface features a persistent physical KPI strip above twelve chapters, or
 Each chapter opens with a guiding question, prerequisites, a core equation, and
 an ordered reading route. Detailed derivations expand on demand; the closing
 "Put it together" card gives a concrete experiment and connects to the next chapter.
-The course moves through plant balances, scaling and regimes, local momentum,
-then external flow, turbomachinery, gas dynamics and numerical verification. All twelve
-chapter buttons wrap on narrow screens. Selecting a chapter is a Streamlit rerun rather
+The course moves through plant balances, scaling and regimes, local momentum and
+material behaviour, then external flow, turbomachinery, gas dynamics and numerical
+verification. All fourteen chapter buttons wrap on narrow screens. Selecting a chapter is a Streamlit rerun rather
 than a client-side tab switch; widget state is preserved by explicit keys.
 
 ### Transport analogies, and where correlations come from
@@ -55,9 +57,38 @@ similarity variable into the energy equation gives
 the solver returns 0.33206 against 0.332057. The familiar `0.332 Pr^(1/3)` is then
 shown to be a ~2% fit to the solved ODE over `Pr = 0.6` to 100.
 
+### Constitutive behaviour, from the structure outward
+
+Chapter 7 treats "non-Newtonian" as a statement about microstructure rather than
+a family of curve fits. It first recovers `tau = mu du/dy` from momentum carried
+across a plane by molecules, which exposes the two assumptions the law needs —
+nothing for shear to orient, and a relaxation time far shorter than the flow —
+and every later section is one of those two failing. The pipe lab reuses chapter
+4's plug balance unchanged, because it is a momentum statement: a yield stress
+then converts a stress threshold into a *radius*, and the unyielded core appears
+without being imposed. The integrated Herschel–Bulkley flow rate is checked live
+against the closed-form Buckingham–Reiner result rather than asserted, and
+`src/physics/non_newtonian.py` keeps that closed form solely as a verification
+target. Thixotropy is modelled with explicit structure kinetics, so the
+hysteresis loop a rheometer draws is derived rather than described — and the
+chapter says plainly that the loop's area is a protocol, not a material property.
+
+### Momentum where energy cannot go
+
+Chapter 10 is the one chapter that deliberately refuses to model an interior. Every
+result is the Reynolds transport theorem applied to linear momentum on a control
+volume the reader chooses, so it holds through separation, a turbulent roller or a
+combustion chamber. Where a second balance is needed it is stated as such: the
+Borda-Carnot loss and the jump's dissipation come from subtracting energy from
+momentum, and the gap between the two is the measurement. Every number on the page
+is computed live in `src/physics/momentum.py`, whose tests re-derive the closed
+forms independently - the conjugate depth by rooting the momentum function
+numerically, the weir constant by integrating the nappe, and the Betz limit by
+maximising C_P rather than quoting 16/27.
+
 ### Pressure relief
 
-Chapter 10 closes with the reason choking matters industrially. Above the critical
+Chapter 12 closes with the reason choking matters industrially. Above the critical
 ratio the throat cannot detect the downstream pressure, so a relief device's
 capacity is a property of the vessel and the hole, not of the header it discharges
 into — which is what makes it sizeable at all. The calculator sizes a throat, flags
@@ -81,7 +112,7 @@ Chapter 2 then continues with real pipe sizes (2.6) and the editable network lab
 
 ### Impeller geometry and air separation
 
-Chapter 9 builds the blade camberline by integrating the definition of the blade
+Chapter 11 builds the blade camberline by integrating the definition of the blade
 angle, `tan(beta) = dr / (r d(theta))`, so the 3D figure, the true-shape velocity
 triangle and the reported numbers cannot disagree. Angles are measured **from the
 tangential direction**; the complementary from-meridional value is reported beside
@@ -109,7 +140,7 @@ they do not model real-gas, flashing or two-phase behavior. New calculators reta
 explicit SI labels independently of the existing nondimensional display toggle.
 
 The SVG teaching diagrams render through Streamlit's native image API. Most are
-hand-authored; the impeller figures in chapter 9 are **projections of computed
+hand-authored; the impeller figures in chapter 11 are **projections of computed
 geometry** from `src/physics/impeller.py`, so a blade angle drawn there is the same
 angle the velocity-triangle arithmetic uses.
 Diagrams and plots scroll horizontally on small screens to preserve readable
@@ -155,7 +186,7 @@ uv run pytest
 
 The optional live-browser check is `uv run --with playwright python tests/browser_smoke.py`
 with the app running on port 8501 and Microsoft Edge installed. It verifies that
-each of the twelve chapters finishes its run, then exercises input persistence
+each of the fourteen chapters finishes its run, then exercises input persistence
 across chapter changes, the network solve and CSV download. Automatic filesystem watching and overlapping fast reruns are
 disabled in the verified Windows configuration; refresh the browser after editing
 source files. See the development notes for the observed failure and the limits

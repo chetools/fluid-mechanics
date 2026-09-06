@@ -153,13 +153,13 @@ def test_conduction_floor_breaks_the_pure_power_law_ratio():
     assert pair["ratio"] > 1.0
 
 
-def test_chilton_colburn_relates_j_to_darcy_over_eight():
+def test_chilton_colburn_relates_j_to_fanning_over_two():
     result = chilton_colburn(reynolds=1e5, prandtl=7.0, nusselt=500.0,
-                             friction_factor_darcy=0.018)
+                             friction_factor_fanning=0.0045)
     assert result["stanton"] == pytest.approx(500.0 / (1e5 * 7.0))
     assert result["j_h"] == pytest.approx(result["stanton"] * 7.0 ** (2 / 3))
-    assert result["j_from_friction"] == pytest.approx(0.018 / 8.0)
-    assert result["friction_factor_fanning"] == pytest.approx(0.018 / 4.0)
+    assert result["j_from_friction"] == pytest.approx(0.0045 / 2.0)
+    assert result["friction_factor_darcy"] == pytest.approx(0.0045 * 4.0)
 
 
 def test_sweep_stays_inside_the_declared_range():

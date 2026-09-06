@@ -317,6 +317,9 @@ def diagram_model_selection() -> str:
         ("Pressure drop in a long pipe", "Head balance + friction factor", "Check regime, entry length, fittings", ACCENT),
         ("Acceleration through a nozzle", "Continuity + Euler / Bernoulli", "Check losses and compressibility", SUCCESS),
         ("Shear near a moving wall", "Viscous momentum + no slip", "Check geometry and constitutive law", SHEAR),
+        ("Force on a control volume", "Reynolds transport theorem", "Check where the surface is cut", PRESSURE),
+        ("Shaft work in a rotor", "Euler turbomachinery equation", "Check absolute vs relative velocity", WARNING),
+        ("Nozzle or shock in a gas", "Isentropic relations + normal shock", "Check choking and stagnation losses", INERTIA),
         ("Recirculation in a cavity", "Numerical Navier–Stokes", "Check mass, grid, time, benchmark", VORTICITY),
     ]
     body = ""
@@ -325,14 +328,17 @@ def diagram_model_selection() -> str:
         body += f'<rect x="20" y="{y-24}" width="780" height="54" rx="6" fill="{rgba(color,.07)}" stroke="{BORDER}"/>'
         for x, label in ((34, question), (291, model), (545, check)):
             body += f'<text x="{x}" y="{y+7}" fill="{color if x == 291 else TEXT_MUTED}" font-size="12">{escape(label)}</text>'
-    return f'''<svg viewBox="0 0 820 352" width="100%" height="352" xmlns="http://www.w3.org/2000/svg"
+    last_y = 94 + 65 * (len(rows) - 1)
+    caption_y = last_y + 47
+    viewbox_height = caption_y + 16
+    return f'''<svg viewBox="0 0 820 {viewbox_height}" width="100%" height="{viewbox_height}" xmlns="http://www.w3.org/2000/svg"
       style="background: {SURFACE}; border-radius: 12px; border: 1px solid {BORDER}; font-family: sans-serif;">
       <text x="28" y="32" fill="{TEXT}" font-size="18" font-weight="600">Choose the model by the question</text>
       <text x="34" y="57" fill="{ACCENT}" font-size="11">WHAT DO YOU NEED?</text>
       <text x="291" y="57" fill="{ACCENT}" font-size="11">START WITH</text>
       <text x="545" y="57" fill="{ACCENT}" font-size="11">BEFORE TRUSTING THE ANSWER</text>
       {body}
-      <text x="28" y="336" fill="{TEXT_DIM}" font-size="12">All four conserve mass and momentum. The assumptions decide which terms and details remain.</text>
+      <text x="28" y="{caption_y}" fill="{TEXT_DIM}" font-size="12">All rows conserve mass and momentum. The assumptions decide which terms and details remain.</text>
     </svg>'''
 
 
@@ -761,9 +767,16 @@ def diagram_reynolds_experiment() -> str:
 
 def diagram_laminar_vs_turbulent_profiles() -> str:
     """Side-by-side comparison of laminar parabolic vs turbulent blunt velocity profiles."""
+    # The 1/7 law has a cusp at r = 0 because it uses |r|; the real profile is
+    # smooth there. Round |r/R| as sqrt((r/R)^2 + eps^2) so the nose is blunt
+    # instead of pointed, at the cost of ~2 px of centreline velocity.
+    def _turb_x(y: float) -> float:
+        t = (y - 150.0) / 60.0
+        s = (t * t + 0.12**2) ** 0.5
+        return 485 + 145 * (1 - min(s, 1.0)) ** (1 / 7)
+
     turbulent_path = "M " + " L ".join(
-        f"{485 + 145 * (1 - abs((y - 150) / 60)) ** (1 / 7):.2f},{y}"
-        for y in range(90, 211)
+        f"{_turb_x(y):.2f},{y}" for y in range(90, 211)
     )
     return f"""
     <svg viewBox="0 0 740 300" width="100%" height="300" xmlns="http://www.w3.org/2000/svg"
@@ -965,7 +978,7 @@ def diagram_power_law() -> str:
         <text x="400" y="140" fill="{TEXT}" font-size="13">u_max/u_avg = (3n+1)/(n+1)</text>
         <text x="400" y="164" fill="{TEXT_DIM}" font-size="12">n = 1: ratio 2 (Hagen–Poiseuille).</text>
         <text x="400" y="181" fill="{TEXT_DIM}" font-size="12">Smaller n gives a flatter core.</text>
-        <text x="400" y="196" fill="{TEXT_DIM}" font-size="12">Re_MR &lt; ~2100: f_D = 64/Re_MR.</text>
+        <text x="400" y="196" fill="{TEXT_DIM}" font-size="12">Re_MR &lt; ~2100: f_F = 16/Re_MR (Darcy f_D = 64/Re_MR).</text>
     </svg>
     """
 
@@ -1074,7 +1087,7 @@ def diagram_canal_section() -> str:
         <line x1="90" y1="200" x2="690" y2="200" stroke="{ACCENT}" stroke-width="2.5"/>
         <text x="300" y="192" fill="{ACCENT}" font-size="12.5" font-weight="600">free surface &#183; top width T = b + 2zy</text>
 
-        <path d="M 120 260 L 150 320 L 630 320 L 660 260" fill="none" stroke="{SHEAR}" stroke-width="4"/>
+        <path d="M 90 200 L 150 320 L 630 320 L 690 200" fill="none" stroke="{SHEAR}" stroke-width="4"/>
         <path d="M 60 140 L 150 320 L 630 320 L 720 140" fill="none" stroke="{TEXT_MUTED}" stroke-width="2.5"/>
         <text x="250" y="344" fill="{SHEAR}" font-size="12.5" font-weight="700">wetted perimeter P<tspan dy="3" font-size="9">w</tspan><tspan dy="-3"></tspan> = b + 2y&#8730;(1+z&#178;) &#183; the only surface carrying shear</text>
 
@@ -1393,3 +1406,883 @@ def diagram_relief_valve() -> str:
         <text x="60" y="408" fill="{TEXT_DIM}" font-size="11">Back pressure drops out only while flow stays choked; real valve and piping effects are separate.</text>
     </svg>
     """
+
+
+# =============================================================================
+# Newtonian and non-Newtonian fluids: why the linear law holds, and what breaks it
+# =============================================================================
+
+def diagram_newtonian_origin() -> str:
+    """Where tau = mu du/dy comes from, and the two assumptions hiding in it."""
+    gamma = "&#947;&#775;"      # gamma with a dot above
+    return f"""
+    <svg viewBox="0 0 880 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">A Newtonian fluid is not a fluid with a special viscosity &#8212; it is one with nothing to remember</text>
+        <text x="24" y="52" fill="{TEXT_DIM}" font-size="12">Left: the momentum bookkeeping that makes the law linear. Right: the two facts about the microstructure that let it be written at all.</text>
+
+        <rect x="16" y="68" width="440" height="342" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="94" fill="{ACCENT}" font-size="13.5" font-weight="700">Momentum crossing a plane between two layers</text>
+
+        <line x1="60" y1="120" x2="410" y2="120" stroke="{BORDER_STRONG}" stroke-width="3"/>
+        <line x1="60" y1="330" x2="410" y2="330" stroke="{BORDER_STRONG}" stroke-width="3"/>
+        <line x1="60" y1="225" x2="410" y2="225" stroke="{TEXT_DIM}" stroke-width="1.4" stroke-dasharray="6,4"/>
+        <text x="316" y="218" fill="{TEXT_DIM}" font-size="11.5">imaginary plane, area A</text>
+
+        <line x1="80" y1="140" x2="200" y2="140" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="80" y1="180" x2="168" y2="180" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="80" y1="225" x2="140" y2="225" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="80" y1="270" x2="112" y2="270" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <text x="212" y="145" fill="{ACCENT}" font-size="12">u(y): faster above</text>
+
+        <circle cx="250" cy="196" r="7" fill="{rgba(SUCCESS,0.35)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <circle cx="292" cy="256" r="7" fill="{rgba(PRESSURE,0.35)}" stroke="{PRESSURE}" stroke-width="1.6"/>
+        <path d="M 250 196 Q 264 226 292 252" fill="none" stroke="{SUCCESS}" stroke-width="2" marker-end="url(#arrow-green)"/>
+        <path d="M 292 256 Q 274 228 252 202" fill="none" stroke="{PRESSURE}" stroke-width="2" marker-end="url(#arrow-red)"/>
+        <text x="306" y="196" fill="{SUCCESS}" font-size="11.5">a fast molecule drops down</text>
+        <text x="306" y="212" fill="{SUCCESS}" font-size="11.5">and speeds the slow layer up</text>
+        <text x="306" y="276" fill="{PRESSURE}" font-size="11.5">a slow one rises</text>
+        <text x="306" y="292" fill="{PRESSURE}" font-size="11.5">and drags the fast layer back</text>
+
+        <text x="34" y="366" fill="{TEXT}" font-size="12.5">Each crossing carries momentum m&#183;&#916;u, and &#916;u across one mean free path is (du/dy)&#8467;.</text>
+        <text x="34" y="386" fill="{TEXT}" font-size="12.5">The crossing rate is set by thermal speed, which the flow does not change, so the flux is</text>
+        <text x="34" y="406" fill="{SUCCESS}" font-size="14" font-family="'JetBrains Mono', monospace">&#964; = &#956; du/dy &#8212; strictly proportional, with &#956; a property of the fluid alone.</text>
+
+        <rect x="472" y="68" width="392" height="150" rx="8" fill="{rgba(SUCCESS,0.10)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="490" y="94" fill="{SUCCESS}" font-size="13.5" font-weight="700">Assumption 1 &#183; nothing to orient</text>
+        <text x="490" y="118" fill="{TEXT}" font-size="12">The molecules are small and round on the scale of the flow.</text>
+        <text x="490" y="138" fill="{TEXT}" font-size="12">Shear cannot line them up, stretch them or pack them into</text>
+        <text x="490" y="158" fill="{TEXT}" font-size="12">chains, so the fluid looks the same at every shear rate and</text>
+        <text x="490" y="178" fill="{TEXT}" font-size="12">&#956; cannot depend on {gamma}.</text>
+        <text x="490" y="204" fill="{TEXT_DIM}" font-size="11.5">Break it and you get shear thinning, thickening or a yield stress.</text>
+
+        <rect x="472" y="232" width="392" height="150" rx="8" fill="{rgba(VORTICITY,0.10)}" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <text x="490" y="258" fill="{VORTICITY}" font-size="13.5" font-weight="700">Assumption 2 &#183; no memory</text>
+        <text x="490" y="282" fill="{TEXT}" font-size="12">Any distortion relaxes in about 10&#8315;&#185;&#178; s, which is far shorter</text>
+        <text x="490" y="302" fill="{TEXT}" font-size="12">than the time any flow takes to deform a parcel. By the time</text>
+        <text x="490" y="322" fill="{TEXT}" font-size="12">the next layer slides past, the structure is already restored,</text>
+        <text x="490" y="342" fill="{TEXT}" font-size="12">so &#964; can depend on the strain rate *now* and on nothing else.</text>
+        <text x="490" y="368" fill="{TEXT_DIM}" font-size="11.5">Break it and you get elasticity, normal stresses and thixotropy.</text>
+
+        <text x="472" y="406" fill="{WARNING}" font-size="12.5">Both assumptions are about the microstructure, not about the equations. That is why a "non-Newtonian" fluid is a structural fact.</text>
+    </svg>
+    """
+
+
+def diagram_microstructure_gallery() -> str:
+    """Four departures from Newtonian behaviour, each drawn as its structure."""
+    return f"""
+    <svg viewBox="0 0 900 560" width="100%" height="560" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">What the fluid is made of, and what shear does to it</text>
+        <text x="24" y="52" fill="{TEXT_DIM}" font-size="12">In each card: the structure at rest on the left, the same structure under strong shear on the right.</text>
+
+        <rect x="16" y="68" width="428" height="222" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="94" fill="{SHEAR}" font-size="13.5" font-weight="700">Shear thinning (pseudoplastic) &#183; n &lt; 1</text>
+        <path d="M 46 128 q 14 -18 26 0 q 14 18 26 0 q 12 -20 24 -2" fill="none" stroke="{SHEAR}" stroke-width="2"/>
+        <path d="M 52 158 q 16 16 30 -2 q 12 -16 26 4" fill="none" stroke="{SHEAR}" stroke-width="2"/>
+        <path d="M 44 190 q 20 -14 34 4 q 12 12 26 -6" fill="none" stroke="{SHEAR}" stroke-width="2"/>
+        <text x="54" y="216" fill="{TEXT_DIM}" font-size="11.5">at rest: random coils, entangled</text>
+        <line x1="176" y1="160" x2="216" y2="160" stroke="{TEXT_DIM}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+        <text x="168" y="146" fill="{TEXT_DIM}" font-size="11">shear</text>
+        <line x1="238" y1="126" x2="336" y2="122" stroke="{SHEAR}" stroke-width="2"/>
+        <line x1="242" y1="152" x2="342" y2="150" stroke="{SHEAR}" stroke-width="2"/>
+        <line x1="236" y1="180" x2="338" y2="176" stroke="{SHEAR}" stroke-width="2"/>
+        <text x="240" y="216" fill="{TEXT_DIM}" font-size="11.5">aligned, disentangled: they slide</text>
+        <text x="34" y="244" fill="{TEXT}" font-size="12">Shear orients the chains faster than Brownian motion can re-randomise them,</text>
+        <text x="34" y="262" fill="{TEXT}" font-size="12">so there is less entanglement left to resist. Paint, blood, polymer melts.</text>
+        <text x="34" y="282" fill="{SUCCESS}" font-size="11.5">Useful: it pumps like a thin liquid and sits still on the wall like a thick one.</text>
+
+        <rect x="456" y="68" width="428" height="222" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="474" y="94" fill="{PRESSURE}" font-size="13.5" font-weight="700">Shear thickening (dilatant) &#183; n &gt; 1</text>
+        <circle cx="500" cy="130" r="8" fill="{rgba(PRESSURE,0.3)}" stroke="{PRESSURE}"/>
+        <circle cx="534" cy="158" r="8" fill="{rgba(PRESSURE,0.3)}" stroke="{PRESSURE}"/>
+        <circle cx="498" cy="186" r="8" fill="{rgba(PRESSURE,0.3)}" stroke="{PRESSURE}"/>
+        <circle cx="546" cy="120" r="8" fill="{rgba(PRESSURE,0.3)}" stroke="{PRESSURE}"/>
+        <circle cx="560" cy="192" r="8" fill="{rgba(PRESSURE,0.3)}" stroke="{PRESSURE}"/>
+        <text x="486" y="216" fill="{TEXT_DIM}" font-size="11.5">at rest: dispersed, lubricated</text>
+        <line x1="596" y1="160" x2="636" y2="160" stroke="{TEXT_DIM}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+        <text x="590" y="146" fill="{TEXT_DIM}" font-size="11">shear</text>
+        <circle cx="672" cy="134" r="8" fill="{rgba(PRESSURE,0.5)}" stroke="{PRESSURE}"/>
+        <circle cx="694" cy="150" r="8" fill="{rgba(PRESSURE,0.5)}" stroke="{PRESSURE}"/>
+        <circle cx="716" cy="166" r="8" fill="{rgba(PRESSURE,0.5)}" stroke="{PRESSURE}"/>
+        <circle cx="738" cy="182" r="8" fill="{rgba(PRESSURE,0.5)}" stroke="{PRESSURE}"/>
+        <line x1="666" y1="128" x2="744" y2="188" stroke="{PRESSURE}" stroke-width="2.5" stroke-dasharray="4,3"/>
+        <text x="672" y="216" fill="{TEXT_DIM}" font-size="11.5">hydroclusters carry the load</text>
+        <text x="474" y="244" fill="{TEXT}" font-size="12">Squeezed together faster than the liquid can drain from between them, the</text>
+        <text x="474" y="262" fill="{TEXT}" font-size="12">particles touch and form force chains &#8212; and a packed bed must dilate to shear.</text>
+        <text x="474" y="282" fill="{WARNING}" font-size="11.5">Hazard: a pump that thickens under its own shear can stall. Cornstarch, dense slurries.</text>
+
+        <rect x="16" y="304" width="428" height="240" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="330" fill="{VORTICITY}" font-size="13.5" font-weight="700">Yield stress &#183; a solid until you push hard enough</text>
+        <circle cx="70" cy="372" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="112" cy="360" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="150" cy="386" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="96" cy="404" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="140" cy="424" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="60" cy="418" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <line x1="70" y1="372" x2="112" y2="360" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <line x1="112" y1="360" x2="150" y2="386" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <line x1="70" y1="372" x2="96" y2="404" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <line x1="96" y1="404" x2="140" y2="424" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <line x1="96" y1="404" x2="60" y2="418" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <line x1="150" y1="386" x2="140" y2="424" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <text x="46" y="452" fill="{TEXT_DIM}" font-size="11.5">bonded network spans the sample</text>
+        <line x1="196" y1="396" x2="236" y2="396" stroke="{TEXT_DIM}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+        <text x="184" y="382" fill="{TEXT_DIM}" font-size="11">&#964; &gt; &#964;_y</text>
+        <circle cx="272" cy="366" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="312" cy="384" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="352" cy="360" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="290" cy="418" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <circle cx="344" cy="416" r="6" fill="{rgba(VORTICITY,0.4)}" stroke="{VORTICITY}"/>
+        <text x="266" y="452" fill="{TEXT_DIM}" font-size="11.5">bonds broken: fragments flow</text>
+        <text x="34" y="478" fill="{TEXT}" font-size="12">Below &#964;_y the network stores the deformation elastically and springs back;</text>
+        <text x="34" y="496" fill="{TEXT}" font-size="12">it is a solid, and no viscosity describes it. Toothpaste, mud, ketchup, sludge.</text>
+        <text x="34" y="518" fill="{WARNING}" font-size="11.5">Design consequence: a line can be *restarted* only if the pump can exceed &#964;_y</text>
+        <text x="34" y="536" fill="{WARNING}" font-size="11.5">everywhere at once &#8212; a pressure requirement that has nothing to do with flow rate.</text>
+
+        <rect x="456" y="304" width="428" height="240" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="474" y="330" fill="{INERTIA}" font-size="13.5" font-weight="700">Thixotropy &#183; broken fast, rebuilt slowly</text>
+        <line x1="486" y1="430" x2="854" y2="430" stroke="{TEXT_MUTED}" stroke-width="1.5"/>
+        <line x1="486" y1="430" x2="486" y2="352" stroke="{TEXT_MUTED}" stroke-width="1.5"/>
+        <text x="784" y="446" fill="{TEXT_DIM}" font-size="11.5">time</text>
+        <text x="462" y="358" fill="{TEXT_DIM}" font-size="11.5">&#955;</text>
+        <path d="M 486 360 L 560 360 L 566 418 L 660 418" fill="none" stroke="{INERTIA}" stroke-width="2.5"/>
+        <path d="M 660 418 Q 730 414 800 372" fill="none" stroke="{INERTIA}" stroke-width="2.5"/>
+        <text x="500" y="352" fill="{TEXT_DIM}" font-size="11">at rest</text>
+        <text x="576" y="410" fill="{PRESSURE}" font-size="11">sheared: breaks in seconds</text>
+        <text x="690" y="366" fill="{SUCCESS}" font-size="11">rest: rebuilds in minutes</text>
+        <text x="474" y="478" fill="{TEXT}" font-size="12">The structure is the same one that gives a yield stress, but building it back</text>
+        <text x="474" y="496" fill="{TEXT}" font-size="12">takes real time. The stress then depends on the shear *history*, not just on</text>
+        <text x="474" y="514" fill="{TEXT}" font-size="12">the present strain rate &#8212; so a rheometer sweeping up and down draws a loop.</text>
+        <text x="474" y="536" fill="{TEXT_DIM}" font-size="11.5">Stirred yoghurt, bentonite drilling mud, non-drip paint.</text>
+    </svg>
+    """
+
+
+def diagram_viscoelastic_effects() -> str:
+    """Rod climbing and die swell: what a tension along the streamlines does."""
+    return f"""
+    <svg viewBox="0 0 880 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Elastic memory has a direction: stretched chains pull along the streamline</text>
+        <text x="24" y="52" fill="{TEXT_DIM}" font-size="12">A Newtonian fluid can only push normally (pressure) and drag tangentially. A stretched polymer adds a tension the flow direction chooses.</text>
+
+        <rect x="16" y="68" width="284" height="330" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="94" fill="{SUCCESS}" font-size="13.5" font-weight="700">Newtonian: the surface dips</text>
+        <rect x="52" y="150" width="212" height="180" rx="4" fill="none" stroke="{BORDER_STRONG}" stroke-width="2"/>
+        <path d="M 52 190 Q 158 236 264 190 L 264 330 L 52 330 Z" fill="{rgba(ACCENT,0.16)}" stroke="{ACCENT}" stroke-width="2"/>
+        <rect x="150" y="104" width="16" height="180" fill="{BORDER_STRONG}"/>
+        <path d="M 132 116 A 26 12 0 1 1 184 116" fill="none" stroke="{TEXT}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+        <text x="190" y="112" fill="{TEXT_DIM}" font-size="11.5">&#937;</text>
+        <line x1="98" y1="216" x2="70" y2="216" stroke="{PRESSURE}" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+        <line x1="218" y1="216" x2="246" y2="216" stroke="{PRESSURE}" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+        <text x="34" y="356" fill="{TEXT}" font-size="12">Inertia throws the fluid outwards;</text>
+        <text x="34" y="374" fill="{TEXT}" font-size="12">the free surface falls at the rod.</text>
+        <text x="34" y="392" fill="{TEXT_DIM}" font-size="11.5">Only &#964; and p act &#8212; nothing pulls inward.</text>
+
+        <rect x="312" y="68" width="284" height="330" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="330" y="94" fill="{VISCOUS}" font-size="13.5" font-weight="700">Viscoelastic: it climbs the rod</text>
+        <rect x="348" y="150" width="212" height="180" rx="4" fill="none" stroke="{BORDER_STRONG}" stroke-width="2"/>
+        <path d="M 348 214 Q 400 214 428 168 Q 446 140 468 168 Q 496 214 560 214 L 560 330 L 348 330 Z" fill="{rgba(VISCOUS,0.16)}" stroke="{VISCOUS}" stroke-width="2"/>
+        <rect x="446" y="104" width="16" height="180" fill="{BORDER_STRONG}"/>
+        <path d="M 428 116 A 26 12 0 1 1 480 116" fill="none" stroke="{TEXT}" stroke-width="2" marker-end="url(#arrow-dim)"/>
+        <text x="486" y="112" fill="{TEXT_DIM}" font-size="11.5">&#937;</text>
+        <line x1="376" y1="252" x2="430" y2="252" stroke="{VORTICITY}" stroke-width="2.5" marker-end="url(#arrow-purple)"/>
+        <line x1="532" y1="252" x2="478" y2="252" stroke="{VORTICITY}" stroke-width="2.5" marker-end="url(#arrow-purple)"/>
+        <text x="330" y="356" fill="{TEXT}" font-size="12">Chains stretched around the rod act</text>
+        <text x="330" y="374" fill="{TEXT}" font-size="12">like hoops under tension N&#8321;. Curved</text>
+        <text x="330" y="392" fill="{TEXT}" font-size="12">streamlines squeeze inward &#8212; and up.</text>
+
+        <rect x="608" y="68" width="256" height="330" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="626" y="94" fill="{WARNING}" font-size="13.5" font-weight="700">Die swell (extrudate swell)</text>
+        <rect x="636" y="126" width="118" height="58" fill="url(#hatch-wall)" stroke="{BORDER_STRONG}" stroke-width="1.5"/>
+        <rect x="636" y="146" width="118" height="18" fill="{rgba(VISCOUS,0.3)}"/>
+        <path d="M 754 146 Q 782 140 790 128 L 790 182 Q 782 170 754 164 Z" fill="{rgba(VISCOUS,0.3)}" stroke="{VISCOUS}" stroke-width="2"/>
+        <line x1="800" y1="128" x2="800" y2="182" stroke="{TEXT_DIM}" stroke-width="1.5" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="808" y="160" fill="{TEXT_DIM}" font-size="11.5">D</text>
+        <line x1="694" y1="196" x2="694" y2="212" stroke="{TEXT_DIM}" stroke-width="1"/>
+        <text x="640" y="228" fill="{TEXT_DIM}" font-size="11.5">the melt leaves wider than the die</text>
+        <text x="626" y="262" fill="{TEXT}" font-size="12">Inside the die the chains are</text>
+        <text x="626" y="280" fill="{TEXT}" font-size="12">stretched along the flow. Once the</text>
+        <text x="626" y="298" fill="{TEXT}" font-size="12">wall stops holding them they recoil,</text>
+        <text x="626" y="316" fill="{TEXT}" font-size="12">shortening the jet and fattening it.</text>
+        <text x="626" y="344" fill="{TEXT_DIM}" font-size="11.5">A Newtonian jet only contracts slightly,</text>
+        <text x="626" y="362" fill="{TEXT_DIM}" font-size="11.5">and for an entirely different reason</text>
+        <text x="626" y="380" fill="{TEXT_DIM}" font-size="11.5">(rearranging its velocity profile).</text>
+    </svg>
+    """
+
+
+def diagram_deborah_timescales() -> str:
+    """The relaxation time against the process time, on one logarithmic line."""
+    return f"""
+    <svg viewBox="0 0 880 320" width="100%" height="320" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Solid or liquid is not a property of the material alone &#8212; De = &#955; / t_process decides</text>
+        <text x="24" y="52" fill="{TEXT_DIM}" font-size="12">Same material, different process time, different answer. Glass flows and water is a solid, if you choose the clock to make it so.</text>
+
+        <line x1="64" y1="150" x2="836" y2="150" stroke="{TEXT_MUTED}" stroke-width="2"/>
+        <text x="64" y="182" fill="{TEXT_DIM}" font-size="11.5">10&#8315;&#185;&#178; s</text>
+        <text x="248" y="182" fill="{TEXT_DIM}" font-size="11.5">10&#8315;&#8310; s</text>
+        <text x="432" y="182" fill="{TEXT_DIM}" font-size="11.5">1 s</text>
+        <text x="616" y="182" fill="{TEXT_DIM}" font-size="11.5">10&#8310; s (&#8776; 12 days)</text>
+        <text x="790" y="182" fill="{TEXT_DIM}" font-size="11.5">10&#185;&#178; s</text>
+        <text x="380" y="206" fill="{TEXT_DIM}" font-size="12">relaxation time &#955; of the microstructure (logarithmic)</text>
+
+        <line x1="80" y1="150" x2="80" y2="132" stroke="{SUCCESS}" stroke-width="2"/>
+        <circle cx="80" cy="150" r="5" fill="{SUCCESS}"/>
+        <text x="62" y="124" fill="{SUCCESS}" font-size="11.5">water</text>
+        <line x1="330" y1="150" x2="330" y2="120" stroke="{ACCENT}" stroke-width="2"/>
+        <circle cx="330" cy="150" r="5" fill="{ACCENT}"/>
+        <text x="286" y="112" fill="{ACCENT}" font-size="11.5">dilute polymer</text>
+        <line x1="466" y1="150" x2="466" y2="132" stroke="{VISCOUS}" stroke-width="2"/>
+        <circle cx="466" cy="150" r="5" fill="{VISCOUS}"/>
+        <text x="436" y="124" fill="{VISCOUS}" font-size="11.5">polymer melt</text>
+        <line x1="700" y1="150" x2="700" y2="120" stroke="{WARNING}" stroke-width="2"/>
+        <circle cx="700" cy="150" r="5" fill="{WARNING}"/>
+        <text x="668" y="112" fill="{WARNING}" font-size="11.5">pitch, glacier ice</text>
+
+        <rect x="64" y="228" width="374" height="76" rx="8" fill="{rgba(SUCCESS,0.10)}" stroke="{SUCCESS}" stroke-width="1.5"/>
+        <text x="82" y="252" fill="{SUCCESS}" font-size="13" font-weight="700">De &#8810; 1 &#183; liquid-like</text>
+        <text x="82" y="274" fill="{TEXT}" font-size="12">The structure relaxes many times over during the process,</text>
+        <text x="82" y="292" fill="{TEXT}" font-size="12">so it never notices the flow. Use a viscous model.</text>
+
+        <rect x="462" y="228" width="374" height="76" rx="8" fill="{rgba(PRESSURE,0.10)}" stroke="{PRESSURE}" stroke-width="1.5"/>
+        <text x="480" y="252" fill="{PRESSURE}" font-size="13" font-weight="700">De &#8811; 1 &#183; solid-like</text>
+        <text x="480" y="274" fill="{TEXT}" font-size="12">The process finishes before the structure can respond,</text>
+        <text x="480" y="292" fill="{TEXT}" font-size="12">so the deformation is stored, not dissipated.</text>
+    </svg>
+    """
+
+
+# =============================================================================
+# Control-volume momentum: what crosses the boundary is the whole answer
+# =============================================================================
+
+def diagram_momentum_control_volume() -> str:
+    """A reducing bend: the four boundary terms, and the reaction that balances them."""
+    return f"""
+    <svg viewBox="0 0 880 500" width="100%" height="500" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="26" fill="{ACCENT}" font-size="15" font-weight="bold">Momentum on a control volume &#183; only the boundary appears in the balance</text>
+        <text x="24" y="46" fill="{TEXT_DIM}" font-size="12">The interior may separate, swirl and dissipate; none of that enters the balance. Momentum counts only the boundary.</text>
+
+        <path d="M 100 110 L 380 110 Q 500 110 500 230 L 500 360 L 440 360 L 440 230 Q 440 170 380 170 L 100 170 Z"
+              fill="{rgba(ACCENT, 0.16)}" stroke="{ACCENT}" stroke-width="2"/>
+        <rect x="80" y="72" width="470" height="300" rx="10" fill="none" stroke="{WARNING}" stroke-width="2" stroke-dasharray="10,6"/>
+        <text x="82" y="66" fill="{WARNING}" font-size="12.5" font-weight="700">control surface &#183; you choose where it cuts</text>
+
+        <line x1="34" y1="140" x2="92" y2="140" stroke="{ACCENT}" stroke-width="3" marker-end="url(#arrow-sky)"/>
+        <text x="30" y="128" fill="{ACCENT}" font-size="12.5" font-weight="700">inlet 1</text>
+
+        <line x1="120" y1="140" x2="205" y2="140" stroke="{PRESSURE}" stroke-width="3.5" marker-end="url(#arrow-red)"/>
+        <text x="122" y="132" fill="{PRESSURE}" font-size="13" font-weight="700">p{_sub("1")}A{_sub("1")}</text>
+        <line x1="250" y1="140" x2="335" y2="140" stroke="{SUCCESS}" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+        <text x="252" y="132" fill="{SUCCESS}" font-size="13" font-weight="700">m&#775;u{_sub("1")}</text>
+        <text x="100" y="196" fill="{TEXT_DIM}" font-size="11.5">pressure pushes in &#183; the flow carries momentum in</text>
+
+        <line x1="455" y1="378" x2="455" y2="432" stroke="{PRESSURE}" stroke-width="3.5" marker-end="url(#arrow-red)"/>
+        <text x="400" y="452" fill="{PRESSURE}" font-size="13" font-weight="700">p{_sub("2")}A{_sub("2")}</text>
+        <line x1="520" y1="378" x2="520" y2="432" stroke="{SUCCESS}" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+        <text x="500" y="452" fill="{SUCCESS}" font-size="13" font-weight="700">m&#775;u{_sub("2")}</text>
+        <text x="380" y="474" fill="{ACCENT}" font-size="12.5" font-weight="700">outlet 2 &#183; both terms leave</text>
+
+        <circle cx="480" cy="230" r="6" fill="{VORTICITY}"/>
+        <line x1="480" y1="230" x2="350" y2="230" stroke="{VORTICITY}" stroke-width="4" marker-end="url(#arrow-purple)"/>
+        <text x="150" y="226" fill="{VORTICITY}" font-size="13" font-weight="700">R &#8212; what the anchor holds</text>
+        <text x="150" y="246" fill="{TEXT_DIM}" font-size="11.5">equal and opposite to the force on the fluid</text>
+
+        <path d="M 386 286 q 20 -24 40 0 q 20 24 40 0" fill="none" stroke="{TEXT_FAINT}" stroke-width="2"/>
+        <text x="100" y="330" fill="{TEXT_FAINT}" font-size="11.5">separation and swirl inside &#8212; unknown,</text>
+        <text x="100" y="348" fill="{TEXT_FAINT}" font-size="11.5">and never needed</text>
+
+        <rect x="590" y="96" width="266" height="150" rx="8" fill="{rgba(SUCCESS, 0.12)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="608" y="128" fill="{TEXT}" font-size="14" font-family="'JetBrains Mono', monospace">&#931;F = m&#775;u{_sub("2")} &#8722; m&#775;u{_sub("1")}</text>
+        <text x="608" y="156" fill="{TEXT_DIM}" font-size="12">steady flow, one inlet, one outlet.</text>
+        <text x="608" y="180" fill="{TEXT_DIM}" font-size="12">A vector equation: write one scalar</text>
+        <text x="608" y="198" fill="{TEXT_DIM}" font-size="12">line per direction, in gauge pressure,</text>
+        <text x="608" y="216" fill="{TEXT_DIM}" font-size="12">so the atmosphere cancels itself.</text>
+        <text x="608" y="238" fill="{TEXT_DIM}" font-size="12">The force on the bend is &#8722;R.</text>
+
+        <text x="590" y="290" fill="{TEXT}" font-size="12.5" font-weight="700">Where to cut it</text>
+        <text x="590" y="312" fill="{TEXT_DIM}" font-size="11.5">Across a plane where the flow is</text>
+        <text x="590" y="330" fill="{TEXT_DIM}" font-size="11.5">parallel, so the pressure is uniform</text>
+        <text x="590" y="348" fill="{TEXT_DIM}" font-size="11.5">and one velocity describes the face.</text>
+        <text x="590" y="366" fill="{TEXT_DIM}" font-size="11.5">Never through a jet, an eddy, or a</text>
+        <text x="590" y="384" fill="{TEXT_DIM}" font-size="11.5">section that is still turning.</text>
+    </svg>
+    """
+
+
+def diagram_hydraulic_jump() -> str:
+    """The free-surface shock: momentum survives it, energy does not."""
+    return f"""
+    <svg viewBox="0 0 860 460" width="100%" height="460" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Hydraulic jump &#183; a shock with a free surface</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Fast shallow supercritical flow cannot slow down smoothly. It jumps, and the jump grinds the surplus energy into turbulence and heat.</text>
+
+        <line x1="60" y1="112" x2="380" y2="112" stroke="{PRESSURE}" stroke-width="2" stroke-dasharray="9,5"/>
+        <line x1="470" y1="168" x2="800" y2="168" stroke="{PRESSURE}" stroke-width="2" stroke-dasharray="9,5"/>
+        <path d="M 380 112 q 45 8 90 56" fill="none" stroke="{PRESSURE}" stroke-width="2" stroke-dasharray="4,4"/>
+        <text x="62" y="104" fill="{PRESSURE}" font-size="12" font-weight="600">energy grade line E{_sub("1")}</text>
+        <text x="640" y="160" fill="{PRESSURE}" font-size="12" font-weight="600">E{_sub("2")} &lt; E{_sub("1")}</text>
+        <line x1="424" y1="112" x2="424" y2="168" stroke="{WARNING}" stroke-width="2.5" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="434" y="140" fill="{WARNING}" font-size="12.5" font-weight="700">&#916;E = (y{_sub("2")}&#8722;y{_sub("1")})&#179;/(4y{_sub("1")}y{_sub("2")})</text>
+
+        <path d="M 60 300 L 350 300 Q 420 300 450 250 Q 480 210 540 210 L 800 210 L 800 360 L 60 360 Z" fill="{rgba(ACCENT, 0.20)}"/>
+        <path d="M 60 300 L 350 300 Q 420 300 450 250 Q 480 210 540 210 L 800 210" fill="none" stroke="{ACCENT}" stroke-width="2.5"/>
+        <line x1="60" y1="360" x2="800" y2="360" stroke="{SHEAR}" stroke-width="4"/>
+        <text x="300" y="384" fill="{SHEAR}" font-size="12">horizontal bed &#8212; over this short reach, bed friction is negligible</text>
+
+        <path d="M 400 268 q 22 -26 42 -6 M 430 250 q 22 -26 44 -8 M 462 232 q 20 -24 40 -8" fill="none" stroke="{TEXT_FAINT}" stroke-width="2"/>
+        <text x="360" y="212" fill="{TEXT_FAINT}" font-size="11.5">roller: violent, unsteady, unmodelled</text>
+
+        <line x1="120" y1="300" x2="120" y2="360" stroke="{WARNING}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="128" y="336" fill="{WARNING}" font-size="12.5" font-weight="700">y{_sub("1")}</text>
+        <line x1="700" y1="210" x2="700" y2="360" stroke="{WARNING}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="710" y="292" fill="{WARNING}" font-size="12.5" font-weight="700">y{_sub("2")}</text>
+
+        <line x1="150" y1="330" x2="270" y2="330" stroke="{SUCCESS}" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+        <text x="150" y="322" fill="{SUCCESS}" font-size="12.5" font-weight="700">u{_sub("1")} &#183; Fr{_sub("1")} &gt; 1</text>
+        <line x1="560" y1="290" x2="640" y2="290" stroke="{SUCCESS}" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+        <text x="556" y="282" fill="{SUCCESS}" font-size="12.5" font-weight="700">u{_sub("2")} &#183; Fr{_sub("2")} &lt; 1</text>
+
+        <rect x="86" y="252" width="30" height="108" fill="{rgba(PRESSURE,0.22)}" stroke="{PRESSURE}" stroke-width="1.4"/>
+        <text x="24" y="246" fill="{PRESSURE}" font-size="12" font-weight="700">&#189;&#961;gy{_sub("1")}&#178;</text>
+        <rect x="760" y="210" width="30" height="150" fill="{rgba(PRESSURE,0.22)}" stroke="{PRESSURE}" stroke-width="1.4"/>
+        <text x="748" y="200" fill="{PRESSURE}" font-size="12" font-weight="700">&#189;&#961;gy{_sub("2")}&#178;</text>
+
+        <rect x="150" y="396" width="560" height="50" rx="8" fill="{rgba(SUCCESS,0.12)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="172" y="426" fill="{TEXT}" font-size="14" font-family="'JetBrains Mono', monospace">M = q&#178;/(gy) + y&#178;/2 is equal on both sides &#8658; y{_sub("2")}/y{_sub("1")} = &#189;(&#8730;(1+8Fr{_sub("1")}&#178;) &#8722; 1)</text>
+    </svg>
+    """
+
+
+def diagram_weir_and_gate() -> str:
+    """Two structures that set the flow by controlling geometry, not roughness."""
+    return f"""
+    <svg viewBox="0 0 880 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="28" fill="{ACCENT}" font-size="15" font-weight="bold">Weir and sluice gate &#183; one measured depth is enough</text>
+        <text x="24" y="48" fill="{TEXT_DIM}" font-size="12">Neither device needs the channel roughness: the geometry sets the flow, so one head reading fixes the discharge.</text>
+
+        <rect x="16" y="64" width="424" height="352" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="90" fill="{ACCENT}" font-size="13.5" font-weight="700">Sharp-crested weir &#183; energy over the crest</text>
+
+        <path d="M 40 150 L 250 150 Q 288 150 300 176 Q 320 226 352 300 L 40 300 Z" fill="{rgba(ACCENT,0.20)}"/>
+        <path d="M 40 150 L 250 150 Q 288 150 300 176 Q 320 226 352 300" fill="none" stroke="{ACCENT}" stroke-width="2.5"/>
+        <rect x="286" y="196" width="16" height="104" fill="url(#hatch-wall)" stroke="{BORDER_STRONG}" stroke-width="1.6"/>
+        <line x1="40" y1="300" x2="410" y2="300" stroke="{SHEAR}" stroke-width="3.5"/>
+
+        <line x1="120" y1="150" x2="120" y2="196" stroke="{WARNING}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="128" y="178" fill="{WARNING}" font-size="12.5" font-weight="700">H</text>
+        <line x1="120" y1="196" x2="120" y2="300" stroke="{TEXT_DIM}" stroke-width="1.6" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="128" y="252" fill="{TEXT_DIM}" font-size="12.5" font-weight="700">P</text>
+        <line x1="60" y1="196" x2="286" y2="196" stroke="{TEXT_FAINT}" stroke-width="1.4" stroke-dasharray="5,4"/>
+        <text x="176" y="190" fill="{TEXT_FAINT}" font-size="11">crest level</text>
+
+        <line x1="316" y1="212" x2="342" y2="212" stroke="{SUCCESS}" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+        <line x1="326" y1="244" x2="362" y2="244" stroke="{SUCCESS}" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+        <line x1="334" y1="276" x2="378" y2="276" stroke="{SUCCESS}" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+        <text x="330" y="330" fill="{SUCCESS}" font-size="12" font-weight="700">u(h) = &#8730;(2gh)</text>
+        <text x="330" y="348" fill="{TEXT_DIM}" font-size="11">deeper strips run faster</text>
+
+        <text x="34" y="382" fill="{TEXT}" font-size="12.5">Integrate that over the nappe: Q = &#8532;C{_sub("d")}b&#8730;(2g)&#183;H&#179;&#8725;&#178;.</text>
+        <text x="34" y="402" fill="{TEXT_DIM}" font-size="11.5">The &#8532; and the 3/2 are the integral; C{_sub("d")} carries contraction and viscosity.</text>
+
+        <rect x="452" y="64" width="412" height="352" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="470" y="90" fill="{ACCENT}" font-size="13.5" font-weight="700">Sluice gate &#183; momentum gives the load on the gate</text>
+
+        <path d="M 470 140 L 660 140 L 660 258 L 840 258 L 840 300 L 470 300 Z" fill="{rgba(ACCENT,0.20)}"/>
+        <path d="M 470 140 L 660 140" fill="none" stroke="{ACCENT}" stroke-width="2.5"/>
+        <path d="M 676 258 L 840 258" fill="none" stroke="{ACCENT}" stroke-width="2.5"/>
+        <line x1="470" y1="300" x2="840" y2="300" stroke="{SHEAR}" stroke-width="3.5"/>
+        <rect x="660" y="96" width="16" height="162" fill="url(#hatch-wall)" stroke="{BORDER_STRONG}" stroke-width="1.6"/>
+        <text x="612" y="90" fill="{TEXT_DIM}" font-size="11.5">gate</text>
+
+        <line x1="520" y1="140" x2="520" y2="300" stroke="{WARNING}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="528" y="226" fill="{WARNING}" font-size="12.5" font-weight="700">y{_sub("1")}</text>
+        <line x1="690" y1="258" x2="690" y2="300" stroke="{VORTICITY}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="698" y="284" fill="{VORTICITY}" font-size="12" font-weight="700">a</text>
+        <line x1="790" y1="258" x2="790" y2="300" stroke="{SUCCESS}" stroke-width="1.8" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+        <text x="798" y="284" fill="{SUCCESS}" font-size="12" font-weight="700">y{_sub("2")} = C{_sub("c")}a</text>
+
+        <rect x="494" y="180" width="26" height="120" fill="{rgba(PRESSURE,0.22)}" stroke="{PRESSURE}" stroke-width="1.4"/>
+        <text x="470" y="172" fill="{PRESSURE}" font-size="11.5" font-weight="700">&#189;&#961;gy{_sub("1")}&#178;</text>
+        <line x1="700" y1="180" x2="676" y2="180" stroke="{PRESSURE}" stroke-width="3.5" marker-end="url(#arrow-red)"/>
+        <text x="706" y="176" fill="{PRESSURE}" font-size="12" font-weight="700">F on gate</text>
+
+        <text x="470" y="354" fill="{TEXT}" font-size="12.5">Energy: q = y{_sub("1")}y{_sub("2")}&#8730;(2g/(y{_sub("1")}+y{_sub("2")})).  Momentum then gives F.</text>
+        <text x="470" y="376" fill="{TEXT_DIM}" font-size="11.5">F is well below &#189;&#961;gy{_sub("1")}&#178;: the flow leaves carrying momentum, and the gate</text>
+        <text x="470" y="394" fill="{TEXT_DIM}" font-size="11.5">is only charged for the difference.</text>
+    </svg>
+    """
+
+
+def diagram_rocket_control_volume() -> str:
+    """A control volume whose mass is falling, and the two terms of thrust."""
+    return f"""
+    <svg viewBox="0 0 880 470" width="100%" height="470" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        {_arrow_defs()}
+        <text x="24" y="26" fill="{ACCENT}" font-size="15" font-weight="bold">Rocket &#183; a control volume that loses mass, and gets pushed for it</text>
+        <text x="24" y="46" fill="{TEXT_DIM}" font-size="12">Nothing is pushing against the outside air. The thrust is the momentum the nozzle throws backwards, plus the pressure the exit plane fails to match.</text>
+
+        <rect x="150" y="76" width="180" height="282" rx="10" fill="none" stroke="{WARNING}" stroke-width="2" stroke-dasharray="10,6"/>
+        <text x="150" y="70" fill="{WARNING}" font-size="12.5" font-weight="700">control volume, moving with the rocket</text>
+
+        <path d="M 222 130 q 18 -36 36 0 Z" fill="{rgba(ACCENT,0.30)}" stroke="{ACCENT}" stroke-width="2"/>
+        <rect x="222" y="130" width="36" height="150" fill="{rgba(ACCENT,0.22)}" stroke="{ACCENT}" stroke-width="2"/>
+        <path d="M 222 280 L 258 280 L 278 344 L 202 344 Z" fill="{rgba(ACCENT,0.22)}" stroke="{ACCENT}" stroke-width="2"/>
+
+        <line x1="190" y1="190" x2="190" y2="250" stroke="{TEXT_MUTED}" stroke-width="3" marker-end="url(#arrow-dim)"/>
+        <text x="60" y="216" fill="{TEXT_MUTED}" font-size="12.5" font-weight="700">weight m(t)g</text>
+        <text x="60" y="234" fill="{TEXT_DIM}" font-size="11.5">m is falling</text>
+
+        <line x1="300" y1="250" x2="300" y2="168" stroke="{VORTICITY}" stroke-width="4" marker-end="url(#arrow-purple)"/>
+        <text x="336" y="196" fill="{VORTICITY}" font-size="12.5" font-weight="700">F = m&#775;v{_sub("e")} + (p{_sub("e")}&#8722;p{_sub("a")})A{_sub("e")}</text>
+        <text x="336" y="240" fill="{TEXT_DIM}" font-size="11.5">mass m(t), falling at m&#775;</text>
+        <text x="336" y="258" fill="{TEXT_DIM}" font-size="11.5">the chamber is unmodelled</text>
+
+        <line x1="240" y1="352" x2="240" y2="428" stroke="{SUCCESS}" stroke-width="4" marker-end="url(#arrow-green)"/>
+        <text x="258" y="404" fill="{SUCCESS}" font-size="13" font-weight="700">m&#775;v{_sub("e")} &#183; momentum thrust</text>
+        <line x1="170" y1="352" x2="170" y2="404" stroke="{PRESSURE}" stroke-width="3.5" marker-end="url(#arrow-red)"/>
+        <text x="24" y="446" fill="{PRESSURE}" font-size="12.5" font-weight="700">(p{_sub("e")} &#8722; p{_sub("a")})A{_sub("e")} &#183; the atmosphere missing at the exit plane</text>
+
+        <rect x="478" y="88" width="378" height="152" rx="8" fill="{rgba(SUCCESS,0.12)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="498" y="116" fill="{SUCCESS}" font-size="13" font-weight="700">Newton on the shrinking mass</text>
+        <text x="498" y="142" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">m dv/dt = &#8722;c dm/dt &#8722; mg &#8722; D</text>
+        <text x="498" y="170" fill="{TEXT}" font-size="12">Divide by m and integrate: the mass can only</text>
+        <text x="498" y="188" fill="{TEXT}" font-size="12">appear as dm/m, so the answer is a logarithm.</text>
+        <text x="498" y="218" fill="{TEXT}" font-size="13" font-family="'JetBrains Mono', monospace">&#916;v = c&#183;ln(m&#8320;/m{_sub("f")}) &#8722; g&#183;t{_sub("b")} &#8722; drag</text>
+
+        <rect x="478" y="258" width="378" height="176" rx="8" fill="{rgba(PRESSURE,0.10)}" stroke="{PRESSURE}" stroke-width="1.5"/>
+        <text x="498" y="286" fill="{PRESSURE}" font-size="13" font-weight="700">What the logarithm costs you</text>
+        <text x="498" y="312" fill="{TEXT}" font-size="12">Doubling &#916;v does not double the propellant:</text>
+        <text x="498" y="330" fill="{TEXT}" font-size="12">it squares the mass ratio, m&#8320;/m{_sub("f")} = exp(&#916;v/c).</text>
+        <text x="498" y="358" fill="{TEXT}" font-size="12">A long, gentle burn also pays g&#183;t{_sub("b")} to gravity,</text>
+        <text x="498" y="376" fill="{TEXT}" font-size="12">which is why a launcher leaves the pad hard</text>
+        <text x="498" y="394" fill="{TEXT}" font-size="12">and turns downrange as soon as it can.</text>
+        <text x="498" y="420" fill="{TEXT_DIM}" font-size="11.5">Vacuum thrust exceeds sea-level thrust by p&#8336;A{_sub("e")}.</text>
+    </svg>
+    """
+
+
+# =============================================================================
+# Rocket nozzles: the atmosphere, the plume, and how the contour is drawn
+# =============================================================================
+
+def _nozzle_half_walls(px: float, py: float) -> str:
+    """One small bell in outline, throat at px+44, exit at px+124.
+
+    Shared by the four regime panels so that the *only* difference between them
+    is the plume, which is the entire point of that figure.
+    """
+    upper = (f"M {px + 8} {py - 30} L {px + 44} {py - 12} "
+             f"Q {px + 74} {py - 34} {px + 124} {py - 28}")
+    lower = (f"M {px + 8} {py + 30} L {px + 44} {py + 12} "
+             f"Q {px + 74} {py + 34} {px + 124} {py + 28}")
+    return (f'<path d="{upper}" fill="none" stroke="{TEXT_MUTED}" stroke-width="4" '
+            f'stroke-linecap="round"/>'
+            f'<path d="{lower}" fill="none" stroke="{TEXT_MUTED}" stroke-width="4" '
+            f'stroke-linecap="round"/>'
+            f'<line x1="{px + 44}" y1="{py - 12}" x2="{px + 44}" y2="{py + 12}" '
+            f'stroke="{WARNING}" stroke-width="1.4" stroke-dasharray="3,3"/>'
+            f'<line x1="{px + 8}" y1="{py}" x2="{px + 210}" y2="{py}" '
+            f'stroke="{TEXT_FAINT}" stroke-width="1" stroke-dasharray="7,5"/>')
+
+
+def diagram_nozzle_expansion_regimes() -> str:
+    """The same nozzle in four atmospheres, and what the plume does about it.
+
+    The exit pressure is a property of the *nozzle*: area ratio and chamber
+    state fix it, and it does not care what is outside. The ambient pressure is
+    a property of the *altitude*. Everything in this figure is the mismatch
+    between those two numbers being settled outside the nozzle, or -- in the
+    last panel -- forcing its way back inside.
+
+    Each caption is pre-split into drawn lines. Wrapping text after a `_sub`
+    substitution would cut a `<tspan>` in half and produce markup that is no
+    longer well formed.
+    """
+    layout = (
+        (60, 130, PRESSURE, "Under-expanded", "p&#8337; &gt; p&#8336;",
+         ("High altitude, or too small an area ratio. The jet is still",
+          "above ambient when it leaves, so it keeps expanding: a",
+          "Prandtl&#8211;Meyer fan opens from each lip and the plume balloons."),
+         "The unused pressure is thrust you did not collect."),
+        (500, 130, SUCCESS, "Matched", "p&#8337; = p&#8336;",
+         ("The design point, and the only one at which the plume leaves",
+          "straight. Thrust is maximal for this chamber at this altitude,",
+          "because dF/dA&#8337; = (p&#8337; &#8722; p&#8336;) is exactly zero here."),
+         "One altitude only: a fixed nozzle is matched at one place in the sky."),
+        (60, 350, WARNING, "Over-expanded, still attached", "p&#8337; &lt; p&#8336;",
+         ("Sea level with a large bell. The jet is squeezed back to ambient",
+          "by oblique shocks from the lips, which reflect and cross &#8212; the",
+          "shock diamonds you can see in a first-stage exhaust."),
+         "The last of the bell is pushed backwards, so C&#8347; drops."),
+        (500, 350, PRESSURE, "Over-expanded to separation", "p&#8337; &#8810; p&#8336;",
+         ("Push further and the boundary layer cannot survive the adverse",
+          "gradient. The shock jumps inside, the flow tears off the wall,",
+          "and the separation line wanders asymmetrically."),
+         "Side loads here have damaged real engines. Do not design into it."),
+    )
+    panels = []
+    for px, py, colour, title, relation, body, sting in layout:
+        block = [_nozzle_half_walls(px, py)]
+        block.append(
+            f'<text x="{px + 8}" y="{py - 58}" fill="{colour}" font-size="13.5" '
+            f'font-weight="bold">{title}</text>')
+        block.append(
+            f'<text x="{px + 8}" y="{py - 41}" fill="{TEXT}" font-size="12.5" '
+            f'font-family="JetBrains Mono, monospace">{relation}</text>')
+        if title.startswith("Under"):
+            block.append(
+                f'<path d="M {px + 124} {py - 28} Q {px + 168} {py - 62} {px + 214} {py - 52} '
+                f'M {px + 124} {py + 28} Q {px + 168} {py + 62} {px + 214} {py + 52}" '
+                f'fill="none" stroke="{colour}" stroke-width="2.4"/>')
+            for k in range(4):
+                block.append(
+                    f'<line x1="{px + 124}" y1="{py - 28}" '
+                    f'x2="{px + 150 + 16 * k}" y2="{py - 6 + 12 * k}" '
+                    f'stroke="{rgba(colour, 0.55)}" stroke-width="1"/>')
+                block.append(
+                    f'<line x1="{px + 124}" y1="{py + 28}" '
+                    f'x2="{px + 150 + 16 * k}" y2="{py + 6 - 12 * k}" '
+                    f'stroke="{rgba(colour, 0.55)}" stroke-width="1"/>')
+            block.append(
+                f'<text x="{px + 148}" y="{py - 58}" fill="{colour}" font-size="11">'
+                f'expansion fans</text>')
+        elif title == "Matched":
+            block.append(
+                f'<path d="M {px + 124} {py - 28} L {px + 214} {py - 28} '
+                f'M {px + 124} {py + 28} L {px + 214} {py + 28}" fill="none" '
+                f'stroke="{colour}" stroke-width="2.4"/>')
+            block.append(
+                f'<text x="{px + 134}" y="{py - 36}" fill="{colour}" font-size="11">'
+                f'parallel plume, no waves</text>')
+        elif title.startswith("Over-expanded, still"):
+            block.append(
+                f'<path d="M {px + 124} {py - 28} Q {px + 158} {py - 12} {px + 214} {py - 20} '
+                f'M {px + 124} {py + 28} Q {px + 158} {py + 12} {px + 214} {py + 20}" '
+                f'fill="none" stroke="{colour}" stroke-width="2.4"/>')
+            block.append(
+                f'<path d="M {px + 124} {py - 28} L {px + 162} {py} L {px + 200} {py - 24} '
+                f'M {px + 124} {py + 28} L {px + 162} {py} L {px + 200} {py + 24}" '
+                f'fill="none" stroke="{PRESSURE}" stroke-width="2"/>')
+            block.append(
+                f'<text x="{px + 138}" y="{py - 40}" fill="{PRESSURE}" font-size="11">'
+                f'oblique shocks, crossing</text>')
+        else:
+            block.append(
+                f'<line x1="{px + 92}" y1="{py - 22}" x2="{px + 92}" y2="{py + 22}" '
+                f'stroke="{PRESSURE}" stroke-width="3"/>')
+            block.append(
+                f'<path d="M {px + 92} {py - 22} Q {px + 130} {py - 14} {px + 214} {py - 18} '
+                f'M {px + 92} {py + 22} Q {px + 130} {py + 16} {px + 214} {py + 22}" '
+                f'fill="none" stroke="{colour}" stroke-width="2.4"/>')
+            block.append(
+                f'<path d="M {px + 96} {py - 32} q 12 -6 24 -2 M {px + 96} {py + 32} '
+                f'q 12 6 24 2" fill="none" stroke="{VORTICITY}" stroke-width="1.6" '
+                f'stroke-dasharray="3,2"/>')
+            # Both labels sit clear of the wall and the plume, with a leader
+            # back to the feature they name.
+            block.append(
+                f'<line x1="{px + 146}" y1="{py - 32}" x2="{px + 98}" y2="{py - 24}" '
+                f'stroke="{rgba(PRESSURE, 0.7)}" stroke-width="1"/>')
+            block.append(
+                f'<text x="{px + 150}" y="{py - 30}" fill="{PRESSURE}" font-size="11">'
+                f'shock inside the bell</text>')
+            block.append(
+                f'<text x="{px + 104}" y="{py + 50}" fill="{VORTICITY}" font-size="11">'
+                f'ambient air drawn back in</text>')
+        for offset, text in ((62, body[0]), (78, body[1]), (94, body[2])):
+            block.append(
+                f'<text x="{px + 8}" y="{py + offset}" fill="{TEXT_MUTED}" '
+                f'font-size="11.5">{text}</text>')
+        block.append(
+            f'<text x="{px + 8}" y="{py + 112}" fill="{colour}" font-size="11.5" '
+            f'font-style="italic">{sting}</text>')
+        panels.append("".join(block))
+
+    return f'''
+    <svg viewBox="0 0 940 500" width="100%" height="500" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};border:1px solid {BORDER};border-radius:10px;font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">One nozzle, four atmospheres &#183; the exit pressure never changes, only what meets it</text>
+      <text x="24" y="50" fill="{TEXT_DIM}" font-size="12">Steady ideal gas &#183; the area ratio alone fixes p&#8337;/p&#8330; &#183; schematic plumes, angles not to scale</text>
+      {"".join(panels)}
+    </svg>'''
+
+
+def diagram_rocket_pressure_thrust() -> str:
+    """Where thrust is applied: unbalanced pressure on the inside of the engine.
+
+    The control-volume figure of chapter 10 shows *that* the pressure term
+    survives; this shows *where* the force acts. They are the same statement,
+    and a reader who has seen only the first often believes the exhaust pushes
+    on something behind the vehicle.
+    """
+    def bell(px: float, py: float) -> str:
+        upper = (f"M {px} {py - 46} L {px + 22} {py - 46} L {px + 62} {py - 16} "
+                 f"Q {px + 96} {py - 46} {px + 156} {py - 40}")
+        lower = (f"M {px} {py + 46} L {px + 22} {py + 46} L {px + 62} {py + 16} "
+                 f"Q {px + 96} {py + 46} {px + 156} {py + 40}")
+        return (f'<path d="{upper}" fill="none" stroke="{TEXT_MUTED}" stroke-width="5" '
+                f'stroke-linecap="round"/>'
+                f'<path d="{lower}" fill="none" stroke="{TEXT_MUTED}" stroke-width="5" '
+                f'stroke-linecap="round"/>'
+                f'<line x1="{px}" y1="{py - 46}" x2="{px}" y2="{py + 46}" '
+                f'stroke="{TEXT_MUTED}" stroke-width="5" stroke-linecap="round"/>')
+
+    halves = []
+    for px, ambient_arrows, colour, marker, ambient_label in (
+            (70, 6, PRESSURE, "red", "sea level: p&#8336; = 101 kPa pushes back"),
+            (540, 0, SUCCESS, "green", "vacuum: p&#8336; = 0, nothing pushes back")):
+        py = 190
+        block = [bell(px, py)]
+        for x_off, y_off, dx, dy in ((26, 44, 0, 16), (48, 30, 10, 14),
+                                     (78, 30, 8, 15), (112, 38, 4, 16),
+                                     (144, 40, 2, 16)):
+            block.append(
+                f'<line x1="{px + x_off}" y1="{py - y_off}" '
+                f'x2="{px + x_off - dx}" y2="{py - y_off - dy}" stroke="{PRESSURE}" '
+                f'stroke-width="2" marker-end="url(#arrow-red)"/>')
+            block.append(
+                f'<line x1="{px + x_off}" y1="{py + y_off}" '
+                f'x2="{px + x_off - dx}" y2="{py + y_off + dy}" stroke="{PRESSURE}" '
+                f'stroke-width="2" marker-end="url(#arrow-red)"/>')
+        block.append(
+            f'<line x1="{px + 4}" y1="{py}" x2="{px - 34}" y2="{py}" '
+            f'stroke="{PRESSURE}" stroke-width="4" marker-end="url(#arrow-red)"/>')
+        # Clear of the wall-pressure arrows, whose tips reach py - 60.
+        block.append(
+            f'<text x="{px + 22}" y="{py - 96}" fill="{PRESSURE}" font-size="11.5">'
+            f'gas pressure on the metal, everywhere</text>')
+        block.append(
+            f'<text x="{px + 22}" y="{py - 81}" fill="{PRESSURE}" font-size="11.5">'
+            f'the atmosphere does not reach</text>')
+        for k in range(ambient_arrows):
+            y = py - 40 + 16 * k
+            block.append(
+                f'<line x1="{px + 202}" y1="{y}" x2="{px + 166}" y2="{y}" '
+                f'stroke="{colour}" stroke-width="2" marker-end="url(#arrow-{marker})"/>')
+        if not ambient_arrows:
+            block.append(
+                f'<text x="{px + 170}" y="{py + 4}" fill="{SUCCESS}" font-size="12">'
+                f'&#8212; nothing &#8212;</text>')
+        block.append(
+            f'<line x1="{px + 156}" y1="{py - 40}" x2="{px + 156}" y2="{py + 40}" '
+            f'stroke="{ACCENT}" stroke-width="2" stroke-dasharray="5,4"/>')
+        block.append(
+            f'<text x="{px + 88}" y="{py + 76}" fill="{ACCENT}" font-size="12">exit plane A{_sub("e")}</text>')
+        block.append(
+            f'<text x="{px + 4}" y="{py + 104}" fill="{colour}" font-size="12.5" '
+            f'font-weight="bold">{ambient_label}</text>')
+        halves.append("".join(block))
+
+    return f'''
+    <svg viewBox="0 0 1000 470" width="100%" height="470" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};border:1px solid {BORDER};border-radius:10px;font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Thrust is a pressure integral over the inside of the engine, not a push against the air</text>
+      <text x="24" y="50" fill="{TEXT_DIM}" font-size="12">Same engine, same chamber, same mass flow. The only difference between the two halves is what presses on the exit plane from outside.</text>
+      <line x1="505" y1="72" x2="505" y2="320" stroke="{BORDER_STRONG}" stroke-width="1.5" stroke-dasharray="6,6"/>
+      {"".join(halves)}
+      <rect x="60" y="336" width="880" height="116" rx="8" fill="{rgba(ACCENT, 0.10)}" stroke="{ACCENT}" stroke-width="1.5"/>
+      <text x="80" y="362" fill="{ACCENT}" font-size="13" font-weight="bold">The same force, counted two ways</text>
+      <text x="80" y="388" fill="{TEXT}" font-size="12.5" font-family="JetBrains Mono, monospace">F = &#8747;(p &#8722; p{_sub("a")}) dA{_sub("axial")}  over every wetted surface   =   m&#775;v{_sub("e")} + (p{_sub("e")} &#8722; p{_sub("a")})A{_sub("e")}</text>
+      <text x="80" y="414" fill="{TEXT_MUTED}" font-size="12">Left: add up the axial component of pressure on the metal &#8212; that is where the force is physically applied, and it is why a bell is a</text>
+      <text x="80" y="432" fill="{TEXT_MUTED}" font-size="12">thrust-producing structure rather than a duct. Right: chapter 10&#8217;s control volume, which has already done that integral for you.</text>
+    </svg>'''
+
+
+def diagram_bell_contour_construction() -> str:
+    """The draughtsman's recipe for a Rao bell, step by step and to scale.
+
+    Every number on this figure is either a decision (the expansion ratio, the
+    percentage bell) or a convention (the two throat arc radii). The only curve
+    that is *computed* is the parabola, and it is fixed the moment its two end
+    tangents are chosen.
+    """
+    ox, oy = 90, 300          # throat, on the axis of the drawing
+    scale = 46.0              # pixels per throat radius
+    rt = scale
+    exit_r = 3.4 * scale      # about eps = 11.6, chosen so the figure fits
+    bell_len = 5.1 * scale
+    cone_len = 6.4 * scale
+    arc_up, arc_down = 1.5 * scale, 0.382 * scale
+
+    # Each body is pre-split into its two drawn lines. Wrapping after the
+    # subscript substitution would cut a `<tspan>` in half and produce markup
+    # that is no longer well formed, which is exactly how this figure first
+    # failed its XML check.
+    steps = (
+        ("1", "Fix the expansion ratio",
+         "&#949; = A{e}/A{t} sets r{e} = r{t}&#8730;&#949;.",
+         "The exit radius is now not negotiable."),
+        ("2", "Fix the length",
+         "Draw the 15&#176; reference cone, then keep a stated",
+         "fraction of its length. 80% is the usual choice."),
+        ("3", "Round the throat",
+         "Arc of 1.5 r{t} upstream, 0.382 r{t} downstream.",
+         "Workshop convention, not a derivation."),
+        ("4", "Sweep to &#952;n",
+         "Follow the downstream arc until the wall angle",
+         "reaches &#952;n. That end point is N."),
+        ("5", "Join N to E",
+         "One parabola, tangent to &#952;n at N and &#952;e at E:",
+         "the quadratic B&#233;zier through their intersection."),
+    )
+    lines = []
+    for index, (number, title, first, second) in enumerate(steps):
+        y = 96 + 60 * index
+        lines.append(
+            f'<circle cx="628" cy="{y - 5}" r="11" fill="{rgba(ACCENT, 0.25)}" '
+            f'stroke="{ACCENT}" stroke-width="1.5"/>')
+        lines.append(
+            f'<text x="628" y="{y}" fill="{ACCENT}" font-size="12" font-weight="bold" '
+            f'text-anchor="middle">{number}</text>')
+        lines.append(
+            f'<text x="650" y="{y - 8}" fill="{TEXT}" font-size="13" '
+            f'font-weight="bold">{title}</text>')
+        for offset, text in ((10, first), (26, second)):
+            text = text.replace("{e}", _sub("e")).replace("{t}", _sub("t"))
+            lines.append(
+                f'<text x="650" y="{y + offset}" fill="{TEXT_MUTED}" '
+                f'font-size="11.5">{text}</text>')
+
+    return f'''
+    <svg viewBox="0 0 1000 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};border:1px solid {BORDER};border-radius:10px;font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Drawing the bell &#183; five decisions and one curve</text>
+      <text x="24" y="50" fill="{TEXT_DIM}" font-size="12">Upper half only, drawn to scale. Angles are true here because this is a meridional section, not a projection.</text>
+
+      <line x1="{ox - 70}" y1="{oy}" x2="{ox + cone_len + 40}" y2="{oy}" stroke="{TEXT_FAINT}" stroke-width="1.2" stroke-dasharray="8,5"/>
+      <text x="{ox + cone_len + 46}" y="{oy + 5}" fill="{TEXT_FAINT}" font-size="11">axis</text>
+
+      <path d="M {ox - 70} {oy - 2.6 * scale} L {ox - 34} {oy - 2.6 * scale} L {ox - arc_up * 0.5} {oy - 1.62 * scale} A {arc_up} {arc_up} 0 0 1 {ox} {oy - rt}"
+            fill="none" stroke="{TEXT_MUTED}" stroke-width="4" stroke-linecap="round"/>
+      <text x="{ox - 66}" y="{oy - 2.6 * scale - 12}" fill="{TEXT_MUTED}" font-size="11">chamber &#183; 1.5 r{_sub("t")} arc</text>
+
+      <line x1="{ox}" y1="{oy}" x2="{ox}" y2="{oy - rt - 18}" stroke="{WARNING}" stroke-width="1.4" stroke-dasharray="4,3"/>
+      <text x="{ox - 6}" y="{oy - rt - 24}" fill="{WARNING}" font-size="11.5" text-anchor="middle">throat r{_sub("t")}</text>
+
+      <line x1="{ox}" y1="{oy - rt}" x2="{ox + cone_len}" y2="{oy - exit_r}" stroke="{SHEAR}" stroke-width="2" stroke-dasharray="7,5"/>
+      <text x="{ox + cone_len + 8}" y="{oy - exit_r - 3}" fill="{SHEAR}" font-size="11.5">15&#176; reference cone &#183; step 2 keeps 80% of its length</text>
+
+      <path d="M {ox} {oy - rt} A {arc_down} {arc_down} 0 0 1 {ox + 0.36 * scale} {oy - rt - 0.14 * scale}"
+            fill="none" stroke="{VORTICITY}" stroke-width="4"/>
+      <circle cx="{ox + 0.36 * scale}" cy="{oy - rt - 0.14 * scale}" r="4.5" fill="{VORTICITY}"/>
+      <text x="{ox + 0.74 * scale}" y="{oy - 0.83 * scale}" fill="{VORTICITY}" font-size="11.5">N &#183; 0.382 r{_sub("t")} arc ends at &#952;n</text>
+
+      <path d="M {ox + 0.36 * scale} {oy - rt - 0.14 * scale} Q {ox + 2.55 * scale} {oy - 2.86 * scale} {ox + bell_len} {oy - exit_r}"
+            fill="none" stroke="{ACCENT}" stroke-width="4.5"/>
+      <line x1="{ox + 0.36 * scale}" y1="{oy - rt - 0.14 * scale}" x2="{ox + 2.55 * scale}" y2="{oy - 2.86 * scale}" stroke="{rgba(ACCENT, 0.5)}" stroke-width="1.4" stroke-dasharray="4,3"/>
+      <line x1="{ox + 2.55 * scale}" y1="{oy - 2.86 * scale}" x2="{ox + bell_len}" y2="{oy - exit_r}" stroke="{rgba(ACCENT, 0.5)}" stroke-width="1.4" stroke-dasharray="4,3"/>
+      <circle cx="{ox + 2.55 * scale}" cy="{oy - 2.86 * scale}" r="4" fill="none" stroke="{ACCENT}" stroke-width="2"/>
+      <text x="{ox + 2.75 * scale}" y="{oy - 2.78 * scale}" fill="{ACCENT}" font-size="11.5">tangents meet: the B&#233;zier control point</text>
+
+      <circle cx="{ox + bell_len}" cy="{oy - exit_r}" r="4.5" fill="{SUCCESS}"/>
+      <text x="{ox + bell_len - 34}" y="{oy - exit_r - 14}" fill="{SUCCESS}" font-size="11.5">E &#183; exit at &#952;e</text>
+      <line x1="{ox + bell_len}" y1="{oy - exit_r}" x2="{ox + bell_len}" y2="{oy}" stroke="{SUCCESS}" stroke-width="1.4" stroke-dasharray="4,3"/>
+      <text x="{ox + bell_len + 8}" y="{oy - exit_r / 2}" fill="{SUCCESS}" font-size="11.5">r{_sub("e")}</text>
+
+      <line x1="{ox}" y1="{oy + 26}" x2="{ox + bell_len}" y2="{oy + 26}" stroke="{TEXT_DIM}" stroke-width="1.4" marker-start="url(#arrow-dim)" marker-end="url(#arrow-dim)"/>
+      <text x="{ox + bell_len / 2}" y="{oy + 42}" fill="{TEXT_DIM}" font-size="11.5" text-anchor="middle">L = 0.8 &#215; cone length</text>
+
+      {"".join(lines)}
+    </svg>'''
+
+
+def diagram_moc_wave_logic() -> str:
+    """Why a wall that cancels its own waves is the shape you want.
+
+    The computed characteristic mesh in the lesson shows *where* the waves go.
+    This shows the three rules that put them there, each stated as a physical
+    requirement rather than as a step in a recipe.
+    """
+    # Two drawn lines per rule, pre-split for the same reason as the bell
+    # figure: a `<tspan>` subscript must never straddle a line break.
+    rules = (
+        (SUCCESS, "1 &#183; The corner sets the total turn",
+         "A sonic stream turned through an angle &#952; reaches the Mach number whose "
+         "Prandtl&#8211;Meyer angle is &#952;. So the wall turns away",
+         "from the axis by &#957;(M{e})/2 to expand the gas, then turns back through the "
+         "same angle so the exhaust leaves axial.",
+         "&#952;{max} = &#957;(M{e}) / 2"),
+        (ACCENT, "2 &#183; The axis reflects, because symmetry forbids crossing it",
+         "A wave arriving at the centreline meets its own mirror image. The flow angle "
+         "there must be zero, so the wave cannot",
+         "pass through: it reflects, and the reflected wave carries the same strength "
+         "back out as the opposite family.",
+         "on the axis: K{plus} = &#8722;K{minus}"),
+        (WARNING, "3 &#183; The wall cancels, because that is what you are designing it to do",
+         "A reflected wave arriving at the wall would bounce again and ruin the uniform "
+         "exit. Instead the contour is bent to exactly",
+         "the local flow direction, so the wave is absorbed. Doing that at every "
+         "arriving wave is the contour.",
+         "at the wall: &#952;{wall} = &#952;{flow}"),
+    )
+
+    def _subscripts(text: str) -> str:
+        for token, label in (("{e}", "e"), ("{max}", "max"), ("{plus}", "+"),
+                             ("{minus}", "&#8722;"), ("{wall}", "wall"),
+                             ("{flow}", "flow")):
+            text = text.replace(token, _sub(label))
+        return text
+
+    blocks = []
+    for index, (colour, title, first, second, formula) in enumerate(rules):
+        y = 262 + 74 * index
+        blocks.append(
+            f'<rect x="24" y="{y - 20}" width="6" height="60" rx="3" fill="{colour}"/>')
+        blocks.append(
+            f'<text x="44" y="{y - 4}" fill="{colour}" font-size="13" '
+            f'font-weight="bold">{title}</text>')
+        for offset, text in ((14, first), (30, second)):
+            blocks.append(
+                f'<text x="44" y="{y + offset}" fill="{TEXT_MUTED}" '
+                f'font-size="11.5">{_subscripts(text)}</text>')
+        blocks.append(
+            f'<text x="742" y="{y + 14}" fill="{colour}" font-size="12.5" '
+            f'font-family="JetBrains Mono, monospace">{_subscripts(formula)}</text>')
+
+    fan = []
+    for k in range(6):
+        fan.append(
+            f'<line x1="150" y1="96" x2="{300 + 46 * k}" y2="190" stroke="{rgba(SUCCESS, 0.8)}" stroke-width="1.6"/>')
+        fan.append(
+            f'<line x1="{300 + 46 * k}" y1="190" x2="{452 + 46 * k}" y2="{120 - 4 * k}" stroke="{rgba(ACCENT, 0.8)}" stroke-width="1.6"/>')
+
+    return f'''
+    <svg viewBox="0 0 1000 500" width="100%" height="500" xmlns="http://www.w3.org/2000/svg"
+         style="background:{SURFACE};border:1px solid {BORDER};border-radius:10px;font-family:Inter,sans-serif">
+      {_arrow_defs()}
+      <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">Method of characteristics &#183; three rules, and the contour is the consequence</text>
+      <text x="24" y="50" fill="{TEXT_DIM}" font-size="12">Upper half of a planar minimum-length nozzle</text>
+      <line x1="120" y1="190" x2="720" y2="190" stroke="{TEXT_FAINT}" stroke-width="1.2" stroke-dasharray="8,5"/>
+      <text x="726" y="194" fill="{TEXT_FAINT}" font-size="11">axis of symmetry</text>
+      <path d="M 120 96 L 150 96 Q 300 40 700 66" fill="none" stroke="{TEXT_MUTED}" stroke-width="5" stroke-linecap="round"/>
+      <circle cx="150" cy="96" r="6" fill="{WARNING}"/>
+      <text x="112" y="84" fill="{WARNING}" font-size="12">sharp corner: the whole expansion happens here</text>
+      {"".join(fan)}
+      <text x="186" y="152" fill="{SUCCESS}" font-size="11.5">C&#8722; waves out</text>
+      <text x="452" y="178" fill="{ACCENT}" font-size="11.5">C+ waves reflected off the axis</text>
+      <text x="500" y="44" fill="{WARNING}" font-size="11.5">absorbed at the wall &#8212; nothing bounces back</text>
+      <line x1="700" y1="66" x2="700" y2="190" stroke="{SUCCESS}" stroke-width="2" stroke-dasharray="5,4"/>
+      <text x="708" y="128" fill="{SUCCESS}" font-size="11.5">uniform, axial,</text>
+      <text x="708" y="144" fill="{SUCCESS}" font-size="11.5">M = M{_sub("e")} everywhere</text>
+      <text x="24" y="230" fill="{TEXT}" font-size="14" font-weight="bold">Why those waves go where they do</text>
+      {"".join(blocks)}
+    </svg>'''

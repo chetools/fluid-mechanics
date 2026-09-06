@@ -54,18 +54,18 @@ if __name__ == '__main__':
                 expect(page.get_by_text('Computed area ratio', exact=False)).to_contain_text('= 1.000000')
                 page.locator('.st-key-plot-tab_stress_ns-fig_deform').screenshot(path=str(output / f'{filename}.png'))
 
-            select_chapter(page, '8 · External flow')
+            select_chapter(page, '9 · External flow')
             for generator in (diagram_sphere_forces, diagram_sphere_separation):
                 diagram_locator(page, generator).screenshot(path=str(output / f'{generator.__name__}.png'))
 
-            select_chapter(page, '10 · Compressible')
+            select_chapter(page, '12 · Compressible')
             expect(page.get_by_text('Bore increases by only', exact=False)).to_contain_text('61.92 mm')
             temperature = page.get_by_role('spinbutton', name='Relieving temperature T₀ [K]', exact=True)
             temperature.fill('811')
             temperature.press('Enter')
             bore = page.get_by_test_id('stMetric').filter(has=page.get_by_text('Equivalent bore', exact=True))
             expect(bore).to_contain_text('61.9 mm')
-            wait_for_chapter(page, 10)
+            wait_for_chapter(page, 11)
             for generator in (diagram_nozzle_information, diagram_relief_valve):
                 diagram_locator(page, generator).screenshot(path=str(output / f'{generator.__name__}.png'))
 

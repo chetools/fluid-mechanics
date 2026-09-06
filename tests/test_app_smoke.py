@@ -16,8 +16,9 @@ APP = str(Path(__file__).resolve().parents[1] / "app.py")
 
 EXPECTED_TABS = [
     "1 · Energy", "2 · Pipes", "3 · Scaling", "4 · Turbulence",
-    "5 · Euler", "6 · Stress & NS", "7 · Exact flows", "8 · External flow",
-    "9 · Turbomachinery", "10 · Compressible", "11 · CFD", "12 · Reference",
+    "5 · Euler", "6 · Stress & NS", "7 · Non-Newtonian", "8 · Exact flows",
+    "9 · External flow", "10 · Momentum", "11 · Turbomachinery",
+    "12 · Compressible", "13 · CFD", "14 · Reference",
 ]
 
 
@@ -32,7 +33,7 @@ def test_app_renders_without_exception(rendered):
     assert not rendered.exception, rendered.exception
 
 
-def test_all_twelve_chapters_are_present(rendered):
+def test_all_fourteen_chapters_are_present(rendered):
     """Chapters are a radio group, not st.tabs: only the selected one renders.
 
     st.tabs executes every panel body on every run, which is what stalled the
@@ -52,7 +53,7 @@ def test_only_the_selected_chapter_renders(rendered):
 def test_switching_chapter_renders_that_chapter():
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
-    at.radio(key="chapter_nav").set_value("9 · Turbomachinery").run()
+    at.radio(key="chapter_nav").set_value("11 · Turbomachinery").run()
     assert not at.exception, at.exception
     labels = [m.label for m in at.metric]
     assert any("MAC shaft power" in label for label in labels), (
@@ -68,12 +69,12 @@ def test_the_chapters_have_one_structure_and_one_set_of_names():
     """
     from src.ui import learning_path as lp
 
-    assert len(lp.LESSONS) == len(lp.NAV_LABELS) == 12
+    assert len(lp.LESSONS) == len(lp.NAV_LABELS) == 14
 
-    # Every chapter belongs to exactly one part, and the parts tile 1..12.
+    # Every chapter belongs to exactly one part, and the parts tile 1..13.
     covered = [n for _, _, (first, last) in lp.PARTS for n in range(first, last + 1)]
-    assert covered == list(range(1, 13)), covered
-    for number in range(1, 13):
+    assert covered == list(range(1, 15)), covered
+    for number in range(1, 15):
         lp.part_for(number)  # raises if a chapter is orphaned
 
     # Part names must be distinct: the old data used "SOLUTIONS & VERIFICATION"
@@ -84,14 +85,24 @@ def test_the_chapters_have_one_structure_and_one_set_of_names():
     # The navigation labels are what app.py renders and the browser tests click.
     assert lp.chapter_labels() == EXPECTED_TABS
 
-    # Part 4 spans chapters 7-8, which is what the chapter eyebrow announces.
-    assert lp.part_for(7) == lp.part_for(8) == (4, "Viscous solutions & drag", (7, 8))
+    # Part 3 carries three chapters: the Newtonian law is stated in 6 and taken
+    # apart in 7, so they sit in the same part, which the eyebrow announces.
+    assert lp.part_for(5) == lp.part_for(6) == lp.part_for(7) == (
+        3, "Local momentum & material behaviour", (5, 7)
+    )
+    assert lp.part_for(8) == lp.part_for(9) == (4, "Viscous solutions & drag", (8, 9))
+
+    # Part 5 carries three: the control-volume momentum balance of chapter 10 is
+    # the tool chapters 11 and 12 then spend on machines and on gases.
+    assert lp.part_for(10) == lp.part_for(11) == lp.part_for(12) == (
+        5, "Momentum, work & machines", (10, 12)
+    )
 
 
 def test_chapter_header_eyebrow_agrees_with_the_navigation():
     from src.ui import learning_path as lp
 
-    for number in range(1, 13):
+    for number in range(1, 15):
         part_number, part_name, (first, last) = lp.part_for(number)
         assert first <= number <= last
         assert lp.chapter_label(number).startswith(f"{number} · ")
@@ -118,12 +129,12 @@ def test_changing_display_units_keeps_the_reader_on_their_chapter():
     """
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
-    at.radio(key="chapter_nav").set_value("9 · Turbomachinery").run()
-    assert at.radio(key="chapter_nav").value == "9 · Turbomachinery"
+    at.radio(key="chapter_nav").set_value("11 · Turbomachinery").run()
+    assert at.radio(key="chapter_nav").value == "11 · Turbomachinery"
 
     at.selectbox(key="unit_toggle_select").set_value("Nondimensional [-]").run()
     assert not at.exception, at.exception
-    assert at.radio(key="chapter_nav").value == "9 · Turbomachinery", (
+    assert at.radio(key="chapter_nav").value == "11 · Turbomachinery", (
         "switching display units moved the reader off their chapter"
     )
     labels = [m.label for m in at.metric]
@@ -159,7 +170,7 @@ def test_air_separation_power_scales_with_feed():
     """A live widget change must recompute the worked example, not just redraw it."""
     at = AppTest.from_file(APP, default_timeout=300)
     at.run()
-    at.radio(key="chapter_nav").set_value("9 · Turbomachinery").run()
+    at.radio(key="chapter_nav").set_value("11 · Turbomachinery").run()
 
     def mac_power(app):
         for metric in app.metric:
@@ -172,6 +183,29 @@ def test_air_separation_power_scales_with_feed():
     assert not at.exception, at.exception
     # Specific work is unchanged by mass flow, so power must scale exactly with it.
     assert mac_power(at) == pytest.approx(2.0 * base, rel=1e-3)
+
+
+def test_momentum_chapter_recomputes_its_jet_lab():
+    """A live widget change must recompute chapter 10, not just redraw it."""
+    at = AppTest.from_file(APP, default_timeout=300)
+    at.run()
+    at.radio(key="chapter_nav").set_value("10 · Momentum").run()
+    assert not at.exception, at.exception
+
+    def shaft_power(app):
+        for metric in app.metric:
+            if metric.label == "Shaft power":
+                return float(metric.value.split()[0])
+        raise AssertionError("the jet lab did not render")
+
+    # A Pelton wheel is at its optimum when U = V/2, so moving away from it must
+    # lower the power whichever way you go.
+    at.number_input(key="mom_jet_u").set_value(15.0).run()
+    best = shaft_power(at)
+    at.number_input(key="mom_jet_u").set_value(24.0).run()
+    assert shaft_power(at) < best
+    at.number_input(key="mom_jet_u").set_value(6.0).run()
+    assert shaft_power(at) < best
 
 
 def test_canal_calculator_reacts_to_roughness():
@@ -194,14 +228,14 @@ def test_canal_calculator_reacts_to_roughness():
 
 def test_calculator_and_self_check_survive_chapter_round_trip():
     at = AppTest.from_file(APP, default_timeout=300).run()
-    at.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    at.radio(key='chapter_nav').set_value('11 · Turbomachinery').run()
     at.number_input(key='asu_mair').set_value(60.0).run()
     check = next(r for r in at.radio if r.key != 'chapter_nav')
     check_key, answer = check.key, check.options[-1]
     check.set_value(answer).run()
     power = next(m.value for m in at.metric if m.label == 'MAC shaft power')
     at.radio(key='chapter_nav').set_value('1 · Energy').run()
-    at.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    at.radio(key='chapter_nav').set_value('11 · Turbomachinery').run()
     assert not at.exception
     assert at.number_input(key='asu_mair').value == 60
     assert at.radio(key=check_key).value == answer
@@ -213,22 +247,22 @@ def test_calculator_and_self_check_survive_chapter_round_trip():
 
 def test_previously_unkeyed_input_survives_chapter_round_trip():
     at = AppTest.from_file(APP, default_timeout=300).run()
-    at.radio(key='chapter_nav').set_value('10 · Compressible').run()
+    at.radio(key='chapter_nav').set_value('12 · Compressible').run()
     temperature = next(w for w in at.number_input if w.label == 'Reservoir stagnation temperature [K]')
     key = temperature.key
     temperature.set_value(450.0).run()
     at.radio(key='chapter_nav').set_value('1 · Energy').run()
-    at.radio(key='chapter_nav').set_value('10 · Compressible').run()
+    at.radio(key='chapter_nav').set_value('12 · Compressible').run()
     assert not at.exception
     assert at.number_input(key=key).value == 450
 
 
 def test_lesson_values_are_isolated_between_sessions():
     first = AppTest.from_file(APP, default_timeout=300).run()
-    first.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    first.radio(key='chapter_nav').set_value('11 · Turbomachinery').run()
     first.number_input(key='asu_mair').set_value(60.0).run()
     second = AppTest.from_file(APP, default_timeout=300).run()
-    second.radio(key='chapter_nav').set_value('9 · Turbomachinery').run()
+    second.radio(key='chapter_nav').set_value('11 · Turbomachinery').run()
     assert second.number_input(key='asu_mair').value == 30
 
 

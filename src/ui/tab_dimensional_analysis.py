@@ -96,7 +96,7 @@ def render_tab_dimensional_analysis():
             
             Dimensional analysis is what makes the **Moody Chart** possible. 
             Instead of needing separate graphs for water, crude oil, air, and gasoline across every pipe diameter, 
-            one relationship between $f_D$, $\\text{Re}$, and $\\epsilon/D$ describes
+            one relationship between $f_F$, $\\text{Re}$, and $\\epsilon/D$ describes
             **fully developed, single-phase Newtonian flow in circular pipes** within
             the correlation's range. Entrance effects, strong compressibility, non-Newtonian
             behavior, and other geometries require additional checks or models.
@@ -178,7 +178,7 @@ def render_tab_dimensional_analysis():
                 **inertia** — right for a Venturi or a nozzle. Taking $\Delta p=\mu U/L$
                 instead puts $\mathrm{Re}$ in front of the *inertia* term and asserts pressure
                 balances **viscosity** — which is exactly the scaling used to derive Stokes
-                flow in Tab 8, and the reason that derivation could delete inertia rather than
+                flow in Tab 9, and the reason that derivation could delete inertia rather than
                 the pressure. Same equation; the choice of ruler declares which balance you
                 expect.
                 """,
@@ -200,7 +200,7 @@ def render_tab_dimensional_analysis():
                 r"""
                 Large $\mathrm{Re}$ makes $1/\mathrm{Re}$ small, but it multiplies
                 $\nabla^{*2}\mathbf u^{*}$, which is *not* order one near a wall — that is the
-                whole content of the boundary layer in Tab 7. A small coefficient only permits
+                whole content of the boundary layer in Tab 8. A small coefficient only permits
                 dropping a term when the term it multiplies is genuinely order one. This is
                 the single most common misuse of a scaling argument.
                 """,
@@ -528,7 +528,7 @@ def render_tab_dimensional_analysis():
 1. Any candidate Π-set is just a rotation of the SVD kernel above. Some rotations
    make the Moody plot a *single* curve; others smear it.
 2. **Mutual information** $I(\Pi_{\mathrm{out}}; \Pi_{\mathrm{in}})$ measures how
-   much of the output (say $f_D$ or $C_f$) is already determined by those inputs.
+   much of the output (say $f_F$ or $C_f$) is already determined by those inputs.
    If $I$ is infinite, an exact law exists (Hagen–Poiseuille). If $I$ is finite,
    some physics is missing from the variable list.
 3. IT-π **searches the kernel** for the rotation that maximises $I$ (equivalently,
@@ -545,7 +545,7 @@ def render_tab_dimensional_analysis():
         asked for **seven** dimensionless inputs. Three levels each would be
         $3^7 = 2187$ runs. IT-π found **two** groups already give ~92% of the
         extractable information — $3^2 = 9$ runs. The Moody chart is the 19th-century
-        version of the same idea: once $f_D = \Phi(\mathrm{Re},\,\varepsilon/D)$,
+        version of the same idea: once $f_F = \Phi(\mathrm{Re},\,\varepsilon/D)$,
         you never again test water and oil as separate universes.
 
         **What to do in the lab.** After you have the kernel (this tab), you still
@@ -644,10 +644,10 @@ def render_tab_dimensional_analysis():
         r"""
         The textbook result $\mathrm{Nu}_x = 0.332\,\mathrm{Re}_x^{1/2}\mathrm{Pr}^{1/3}$ is
         usually quoted as though it were a fit to data. It is not. It is the Blasius solution
-        of chapter 7, carrying a temperature field along with it.
+        of chapter 8, carrying a temperature field along with it.
 
         **Step 1 — the same similarity variable.** Scale temperature between its two boundary
-        values, and use chapter 7's $\eta$ unchanged:
+        values, and use chapter 8's $\eta$ unchanged:
         $$\theta(\eta) = \frac{T-T_w}{T_\infty-T_w},
         \qquad \eta = y\sqrt{\frac{U_\infty}{\nu x}}$$
 
@@ -799,12 +799,13 @@ def render_tab_dimensional_analysis():
         =j_D=\mathrm{St}_m\,\mathrm{Sc}^{2/3}
         =\frac{f_F}{2}=\frac{f_D}{8}$$
         so a pressure-drop measurement predicts a heat-transfer coefficient. Chapter 4 uses
-        this; chapter 2 warns about the factor of four between $f_F$ and $f_D$.
+        this. This app reports $f_F$ throughout; chapter 2 warns about the factor of four
+        between $f_F$ and $f_D$.
 
         **Where it breaks, and why.** The friction equality holds against **skin friction
         only**. On a sphere, a cylinder or a packed bed most of the drag is *form* drag —
         pressure acting on a separated wake — and form drag transports neither heat nor
-        species. Using $f_D/8$ there over-predicts $j$ badly. The heat/mass half of the
+        species. Using $f_F/2$ there over-predicts $j$ badly. The heat/mass half of the
         analogy ($j_H = j_D$) survives on bluff bodies; the friction half does not.
         """
     )

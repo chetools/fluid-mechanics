@@ -1,7 +1,7 @@
 """Pipe flow physics, friction factor correlations, and Chemical Engineering piping design.
 
 Implements:
-1. Darcy-Weisbach & Fanning friction calculations
+1. Fanning friction factor f_F throughout (ChemE convention); Darcy f_D = 4 f_F
 2. Churchill (1977) continuous correlation across laminar, transition & turbulent regimes
 3. Colebrook-White implicit root solve
 4. Piping network fittings / minor losses (equivalent lengths & K_L factors)
@@ -39,16 +39,17 @@ FITTING_K_FACTORS = {
 }
 
 def friction_factor_churchill(reynolds: float, rel_roughness: float) -> float:
-    """Calculate Darcy friction factor f_D using Churchill's (1977) universal correlation.
-    
+    """Fanning friction factor f_F from Churchill's (1977) universal correlation.
+
     Valid across laminar, critical/transitional, and fully turbulent rough pipe regimes.
-    f_D = 8 * [ (8/Re)^12 + (A + B)^(-1.5) ]^(1/12)
+    Churchill is published in Darcy form, f_D = 8 [ (8/Re)^12 + (A + B)^(-1.5) ]^(1/12);
+    this returns the Fanning factor f_F = f_D / 4, so laminar gives 16/Re, not 64/Re.
     """
     if reynolds <= 0:
         return float("nan")
     if reynolds < 1.0:
         # Avoid large powers and retain the creeping-flow limit at tiny Re.
-        return 64.0 / reynolds
+        return 16.0 / reynolds
         
     Re = max(reynolds, 1e-4)
     eps_D = max(rel_roughness, 0.0)
@@ -65,17 +66,19 @@ def friction_factor_churchill(reynolds: float, rel_roughness: float) -> float:
     B = (37530.0 / Re)**16
     
     f_darcy = 8.0 * ((term_lam + (A + B)**(-1.5))**(1.0 / 12.0))
-    return float(f_darcy)
+    return float(f_darcy / 4.0)
 
 def solve_colebrook_white(reynolds: float, rel_roughness: float, max_iter: int = 50) -> float:
-    """Solve Colebrook-White equation for turbulent Darcy friction factor via Newton-Raphson.
-    
-    1 / sqrt(f) = -2.0 * log10( (eps/D)/3.7 + 2.51 / (Re * sqrt(f)) )
+    """Solve Colebrook-White for the turbulent Fanning factor f_F via Newton-Raphson.
+
+    Colebrook is written in Darcy form,
+    1 / sqrt(f_D) = -2.0 * log10( (eps/D)/3.7 + 2.51 / (Re * sqrt(f_D)) ),
+    so the root is found in f_D and returned as f_F = f_D / 4.
     """
     if reynolds <= 0:
         return float("nan")
     if reynolds < 2300.0:
-        return 64.0 / reynolds
+        return 16.0 / reynolds
         
     eps_D = max(rel_roughness, 0.0)
     # Initial guess from Haaland equation
@@ -89,16 +92,16 @@ def solve_colebrook_white(reynolds: float, rel_roughness: float, max_iter: int =
         df = -0.5 * (f**(-1.5)) + (2.0 / (np.log(10.0) * arg)) * (-1.255 / (reynolds * (f**1.5)))
         f_next = f - F_val / df
         if abs(f_next - f) < 1e-7:
-            return float(f_next)
+            return float(f_next / 4.0)
         f = max(f_next, 1e-5)
         
-    return float(f)
+    return float(f / 4.0)
 
 def generate_moody_chart_data() -> Dict[str, np.ndarray]:
-    """Precompute curves for generating the complete interactive Moody Chart."""
+    """Precompute curves for the interactive Moody chart, in Fanning f_F."""
     # Laminar line: Re from 500 to 2300
     re_lam = np.logspace(np.log10(500), np.log10(2300), 50)
-    f_lam = 64.0 / re_lam
+    f_lam = 16.0 / re_lam
     
     # Turbulent curves: Re from 3000 to 1e8
     re_turb = np.logspace(np.log10(3000), np.log10(1e8), 120)
@@ -142,12 +145,12 @@ def calculate_cheme_pipe_system(
     rel_roughness = roughness / pipe_diameter_inner
     
     # Friction factors
-    f_darcy = friction_factor_churchill(reynolds, rel_roughness)
-    f_fanning = f_darcy / 4.0
+    f_fanning = friction_factor_churchill(reynolds, rel_roughness)
+    f_darcy = 4.0 * f_fanning
     
-    # Major head loss (pipe skin friction)
+    # Major head loss (pipe skin friction), Fanning form Dp = 4 f_F (L/D) (rho u^2 / 2)
     dyn_head = 0.5 * density * velocity**2
-    delta_p_major = 0.0 if velocity == 0 else f_darcy * (pipe_length / pipe_diameter_inner) * dyn_head
+    delta_p_major = 0.0 if velocity == 0 else 4.0 * f_fanning * (pipe_length / pipe_diameter_inner) * dyn_head
     h_loss_major = delta_p_major / (density * 9.81)
     
     # Minor head loss (valves & fittings)
@@ -177,8 +180,8 @@ def calculate_cheme_pipe_system(
         "velocity": velocity,
         "reynolds": reynolds,
         "rel_roughness": rel_roughness,
-        "f_darcy": f_darcy,
         "f_fanning": f_fanning,
+        "f_darcy": f_darcy,
         "dyn_head": dyn_head,
         "k_total": k_total,
         "delta_p_major": delta_p_major,
@@ -271,11 +274,11 @@ def npsh_available(
     velocity = flow_rate_m3s / area if area > 0 else 0.0
     reynolds = (density * velocity * D) / viscosity if viscosity > 0 else float("inf")
     rel_rough = roughness / D
-    f_d = friction_factor_churchill(reynolds, rel_rough)
+    f_f = friction_factor_churchill(reynolds, rel_rough)
     k_total = sum(
         FITTING_K_FACTORS.get(name, 0.0) * count for name, count in fittings_counts.items()
     )
-    h_friction = 0.0 if velocity == 0 else f_d * (suction_length / D) * (velocity**2) / (2.0 * g)
+    h_friction = 0.0 if velocity == 0 else 4.0 * f_f * (suction_length / D) * (velocity**2) / (2.0 * g)
     h_minor = k_total * (velocity**2) / (2.0 * g)
     h_f = h_friction + h_minor
     static_abs = (p_tank_abs - p_vapor) / (density * g) if density > 0 else 0.0
@@ -289,23 +292,25 @@ def npsh_available(
         "h_f": h_f,
         "velocity": velocity,
         "reynolds": reynolds,
-        "f_darcy": f_d,
+        "f_fanning": f_f,
+        "f_darcy": 4.0 * f_f,
         "k_total": k_total,
         "p_tank_abs": p_tank_abs,
         "p_vapor": p_vapor,
     }
 
 
-def laminar_darcy_from_force_balance(reynolds: float) -> float:
-    """Darcy f_D = 64/Re from a cylindrical force balance + Newton’s law.
+def laminar_fanning_from_force_balance(reynolds: float) -> float:
+    """Fanning f_F = 16/Re from a cylindrical force balance + Newton’s law.
 
     Δp π r² = τ 2π r L  ⇒  τ = (r/2)(−dp/dx).
     τ = μ (−du/dr) integrates to Hagen–Poiseuille, then
-    f_D ≡ 2 Δp D / (L ρ u²) = 64/Re.
+    τ_w = (D/4)(Δp/L), so f_F ≡ τ_w / (½ ρ u²) = Δp D / (2 L ρ u²) = 16/Re
+    (Darcy f_D = 4 f_F = 64/Re).
     """
     if reynolds <= 0:
         return float("nan")
-    return 64.0 / reynolds
+    return 16.0 / reynolds
 
 
 def straw_bundle_comparison(
@@ -333,7 +338,7 @@ def straw_bundle_comparison(
     u_open = Q / area_open if area_open > 0 else 0.0
     re_open = (density * u_open * D) / viscosity if viscosity > 0 else float("inf")
     f_open = friction_factor_churchill(re_open, roughness / D)
-    dp_open = 0.0 if Q == 0 else f_open * (L / D) * 0.5 * density * u_open * u_open
+    dp_open = 0.0 if Q == 0 else 4.0 * f_open * (L / D) * 0.5 * density * u_open * u_open
 
     d = D * np.sqrt(phi / N)
     q_i = Q / N
@@ -341,7 +346,7 @@ def straw_bundle_comparison(
     u_i = q_i / area_i if area_i > 0 else 0.0
     re_i = (density * u_i * d) / viscosity if viscosity > 0 else float("inf")
     f_i = friction_factor_churchill(re_i, 0.0)
-    dp_bundle = 0.0 if Q == 0 else f_i * (L / d) * 0.5 * density * u_i * u_i
+    dp_bundle = 0.0 if Q == 0 else 4.0 * f_i * (L / d) * 0.5 * density * u_i * u_i
     dp_lam_exact = (128.0 * viscosity * L * q_i) / (np.pi * d**4) if d > 0 else float("inf")
     return {
         "n_straws": N,

@@ -34,8 +34,8 @@ def render_tab_reference():
             {"Symbol": "h_minor", "Quantity": "Fitting/entrance/exit head loss Σ K_L u²/(2g)", "SI Units": "m", "Dimensions": "[L]"},
             {"Symbol": "e_f", "Quantity": "Lost mechanical work per unit mass; e_f/g = h_f + h_minor", "SI Units": "J/kg", "Dimensions": "[L² T⁻²]"},
             {"Symbol": "Φ", "Quantity": "Viscous dissipation 2μ D:D", "SI Units": "W/m³", "Dimensions": "[M L⁻¹ T⁻³]"},
-            {"Symbol": "f_D", "Quantity": "Darcy friction factor (Moody). Laminar pipe: 64/Re", "SI Units": "[-]", "Dimensions": "[1]"},
-            {"Symbol": "f_F", "Quantity": "Fanning friction factor = f_D/4. Laminar pipe: 16/Re", "SI Units": "[-]", "Dimensions": "[1]"},
+            {"Symbol": "f_F", "Quantity": "Fanning friction factor — used throughout this app. Laminar pipe: 16/Re", "SI Units": "[-]", "Dimensions": "[1]"},
+            {"Symbol": "f_D", "Quantity": "Darcy (Moody) friction factor = 4 f_F. Laminar pipe: 64/Re", "SI Units": "[-]", "Dimensions": "[1]"},
             {"Symbol": "ε", "Quantity": "Equivalent sand-grain roughness", "SI Units": "m", "Dimensions": "[L]"},
             {"Symbol": "A_Ch, B_Ch", "Quantity": "Churchill (1977) auxiliary groups (not area A)", "SI Units": "[-]", "Dimensions": "[1]"},
             {"Symbol": "D_H", "Quantity": "Hydraulic diameter 4A/P_w", "SI Units": "m", "Dimensions": "[L]"},
@@ -108,13 +108,37 @@ def render_tab_reference():
                 "Model": "Newtonian Constitutive Law",
                 "Key Assumption": "Linear stress-strain rate relation",
                 "Physical Consequence": "Constant viscosity μ independent of shear rate",
-                "Failure Mode": "Fails for blood, polymer melts, cornstarch (shear thinning / thickening viscoelastic fluids)"
+                "Failure Mode": "Fails for blood, polymer melts, cornstarch (shear thinning / thickening viscoelastic fluids); chapter 7 replaces it"
+            },
+            {
+                "Model": "Herschel–Bulkley pipe (chapter 7)",
+                "Key Assumption": "τ = τ_y + K γ̇^n, laminar, fully developed, no wall slip",
+                "Physical Consequence": "Unyielded plug for r < 2τ_y/(−dp/dz); no flow at all while τ_w ≤ τ_y",
+                "Failure Mode": "Predicts N₁ = 0, so no rod-climbing or die swell; time-independent, so no thixotropy"
             },
             {
                 "Model": "Pipe Re = 2300 / 4000",
                 "Key Assumption": "Circular pipe, fully developed, Newtonian",
                 "Physical Consequence": "Osborne Reynolds' dye-streak thresholds",
                 "Failure Mode": "Wrong for cavities, cylinders, plates, and non-circular ducts without D_H caveats"
+            },
+            {
+                "Model": "Control-volume momentum (chapter 10)",
+                "Key Assumption": "Steady control volume; uniform properties on each cut of the surface",
+                "Physical Consequence": "ΣF = Σṁu_out − Σṁu_in gives a resultant force from the boundary alone",
+                "Failure Mode": "Never gives a loss, a distribution, or anything about the interior; wrong if the cut is not on straight, parallel streamlines"
+            },
+            {
+                "Model": "Euler turbomachinery work (chapter 11)",
+                "Key Assumption": "Steady, adiabatic rotor; uniform inlet/outlet velocity triangles",
+                "Physical Consequence": "Δh₀ = U₂C_θ2 − U₁C_θ1 from angular momentum alone, no blade-loss detail",
+                "Failure Mode": "Says nothing about efficiency, stall, or surge; needs a separate loss model for real machines"
+            },
+            {
+                "Model": "Ideal compressible nozzle/shock (chapter 12)",
+                "Key Assumption": "Isentropic perfect gas between shocks; constant cp/γ; discharge coefficient 1",
+                "Physical Consequence": "Choking at M = 1; stagnation pressure falls but stagnation temperature is conserved across a shock",
+                "Failure Mode": "No real-gas or finite-rate chemistry effects; Fanno/Rayleigh sections are not a combined heated-friction solver"
             },
             {
                 "Model": "Ghia cavity overlay",
@@ -131,7 +155,7 @@ def render_tab_reference():
             {
                 "Model": "Power-law pipe (Ostwald–de Waele)",
                 "Key Assumption": "τ = K γ̇^n, fully developed, Re_MR < ~2100",
-                "Physical Consequence": "u_max/u_avg = (3n+1)/(n+1); f_D = 64/Re_MR",
+                "Physical Consequence": "u_max/u_avg = (3n+1)/(n+1); f_F = 16/Re_MR",
                 "Failure Mode": "No yield stress (Bingham), no elasticity, not a turbulent correlation"
             },
             {
@@ -148,7 +172,7 @@ def render_tab_reference():
         render_prose_and_latex(
             """
             * **Batchelor, G. K.** (1967). *An Introduction to Fluid Dynamics*. Cambridge University Press.
-            * **Bird, R. B., Stewart, W. E., & Lightfoot, E. N.** (2002). *Transport Phenomena* (2nd ed.). John Wiley & Sons. (Fanning $f_F$, BSL notation.)
+            * **Bird, R. B., Stewart, W. E., & Lightfoot, E. N.** (2002). *Transport Phenomena* (2nd ed.). John Wiley & Sons. (Fanning $f_F$, BSL notation — the convention this app follows.)
             * **Kundu, P. K., Cohen, I. M., & Dowling, D. R.** (2015). *Fluid Mechanics* (6th ed.). Academic Press.
             * **White, F. M.** (2011). *Viscous Fluid Flow* (3rd ed.). McGraw-Hill.
             * **Crane Co.** (1988). *Flow of Fluids Through Valves, Fittings, and Pipe* (Technical Paper No. 410).

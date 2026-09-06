@@ -1,4 +1,8 @@
-"""Steady incompressible networks: piezometric heads, signed Darcy losses, continuity."""
+"""Steady incompressible networks: piezometric heads, signed friction losses, continuity.
+
+Friction factors are Fanning f_F throughout; the Darcy-Weisbach head loss uses
+f_D = 4 f_F.
+"""
 
 import numpy as np
 from scipy.optimize import brentq, least_squares
@@ -70,8 +74,8 @@ def pipe_headloss(q, pipe, rho, mu):
     if re < 1:
         major = 128 * mu * length * q / (rho * G * np.pi * d**4)
     else:
-        f = friction_factor_churchill(re, pipe["roughness_m"] / d)
-        major = f * length / d * q * abs(q) / (2 * G * area**2)
+        f_f = friction_factor_churchill(re, pipe["roughness_m"] / d)
+        major = 4 * f_f * length / d * q * abs(q) / (2 * G * area**2)
     return major + pipe["k_minor"] * q * abs(q) / (2 * G * area**2)
 
 
@@ -197,7 +201,8 @@ def solve_network(nodes, pipes, rho=998.2, mu=.001002):
             "diameter_mm": p["diameter_m"] * 1000, "roughness_mm": p["roughness_m"] * 1000,
             "relative_roughness": p["roughness_m"] / p["diameter_m"], "flow_m3h": q[k] * 3600,
             "velocity_ms": q[k] / area, "reynolds": re,
-            "f_darcy": friction_factor_churchill(re, p["roughness_m"] / p["diameter_m"]),
+            "f_fanning": friction_factor_churchill(re, p["roughness_m"] / p["diameter_m"]),
+            "f_darcy": 4 * friction_factor_churchill(re, p["roughness_m"] / p["diameter_m"]),
             "headloss_m": loss, "energy_residual_m": heads[i] - heads[j] - loss})
     return {"nodes": node_results, "pipes": pipe_results, "iterations": iterations,
             "mass_residual_m3s": residual,

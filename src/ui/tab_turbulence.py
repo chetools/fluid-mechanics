@@ -13,7 +13,7 @@ from src.svg_diagrams import (
 from src.physics.turbulence import velocity_profile_comparison, law_of_the_wall
 from src.physics.pipe_flow import (
     friction_factor_churchill,
-    laminar_darcy_from_force_balance,
+    laminar_fanning_from_force_balance,
     straw_bundle_comparison,
 )
 from src.plotting import plot_laminar_turbulent_profiles, plot_law_of_the_wall, plot_straw_bundle
@@ -47,7 +47,7 @@ def render_tab_turbulence():
     render_objectives(
         [
             "State that 2300 is a pipe threshold, not a universal law.",
-            "Derive $f_D = 64/\\mathrm{Re}$ from a cylindrical force balance and compare it to Moody.",
+            "Derive $f_F = 16/\\mathrm{Re}$ from a cylindrical force balance and compare it to Moody.",
             "Decide whether packing a pipe with straws to stay laminar actually saves pump kW.",
             "Write Chilton–Colburn with the Fanning factor: $j = f_F/2 = f_D/8$.",
         ]
@@ -125,7 +125,7 @@ def render_tab_turbulence():
                 "Read the same group as a race between two clocks",
                 r"""
                 Momentum spreads sideways by viscous diffusion in a time $t_\nu\sim D^{2}/\nu$
-                (the diffusion law of Tab 7), and the flow carries a fluid particle one pipe
+                (the diffusion law of Tab 8), and the flow carries a fluid particle one pipe
                 diameter downstream in $t_{\mathrm{flow}}\sim D/U$. Their ratio is the same
                 number:
                 $$\frac{t_\nu}{t_{\mathrm{flow}}} = \frac{D^{2}/\nu}{D/U} = \frac{UD}{\nu} = \mathrm{Re}_D$$
@@ -147,7 +147,7 @@ def render_tab_turbulence():
         ],
     )
 
-    st.markdown("### 4.1b Laminar force balance → $f_D = 64/\\mathrm{Re}$")
+    st.markdown("### 4.1b Laminar force balance → $f_F = 16/\\mathrm{Re}$")
     st.markdown(
         r"""
         Tab 1 booked friction as lost mechanical energy. Here we *compute* it
@@ -169,10 +169,10 @@ def render_tab_turbulence():
             Integrate with $u(R)=0$:
             $$u(r) = \frac{1}{4\mu}\frac{\Delta p}{L}(R^2 - r^2)$$
             Mean speed $u_{\mathrm{avg}} = u_{\max}/2 = (D^2/32\mu)(\Delta p/L)$
-            (Hagen–Poiseuille). Solve for $\Delta p$ and substitute the **Darcy**
-            definition $\Delta p = f_D (L/D)(\rho u^2/2)$:
-            $$f_D = \frac{2\Delta p D}{L\rho u^2} = \frac{64\mu}{\rho u D} = \frac{64}{\mathrm{Re}}$$
-            Fanning is $f_F = 16/\mathrm{Re} = f_D/4$. Same physics, factor of four.
+            (Hagen–Poiseuille). Now divide the wall stress by the dynamic pressure, which
+            is the **Fanning** definition $f_F = \tau_w/(\tfrac12\rho u^2)$:
+            $$f_F = \frac{\Delta p D}{2L\rho u^2} = \frac{16\mu}{\rho u D} = \frac{16}{\mathrm{Re}}$$
+            Darcy is $f_D = 4f_F = 64/\mathrm{Re}$. Same physics, factor of four.
             """
         )
         render_symbols(
@@ -182,28 +182,28 @@ def render_tab_turbulence():
                 (r"\tau(r)", r"axial shear on the cylindrical jacket (Pa). At the wall, $\tau_w=(D/4)(\Delta p/L)$."),
                 (r"\mu", "dynamic viscosity (Pa·s). Sidebar fluid."),
                 (r"u(r)", "axial speed of the Hagen–Poiseuille parabola (m/s)."),
-                (r"f_D", r"Darcy friction factor. This force balance gives $f_D=64/\mathrm{Re}$."),
+                (r"f_F", r"Fanning friction factor, used throughout this app. This force balance gives $f_F=16/\mathrm{Re}$ (Darcy $f_D=4f_F=64/\mathrm{Re}$)."),
                 (r"\mathrm{Re}", r"$\rho u_{\mathrm{avg}} D/\mu$ with $u_{\mathrm{avg}}$ the area-mean speed."),
             ]
         )
     re_cmp = persistent_input(st.select_slider,
-        "Compare f_D(Re) at",
+        "Compare f_F(Re) at",
         options=[200, 500, 1000, 1500, 2000, 2300, 4000, 1e4],
         value=1000,
         key="lam_f_re",
     )
-    f_force = laminar_darcy_from_force_balance(float(re_cmp))
+    f_force = laminar_fanning_from_force_balance(float(re_cmp))
     f_moody = friction_factor_churchill(float(re_cmp), 0.0)
     col_f1, col_f2, col_f3 = st.columns(3)
-    col_f1.metric("Force-balance f_D = 64/Re", f"{f_force:.4f}")
-    col_f2.metric("Churchill / Moody f_D", f"{f_moody:.4f}")
+    col_f1.metric("Force-balance f_F = 16/Re", f"{f_force:.4f}")
+    col_f2.metric("Churchill / Moody f_F", f"{f_moody:.4f}")
     col_f3.metric("Relative difference", f"{abs(f_moody - f_force)/f_force*100:.2f} %")
     if re_cmp <= 2300:
         st.success("Below Re = 2300 the two expressions agree: Moody's laminar line *is* the force balance.")
     else:
         st.warning(
             "Above transition the force balance assumed a parabolic, laminar τ(r). "
-            "Turbulent eddy stress raises f_D well above 64/Re."
+            "Turbulent eddy stress raises f_F well above 16/Re."
         )
 
     # -------------------------------------------------------------------------
@@ -239,7 +239,7 @@ def render_tab_turbulence():
     st.caption(
         "α = 2 and u_avg/u_max = 1/2 are **circular pipe**. A plane channel has "
         "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.543 for pure plane Poiseuille "
-        "(Tab 7 integrates the actual Couette–Poiseuille profile)."
+        "(Tab 8 integrates the actual Couette–Poiseuille profile)."
     )
     render_what_to_notice("Equal mean velocity: the turbulent profile is blunter, so the wall gradient (and τ_w) is steeper.")
     
@@ -328,7 +328,7 @@ def render_tab_turbulence():
                 turbulent line $\alpha\approx1.06$ is usually buried inside the uncertainty
                 of $h_f$, which is why the shortcut became a habit. Both statements are
                 **circular-pipe** results: a plane slit has $\bar{u}/u_{\max}=2/3$ and
-                $\alpha=54/35\approx1.54$ (Tab 7).
+                $\alpha=54/35\approx1.54$ (Tab 8).
                 """,
             ),
         ],
@@ -451,7 +451,8 @@ def render_tab_turbulence():
         **Where the $1/7$ power law of §4.2 came from.** $u/u_{\max}=(1-r/R)^{1/7}$ is an
         algebraic *fit* that tracks the logarithm over about a decade of $y^{+}$ and, unlike
         the log, integrates in closed form — which is why §4.2 could get $\bar{u}/u_{\max}=49/60$
-        from it. It is the same approximation that underlies Blasius' $f_D=0.316\,\mathrm{Re}^{-1/4}$,
+        from it. It is the same approximation that underlies Blasius'
+        $f_F=0.0791\,\mathrm{Re}^{-1/4}$ (as $f_D=0.316\,\mathrm{Re}^{-1/4}$),
         and like Blasius it fails above roughly $\mathrm{Re}=10^{5}$. It is not a derivation,
         and it is wrong at both ends: differentiating it gives an *infinite* shear at the wall
         (where the real profile is the linear $u^{+}=y^{+}$) and a non-zero slope on the
@@ -497,7 +498,8 @@ def render_tab_turbulence():
             - **Heat Transfer:** Laminar pipe heat transfer is strictly conduction-limited (Nusselt number $\\text{Nu} = 3.66$). Turbulent heat transfer scales as $\\text{Nu} \\sim \\text{Re}^{0.8} \\cdot \\text{Pr}^{1/3}$ (Dittus–Boelter), increasing heat transfer rates by **10 to 100-fold**!
             - **Mass Transfer:** Turbulent eddy diffusivity $\\epsilon_M$ is 1,000 to 100,000 times larger than molecular diffusion coefficients.
             - **Chilton–Colburn Analogy:** $j_H = j_D = f_F / 2 = f_D / 8$.
-              Use the **Fanning** factor here (Tab 2). Writing $f/2$ with a Moody (Darcy) $f$ is a factor-of-four error.
+              This app reports **Fanning** $f_F$ throughout (Tab 2), so $f_F/2$ is the form to use.
+              Writing $f/2$ with a Moody (Darcy) $f$ is a factor-of-four error.
             """
         )
     with col_to2:
@@ -518,22 +520,22 @@ def render_tab_turbulence():
         r"where the exponents $1.75$, $2$ and $3$ actually come from",
         [
             (
-                "Everything hangs on Darcy, which has $u$ in two places",
+                "Everything hangs on the friction factor, which has $u$ in two places",
                 r"""
                 Tab 2 defines the friction factor by
-                $$\Delta p=f_D\frac{L}{D}\frac{\rho u^{2}}{2}$$
+                $$\Delta p=4f_F\frac{L}{D}\frac{\rho u^{2}}{2}$$
                 and this is a *definition*, so it cannot by itself predict an exponent. The
                 velocity enters twice: explicitly as $u^{2}$, and hidden inside
-                $f_D(\mathrm{Re})$, because $\mathrm{Re}=\rho u D/\mu$ moves when $u$ moves.
+                $f_F(\mathrm{Re})$, because $\mathrm{Re}=\rho u D/\mu$ moves when $u$ moves.
                 The observed exponent is the sum of the two.
                 """,
             ),
             (
                 "Laminar: the hidden dependence cancels one power exactly",
                 r"""
-                §4.1b derived $f_D=64/\mathrm{Re}=64\mu/(\rho u D)$. Substitute it and watch
+                §4.1b derived $f_F=16/\mathrm{Re}=16\mu/(\rho u D)$. Substitute it and watch
                 the $\rho$ and one power of $u$ disappear:
-                $$\Delta p=\frac{64\mu}{\rho u D}\cdot\frac{L}{D}\cdot\frac{\rho u^{2}}{2}
+                $$\Delta p=4\cdot\frac{16\mu}{\rho u D}\cdot\frac{L}{D}\cdot\frac{\rho u^{2}}{2}
                 =\frac{32\,\mu L u}{D^{2}}\ \propto\ u^{1}$$
                 Linear in velocity, and independent of density — which is the signature of a
                 flow where inertia plays no role at all. It is also Hagen–Poiseuille written
@@ -544,7 +546,7 @@ def render_tab_turbulence():
                 "Turbulent smooth: Blasius supplies a fractional power",
                 r"""
                 For a smooth wall up to about $\mathrm{Re}=10^{5}$, measurement gives
-                $f_D\approx0.316\,\mathrm{Re}^{-1/4}$, so $f_D\propto u^{-1/4}$ and
+                $f_F\approx0.0791\,\mathrm{Re}^{-1/4}$, so $f_F\propto u^{-1/4}$ and
                 $$\Delta p\propto u^{-1/4}\cdot u^{2}=u^{7/4}=u^{1.75}$$
                 The exponent is $2$ *reduced* by a quarter, because faster flow is slightly
                 more slippery per unit velocity head. It is empirical, not derived: the
@@ -555,7 +557,7 @@ def render_tab_turbulence():
                 "Fully rough: the hidden dependence vanishes, and you get a clean square",
                 r"""
                 At high $\mathrm{Re}$ on a rough wall the Moody curves flatten,
-                $f_D\to f_D(\varepsilon/D)$ with no $\mathrm{Re}$ left in it. Then nothing
+                $f_F\to f_F(\varepsilon/D)$ with no $\mathrm{Re}$ left in it. Then nothing
                 is hidden and $\Delta p\propto u^{2}$ exactly. Physically: the drag is now set
                 by pressure forces on roughness elements, and form drag scales with dynamic
                 pressure. This is the upper end of the quoted $1.75$–$2.0$ range.
@@ -590,14 +592,14 @@ def render_tab_turbulence():
         "Chilton–Colburn is j = f/2. Which f is that?",
         ["Darcy f_D (Moody chart)", "Fanning f_F = f_D/4", "Either, they differ only by Re"],
         "Fanning f_F = f_D/4",
-        "j_H = f_F/2 = f_D/8. Moody plots Darcy; BSL often uses Fanning.",
+        "j_H = f_F/2 = f_D/8. This app reports Fanning; published Moody charts plot Darcy.",
     )
 
     st.markdown("---")
     st.markdown("### 4.5 The straw-pipe question")
     render_prose_and_latex(
         r"""
-        Turbulence raises $f_D$ and $\Delta p \propto u^{1.75\text{–}2}$. A natural
+        Turbulence raises $f_F$ and $\Delta p \propto u^{1.75\text{–}2}$. A natural
         thought: **fill the pipe with $N$ capillary “straws”** so each lumen stays
         laminar ($\mathrm{Re}_d < 2300$), at the **same total** $Q$ and the same
         outer diameter $D$.
@@ -706,7 +708,7 @@ def render_tab_turbulence():
     render_predict(
         "straw_predict",
         "At fixed Q and outer D, adding more straws to keep Re_d laminar will typically…",
-        ["cut pump power because f_D = 64/Re is smaller",
+        ["cut pump power because f_F = 16/Re is smaller",
          "raise pump power because d⁴ in the denominator beats the laminar f",
          "leave Δp unchanged by dimensional analysis"],
         "raise pump power because d⁴ in the denominator beats the laminar f",
@@ -777,7 +779,7 @@ def render_tab_turbulence():
         "straw_self_check",
         "Why doesn’t “keep it laminar with straws” win on pump kW at fixed Q and outer D?",
         [
-            "Because laminar f_D is always larger than turbulent f_D",
+            "Because laminar f_F is always larger than turbulent f_F",
             "Because Δp ~ μ Q L / d⁴ and d shrinks as 1/√N, so Δp grows with N",
             "Because packing fraction φ cannot exceed 0.5",
         ],

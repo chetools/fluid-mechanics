@@ -17,6 +17,8 @@ friction factor.
 Two conventions coexist in practice and both are supported here:
 
 * Darcy-Weisbach with the Moody/Churchill friction factor and D_H = 4 R_h.
+  Written here in Fanning f_F (the app's convention throughout); the classical
+  civil-hydraulics form uses Darcy f_D = 4 f_F.
   Dimensionally consistent, roughness in metres, valid in any unit system.
 * Manning-Strickler, V = (1/n) R_h^(2/3) S^(1/2). An empirical fit that is
   standard in civil practice. Manning's n is NOT dimensionless: the formula as
@@ -166,9 +168,9 @@ def darcy_discharge(
 
     Sets the friction slope equal to the bed slope and solves
 
-        S_0 = f_D V^2 / (D_H 2 g)
+        S_0 = 4 f_F V^2 / (D_H 2 g)      (= f_D V^2 / (D_H 2 g), f_D = 4 f_F)
 
-    for V. f_D comes from Churchill at Re = rho V D_H / mu, so the solve is
+    for V. f_F comes from Churchill at Re = rho V D_H / mu, so the solve is
     implicit and is closed by fixed-point iteration (f varies weakly with V).
     This is the route that stays valid outside Manning's fully-rough range.
     """
@@ -179,15 +181,16 @@ def darcy_discharge(
     geom = trapezoid_geometry(depth, bottom_width, side_slope)
     d_h = geom["hydraulic_diameter"]
     if d_h <= 0:
-        return {**geom, "velocity": 0.0, "discharge": 0.0, "f_darcy": float("nan"),
+        return {**geom, "velocity": 0.0, "discharge": 0.0,
+                "f_fanning": float("nan"), "f_darcy": float("nan"),
                 "reynolds": 0.0, "equivalent_manning_n": float("nan")}
 
-    velocity = math.sqrt(2.0 * G * d_h * slope / 0.02)  # seed with f = 0.02
-    f_darcy = 0.02
+    velocity = math.sqrt(2.0 * G * d_h * slope / 0.02)  # seed with f_D = 0.02
+    f_fanning = 0.005
     for _ in range(60):
         reynolds = rho * velocity * d_h / mu
-        f_darcy = friction_factor_churchill(reynolds, eps / d_h)
-        updated = math.sqrt(2.0 * G * d_h * slope / f_darcy)
+        f_fanning = friction_factor_churchill(reynolds, eps / d_h)
+        updated = math.sqrt(2.0 * G * d_h * slope / (4.0 * f_fanning))
         if abs(updated - velocity) < 1e-12 * max(1.0, updated):
             velocity = updated
             break
@@ -197,14 +200,15 @@ def darcy_discharge(
         **geom,
         "velocity": velocity,
         "discharge": velocity * geom["area"],
-        "f_darcy": f_darcy,
+        "f_fanning": f_fanning,
+        "f_darcy": 4.0 * f_fanning,
         "reynolds": reynolds,
         "roughness": eps,
         "bed_slope": slope,
         # Manning's n that reproduces this Darcy result, from
-        # n = R_h^(1/6) sqrt(f/(8 g)).
+        # n = R_h^(1/6) sqrt(f_D/(8 g)) = R_h^(1/6) sqrt(f_F/(2 g)).
         "equivalent_manning_n": (geom["hydraulic_radius"] ** (1.0 / 6.0))
-        * math.sqrt(f_darcy / (8.0 * G)),
+        * math.sqrt(f_fanning / (2.0 * G)),
     }
 
 

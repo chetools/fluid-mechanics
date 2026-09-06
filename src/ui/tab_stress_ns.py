@@ -16,9 +16,7 @@ from src.physics.stress_tensor import (
     compute_cauchy_stress_2d,
     deform_fluid_element_2d
 )
-from src.physics.non_newtonian import power_law_pipe
-from src.physics.exact_solutions import hagen_poiseuille_pipe
-from src.plotting import plot_fluid_element_deformation, plot_power_law_pipe
+from src.plotting import plot_fluid_element_deformation
 from src.units import format_quantity, get_fluid_state
 from src.ui.pedagogy import (
     render_objectives,
@@ -370,7 +368,7 @@ def render_tab_stress_ns():
                 conduction and in Fick diffusion**. Viscosity diffuses momentum exactly as
                 conductivity diffuses heat, with $\nu=\mu/\rho$ playing the part of thermal
                 diffusivity — which is the formal basis of the transport analogy used in
-                Tab 3 and Tab 7.
+                Tab 3 and Tab 8.
                 """,
             ),
         ],
@@ -498,137 +496,33 @@ Thus zero divergence preserves area exactly. The D-only and Ω-only outlines sol
     render_plot(fig_deform, key="tab_stress_ns-fig_deform")
 
     # -------------------------------------------------------------------------
-    # PART 6: Power-law constitutive
+    # PART 6: Where the Newtonian law stops, and what replaces it
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 6.6 Non-Newtonian Constitutive Law: Power-Law Pipe Flow")
+    st.markdown("### 6.6 The one assumption still unpaid for")
     render_prose_and_latex(
         r"""
-        Newtonian stress is $\boldsymbol{\tau} = 2\mu\mathbf{D}$ with $\mu$ constant.
-        Many ChemE fluids are **Ostwald–de Waele** (power-law):
-        $$\tau = K |\dot{\gamma}|^{n-1}\dot{\gamma}$$
-        $n=1, K=\mu$ recovers Newton. $n<1$ shear-thinning (polymer melts, blood);
-        $n>1$ shear-thickening (slurries). The validity matrix in the Reference tab
-        lists this as the Newtonian failure mode — here is the replacement law.
+        Everything above followed from balances: the Cauchy stress from a force
+        balance on a tetrahedron, the decomposition
+        $\nabla\mathbf{u}=\mathbf{D}+\boldsymbol{\Omega}$ from algebra, the
+        momentum equation from Newton's second law. Only the last step,
+        $\boldsymbol{\sigma}=-p\mathbf{I}+2\mu\mathbf{D}$, was a **choice** — the
+        simplest law that is linear in $\mathbf{D}$, isotropic, and depends on the
+        strain rate at this instant alone.
+
+        That choice is a claim about the fluid's microstructure, and it is false for
+        paint, blood, ketchup, drilling mud, molten polymer and wet cement. The next
+        chapter takes it apart: where $\mu$ comes from, which structures break the
+        linearity, what a yield stress does to the pipe profile of Chapter 4, and how
+        elastic memory produces stresses this equation cannot represent at all.
         """
     )
     render_svg(diagram_power_law())
-    render_derivation(
-        r"the power-law pipe profile, and where $(3n+1)/(n+1)$ comes from",
-        [
-            (
-                "The force balance does not know what fluid this is",
-                r"""
-                Repeat the cylindrical-plug balance of Tab 4 word for word: steady, fully
-                developed flow, so the pressure force on a coaxial plug of radius $r$ equals
-                the shear on its jacket.
-                $$\tau(r)=\frac{r}{2}\left(-\frac{dp}{dz}\right),
-                \qquad \tau_w=\frac{R}{2}\left(-\frac{dp}{dz}\right)$$
-                **This is unchanged for any fluid whatsoever** — Newtonian, power-law, paste
-                or slurry — because it is a momentum statement, not a material one. The linear
-                $\tau(r)$ in the plot is therefore not a result of the model; it is a
-                constraint the model has to satisfy.
-                """,
-            ),
-            (
-                "Only now insert the constitutive law",
-                r"""
-                For a shear-thinning or thickening fluid in this geometry, with $u$ decreasing
-                outwards so $\dot\gamma=-du/dr>0$:
-                $$K\left(-\frac{du}{dr}\right)^{n}=\frac{r}{2}\left(-\frac{dp}{dz}\right)
-                \;\Longrightarrow\;
-                -\frac{du}{dr}=\left[\frac{r}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
-                Setting $n=1$, $K=\mu$ returns Tab 4's equation exactly, which is the check to
-                run before trusting anything that follows.
-                """,
-            ),
-            (
-                "Integrate outward from the wall, where the velocity is known",
-                r"""
-                The only boundary condition available is no-slip, $u(R)=0$, so integrate from
-                $r$ to $R$ and use $\int r^{1/n}dr=r^{(n+1)/n}\big/\frac{n+1}{n}$:
-                $$u(r)=\frac{n}{n+1}
-                \left[\frac{1}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}
-                \left(R^{\frac{n+1}{n}}-r^{\frac{n+1}{n}}\right)$$
-                $$\Longrightarrow\quad
-                u(r)=u_{\max}\left[1-\left(\frac{r}{R}\right)^{\frac{n+1}{n}}\right],
-                \qquad u_{\max}=\frac{n}{n+1}R\left[\frac{R}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
-                The exponent $(n+1)/n$ is the whole shape story: it is $2$ for a Newtonian
-                parabola, larger than $2$ for $n>1$ (a sharper apex), and tends to $1$ as
-                $n\to0$ — a flat plug with all the shear crammed against the wall.
-                """,
-            ),
-            (
-                "Integrate again over the annuli to get the flow rate",
-                r"""
-                $$Q=\int_0^R u(r)\,2\pi r\,dr
-                =\frac{\pi n}{3n+1}R^{3}
-                \left[\frac{R}{2K}\left(-\frac{dp}{dz}\right)\right]^{1/n}$$
-                and dividing by $\pi R^{2}$ gives the mean speed. The ratio to the centreline
-                value is then pure arithmetic, with the pressure gradient, $K$ and $R$ all
-                cancelling:
-                $$\frac{u_{\max}}{\bar u}=\frac{3n+1}{n+1}$$
-                At $n=1$ this is $4/2=2$, recovering the Newtonian factor derived in Tab 4 —
-                and the metric above reports it live, so you can watch it fall toward $1$ as
-                the fluid is made more shear-thinning.
-                """,
-            ),
-            (
-                r"Why $\mathrm{Re}_{MR}$ exists at all",
-                r"""
-                A power-law fluid has no single viscosity, so $\rho uD/\mu$ is undefined.
-                Metzner and Reed's answer was to run the argument backwards: **define** a
-                Reynolds number by whatever expression makes the laminar friction factor come
-                out as $f_D=64/\mathrm{Re}$, so that the entire Newtonian design apparatus
-                keeps working:
-                $$\mathrm{Re}_{MR}=\frac{\rho\,\bar u^{\,2-n}D^{n}}
-                {K\,8^{\,n-1}\left(\frac{3n+1}{4n}\right)^{n}}$$
-                Every strange-looking factor in the denominator is there to make that identity
-                exact. Note what this does *not* do: it does not predict the transition
-                point. The $2100$ used here is carried over from Newtonian pipes and is an
-                approximation for these fluids.
-                """,
-            ),
-        ],
-    )
-    col_n1, col_n2, col_n3 = st.columns(3)
-    with col_n1:
-        n_pl = persistent_input(st.slider, "Power-law index n", min_value=0.3, max_value=1.7, value=0.7, step=0.05, key="pl_n")
-    with col_n2:
-        k_pl = persistent_input(st.number_input,
-            "Consistency K [Pa·sⁿ]",
-            min_value=1e-4,
-            max_value=10.0,
-            value=max(float(fluid["mu"]), 1e-3),
-            format="%.4f",
-            key="pl_K",
-        )
-    with col_n3:
-        pl_dp = persistent_input(st.slider, "dp/dz [Pa/m]", min_value=-80.0, max_value=-5.0, value=-20.0, step=5.0, key="pl_dp")
-    pl_R = 0.025
-    pl_res = power_law_pipe(
-        radius=pl_R, dp_dz=pl_dp, K=float(k_pl), n=float(n_pl), rho=float(fluid["rho"])
-    )
-    newt = hagen_poiseuille_pipe(
-        radius=pl_R, dp_dx=pl_dp, mu=float(fluid["mu"]), rho=float(fluid["rho"])
-    )
-    col_p1, col_p2, col_p3, col_p4 = st.columns(4)
-    col_p1.metric("u_max / u_avg", f"{pl_res['ratio_max_avg']:.2f}", help="2.00 when n = 1")
-    col_p2.metric("Re_MR (Metzner–Reed)", f"{pl_res['re_mr']:.1f}")
-    col_p3.metric("μ_app at wall", f"{pl_res['mu_apparent']:.3e} Pa·s")
-    col_p4.metric("f_D = 64/Re_MR", f"{pl_res['f_darcy']:.4f}" if pl_res["laminar"] else "not laminar")
-    if not pl_res["laminar"]:
-        st.warning("Re_MR ≥ 2100: the laminar power-law profile and f = 64/Re_MR no longer apply.")
     st.caption(
-        f"Same wall shear τ_w = R(−dp/dz)/2 = {pl_res['tau_wall']:.3f} Pa as the dashed Newtonian overlay "
-        f"(sidebar μ = {fluid['mu']:.3e} Pa·s). Thinning (n<1) blunts the core like a turbulent pipe; "
-        "thickening (n>1) sharpens the apex."
+        "The pipe momentum balance τ_w = (R/2)(−dp/dz) is unchanged for every one of these "
+        "curves — only the kinematics differ. Chapter 7 derives the profiles, the unyielded "
+        "plug and the Metzner–Reed Reynolds number, and runs the power-law and yield-stress labs."
     )
-    render_what_to_notice(
-        "n = 1 and K = μ must sit on the Newtonian parabola. n < 1 is flatter (plug-like). Tab 2 can use this Δp for laminar polymer lines."
-    )
-    fig_pl = plot_power_law_pipe(pl_res, newt)
-    render_plot(fig_pl, key="tab_stress_ns-fig_pl")
     render_self_check(
         "pl_self_check_n1",
         "When n = 1, the power-law pipe must recover…",

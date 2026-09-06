@@ -23,7 +23,7 @@ from src.units import get_fluid_state
 
 
 def render_tab_turbomachinery():
-    st.markdown('### 9.1 Euler’s turbomachinery equation · angular momentum')
+    st.markdown('### 11.1 Euler’s turbomachinery equation · angular momentum')
     prose(r'''Euler's local inviscid momentum equation and Euler's rotor-work equation express related conservation physics, but they are different formulas. A rotor exchanges shaft work by changing the fluid's **angular momentum**.
 
 **1 · Choose a stationary control volume around the rotor.** Use absolute velocity C, blade velocity U and velocity relative to the blade W. Resolve C into meridional and tangential components. Positive tangential direction follows positive shaft rotation.
@@ -100,7 +100,7 @@ $$h+\frac{W^2}{2}-\frac{U^2}{2}=\text{constant}$$''')
                 fluid property, and no statement of whether this is a pump, a fan, a
                 compressor or a turbine. Euler's equation is a conservation statement, so it
                 constrains every machine of this type; the geometry re-enters only when you
-                ask what $C_{\theta2}$ actually is (§9.2).
+                ask what $C_{\theta2}$ actually is (§11.2).
                 """,
             ),
             (
@@ -188,7 +188,7 @@ $$h+\frac{W^2}{2}-\frac{U^2}{2}=\text{constant}$$''')
         ],
     )
     st.caption('[MIT: Euler turbine equation and velocity components](https://web.mit.edu/course/16/16.unified/www/SPRING/thermodynamics/notes/node91.html). Velocities in this balance are mass-flow averages; blade losses and nonuniformity require additional modeling.')
-    st.markdown('### 9.2 Where the angles are · impeller geometry and blade angles')
+    st.markdown('### 11.2 Where the angles are · impeller geometry and blade angles')
     prose(r'''Almost every mistake in a turbomachinery calculation is an angle measured from the wrong reference. Fix the conventions once and the arithmetic follows.
 
 **The two planes.** A radial machine is cut two ways, and they are perpendicular. The **meridional** (r–z) section contains the shaft axis: it shows the ninety-degree turn from axial inlet to radial discharge, and it is where the passage widths $b_1$ and $b_2$ are measured. The **blade-to-blade** section is taken on the surface of revolution the flow actually follows — for a radial impeller that is the $r$–$\theta$ plane, perpendicular to the shaft. It shows the blade curvature, and it is the plane the velocity triangle lives in. (In an *axial* machine the same surface is a cylinder at fixed radius, which is why that description is the one usually quoted.) A drawing that mixes them will not close.
@@ -380,7 +380,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
                     $\tan\beta_2\to\infty$, the slope vanishes and the curve is flat, so
                     nothing restores the operating point. Forward-curved: the slope reverses
                     and the curve **rises**, which is the classical route to surge described in
-                    §9.5.4. Backsweep costs head — visible as the drop in $C_{\theta2}$ in the
+                    §11.5.4. Backsweep costs head — visible as the drop in $C_{\theta2}$ in the
                     lab above — and buys stability plus an easier diffuser.
                     """,
                 ),
@@ -389,7 +389,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
                     r"""
                     A measured pump curve bends below it. Friction inside the passages grows
                     roughly as $Q^{2}$; incidence loss grows on **both** sides of the design
-                    flow, because §9.2's shockless-entry condition holds at only one $Q$; and
+                    flow, because §11.2's shockless-entry condition holds at only one $Q$; and
                     nothing here represents the volute, leakage, disc friction or blade
                     blockage. The line is the ideal envelope those losses subtract from.
                     """,
@@ -407,7 +407,7 @@ Integrating that relation *is* how the blade in the figure was drawn. A constant
         'more wrong answers in turbomachinery than any other.',
     )
 
-    st.markdown('### 9.3 Pressure ratio, efficiency and heating/cooling')
+    st.markdown('### 11.3 Pressure ratio, efficiency and heating/cooling')
     prose(r'''The Euler work equation alone does not determine the pressure ratio. Add an equation of state and a thermodynamic path. Here all inlet/outlet temperatures and pressures are **stagnation quantities**, with constant cp and γ.
 
 **1 · Derive the reversible reference.** Gibbs' relation gives Tds = dh − v dp. For an ideal gas dh = cp dT and v = RT/p; set ds = 0 and integrate. Here $v$ is **specific volume** $1/\rho$ (Tab 1), not a velocity component.
@@ -431,7 +431,7 @@ Heating/cooling describes temperature changes here; it does not imply heat trans
     fig=go.Figure(go.Bar(x=['Inlet','Isentropic outlet','Actual outlet'],y=[tin,result['ideal_temperature'],result['outlet_temperature']],marker_color=['#94a3b8','#38bdf8','#fbbf24']))
     fig.update_layout(title=f'{mode}: compare the same inlet and pressure ratio',yaxis_title='Stagnation temperature [K]',height=360)
     apply_plotly_theme(fig); render_plot(fig,'machine-temperature')
-    st.markdown('### 9.4 Intercooling, reheating and throttling')
+    st.markdown('### 11.4 Intercooling, reheating and throttling')
     prose(r'''**Compression with cooling.** From reversible steady-flow work dw_in = v dp, substitute v = RT/p. At constant T, integration gives the isothermal lower reference. Heat rejection must remove this work to keep enthalpy constant.
 $$w_{\mathrm{iso,in}}=RT\ln(p_2/p_1),\qquad q=-w_{\mathrm{iso,in}}$$
 For n identical compressor stages with perfect intercooling back to the original inlet temperature, minimize the sum of stage works subject to the product of stage pressure ratios. Equal ratios minimize the sum because the power function is convex in log pressure ratio.
@@ -479,7 +479,7 @@ $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)
                 r"""
                 Each stage is adiabatic with isentropic efficiency $\eta_c$, and perfect
                 intercooling returns the gas to $T_{\text{in}}$ before the next one. Writing
-                $k=(\gamma-1)/\gamma$, §9.3 gives one stage of ratio $r_i$:
+                $k=(\gamma-1)/\gamma$, §11.3 gives one stage of ratio $r_i$:
                 $$w_i=\frac{c_pT_{\text{in}}}{\eta_c}\left(r_i^{\,k}-1\right)$$
                 Every stage starts from the same $T_{\text{in}}$ — that is what intercooling
                 buys, and it is what makes the stages *comparable* in the next step.
@@ -531,7 +531,7 @@ $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)
                 energy equation reduces to $h_2=h_1$. For an ideal gas $h$ depends on $T$
                 alone, so $T_2=T_1$ exactly — an ideal-gas throttle produces **no** cooling.
                 Real-gas Joule–Thomson cooling comes entirely from the departure of $h$ from
-                ideality, which is why §9.5 has to size it with a measured coefficient rather
+                ideality, which is why §11.5 has to size it with a measured coefficient rather
                 than derive it here.
                 """,
             ),
@@ -548,9 +548,9 @@ $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)
         st.write(f'Perfect reheating comparison: {stages*result["cp"]*drop/1000:.2f} kJ/kg shaft output; {(stages-1)*result["cp"]*drop/1000:.2f} kJ/kg added by reheaters.')
     st.markdown('**Daily and plant examples.** A bicycle pump warms because compression raises internal energy; slow pumping allows more heat rejection. Multistage synthesis-gas compression uses intercooling to reduce power and discharge temperature. A cryogenic air-separation expander supplies refrigeration by exporting shaft work. A pressure-reducing valve does not recover that work.')
 
-    st.markdown('### 9.5 Where this actually runs: a cryogenic air separation unit')
+    st.markdown('### 11.5 Where this actually runs: a cryogenic air separation unit')
     st.markdown(
-        'Sections 9.1–9.4 are the general theory. This section puts every piece of it inside one '
+        'Sections 11.1–9.4 are the general theory. This section puts every piece of it inside one '
         'real plant — the machine that makes the oxygen for a steel mill, the nitrogen for a '
         'semiconductor fab, and the argon for a welding shop. An air separation unit (ASU) is '
         'the purest example of turbomachinery doing thermodynamic work, because **the plant has '
@@ -559,7 +559,7 @@ $$w_{n,\mathrm{out}}=n\eta_tc_pT_{\mathrm{in}}\left[1-r_p^{-(\gamma-1)/(n\gamma)
     )
     render_svg(diagram_asu_flowsheet())
 
-    st.markdown('#### 9.5.1 What the plant is trying to do, and why it is hard')
+    st.markdown('#### 11.5.1 What the plant is trying to do, and why it is hard')
     prose(r'''Air is 78% N₂, 21% O₂, 0.93% Ar. Nitrogen boils at 77.4 K and oxygen at 90.2 K at one atmosphere — a 12.8 K gap. That gap is the entire basis of the separation, and it is the reason the plant must operate at 100 K rather than at ambient: **distillation needs a phase difference**, and air has none until it is cryogenic.
 
 Three consequences follow immediately, and each one is a piece of turbomachinery.
@@ -577,13 +577,13 @@ Three consequences follow immediately, and each one is a piece of turbomachinery
         at all, and for real air near 180 K it produces roughly 0.3–0.5 K per bar of
         Joule–Thomson cooling. The expander removes energy as **shaft work**, so it has a real
         enthalpy drop where the valve has exactly none, and its temperature drop is larger by
-        nearly an order of magnitude at the same pressure ratio. Section 9.4 stated this as a distinction between processes. Here it
+        nearly an order of magnitude at the same pressure ratio. Section 11.4 stated this as a distinction between processes. Here it
         is the difference between a plant that runs and a plant that slowly warms up and stops.
         """,
         title="Valve versus expander",
     )
 
-    st.markdown('#### 9.5.2 The double column, and why it needs two pressures')
+    st.markdown('#### 11.5.2 The double column, and why it needs two pressures')
     prose(r'''A single distillation column separating air would need a condenser colder than 77 K and a reboiler hotter than 90 K, and there is no free cold sink at 77 K anywhere on the plant. Linde's double column solves this by **stacking two columns and letting one boil the other**.
 
 The high-pressure (HP) column runs at about 5.5 bar. Raising the pressure raises every saturation temperature, so nitrogen condenses at roughly 95 K instead of 77 K. The low-pressure (LP) column above it runs near 1.4 bar, where liquid oxygen boils at about 93 K — not the 90.2 K normal boiling point quoted earlier, because it too is above atmospheric. Put a heat exchanger between them — the **condenser–reboiler** — and the HP column's condensing nitrogen boils the LP column's oxygen across a temperature difference of only about 2 K.
@@ -593,9 +593,9 @@ $$T_{\mathrm{cond}}^{\mathrm{HP}}(\mathrm{N_2},\ 5.5\ \mathrm{bar}) \approx 95\ 
 
 The reflux for both columns is generated internally, with no external refrigeration duty at all. **The pressure ratio is doing thermodynamic work** — and that pressure ratio is what the MAC exists to supply. This is the clearest answer to "why compress air you are only going to separate": the compressor is not pushing the flow, it is buying a temperature difference.''')
 
-    st.markdown('#### 9.5.3 Fully worked example')
+    st.markdown('#### 11.5.3 Fully worked example')
     st.markdown(
-        'A mid-size ASU. Every number below is computed live from §9.3\'s stage model with '
+        'A mid-size ASU. Every number below is computed live from §11.3\'s stage model with '
         'constant $c_p$ and $\\gamma$, so the assumptions are visible and the arithmetic can be '
         'checked by hand. Change an input and the conclusions move with it.'
     )
@@ -637,7 +637,7 @@ The reflux for both columns is generated internally, with no external refrigerat
     net_power = p_mac_w + p_bac_w - p_exp_w
     kwh_per_tonne = (net_power / 1000.0) / (m_o2 * 3.6) if m_o2 > 0 else float('nan')
 
-    st.markdown('**Step 1 · Main air compressor.** Equal stage ratios minimise the total work (§9.4), so each stage sees $r_p^{1/n}$ and perfect intercooling returns the gas to the intercooled temperature before the next stage.')
+    st.markdown('**Step 1 · Main air compressor.** Equal stage ratios minimise the total work (§11.4), so each stage sees $r_p^{1/n}$ and perfect intercooling returns the gas to the intercooled temperature before the next stage.')
     s1a, s1b, s1c, s1d = st.columns(4)
     s1a.metric('Stage pressure ratio', f'{stage_ratio:.3f}')
     s1b.metric('Stage discharge T', f'{mac_stage["outlet_temperature"]:.1f} K')
@@ -686,7 +686,7 @@ The reflux for both columns is generated internally, with no external refrigerat
     st.caption(
         f'Same inlet state, same pressure drop. The valve figure uses a representative '
         f'Joule–Thomson coefficient of {jt_coefficient} K/bar for air near {t_exp_in:.0f} K — a '
-        f'real-gas effect that vanishes entirely for an ideal gas, which is why §9.4 insists an '
+        f'real-gas effect that vanishes entirely for an ideal gas, which is why §11.4 insists an '
         f'ideal-gas throttle has no temperature change at all. The expander is not a better '
         f'valve; it is a different process, because it exports work.'
     )
@@ -706,11 +706,11 @@ The reflux for both columns is generated internally, with no external refrigerat
         f'where the energy goes, and what each machine is for - not a guarantee number.'
     )
 
-    st.markdown('#### 9.5.4 Which machine is which, and why')
+    st.markdown('#### 11.5.4 Which machine is which, and why')
     st.markdown(
         '| Duty | Machine | Why that type |\n'
         '|---|---|---|\n'
-        '| Main air compression, 1→6 bar, large volume | Multistage centrifugal, intercooled | High volumetric flow at modest ratio; centrifugal stages tolerate the flow and are robust. Backswept impellers give the falling head curve §9.2 showed, which keeps the machine stable against surge. |\n'
+        '| Main air compression, 1→6 bar, large volume | Multistage centrifugal, intercooled | High volumetric flow at modest ratio; centrifugal stages tolerate the flow and are robust. Backswept impellers give the falling head curve §11.2 showed, which keeps the machine stable against surge. |\n'
         '| Boosting a side stream to 30–60 bar | Centrifugal booster, often on the expander shaft | Small flow, large ratio. Mounting it on the expander shaft recovers the expander work directly as compression, with no generator or gearbox. |\n'
         '| Producing refrigeration | Radial-inflow turboexpander, 20 000–90 000 rpm | Needs a large enthalpy drop in one stage at small flow. Radial inflow gives high work per stage; gas bearings avoid oil contamination in an oxygen plant. |\n'
         '| Pumping liquid oxygen to pipeline pressure | Cryogenic centrifugal pump | Compressing a liquid costs far less than compressing the gas — the internally compressed cycle that has largely replaced high-pressure gas compression. |\n'
@@ -718,7 +718,7 @@ The reflux for both columns is generated internally, with no external refrigerat
     st.markdown(
         '**Failure modes worth knowing.** A compressor pushed to low flow at high head enters '
         '**surge**: the flow through the passage reverses periodically, at a few hertz, and the '
-        'machine shakes itself apart. §9.2 explains the root cause — a forward-curved or radial '
+        'machine shakes itself apart. §11.2 explains the root cause — a forward-curved or radial '
         'blade gives a flat or rising head curve, so there is no restoring slope to hold the '
         'operating point. Backsweep plus an anti-surge recycle valve is the standard answer. On '
         'the cold end, an expander ingesting liquid droplets erodes its blades within hours, '
