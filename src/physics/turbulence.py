@@ -84,18 +84,56 @@ def velocity_profile_comparison(
         "n_exp": n_exp,
     }
 
+
+def pipe_kinetic_correction(reynolds: float) -> Dict[str, float]:
+    """Regime-aware alpha/beta from the same profiles Tab 4 plots and integrates.
+
+    Laminar (Re < 2300): Hagen–Poiseuille parabola.
+    Turbulent (Re > 4000): 1/n power law at this Re.
+    Transition: no unique profile; alpha/beta are left unset so a caption
+    cannot invent a number such as 1.3.
+    """
+    prof = velocity_profile_comparison(reynolds=float(reynolds))
+    re = float(reynolds)
+    out = {
+        "alpha_lam": float(prof["alpha_lam"]),
+        "beta_lam": float(prof["beta_lam"]),
+        "alpha_turb": float(prof["alpha_turb"]),
+        "beta_turb": float(prof["beta_turb"]),
+        "n_exp": float(prof["n_exp"]),
+        "reynolds": re,
+    }
+    if re < 2300.0:
+        out.update(alpha=out["alpha_lam"], beta=out["beta_lam"], regime="laminar")
+    elif re > 4000.0:
+        out.update(alpha=out["alpha_turb"], beta=out["beta_turb"], regime="turbulent")
+    else:
+        out.update(alpha=float("nan"), beta=float("nan"), regime="transitional")
+    return out
+
+
+def _spalding_y_plus(u_plus: np.ndarray, kappa: float, B: float) -> np.ndarray:
+    """Spalding's implicit wall law: y+ as a function of u+."""
+    ku = kappa * u_plus
+    return u_plus + np.exp(-kappa * B) * (
+        np.exp(ku) - 1.0 - ku - 0.5 * ku**2 - (ku**3) / 6.0
+    )
+
+
 def law_of_the_wall(
     kappa: float = 0.41,
     B: float = 5.0,
     y_plus_max: float = 1000.0,
     n_points: int = 250,
 ) -> Dict[str, np.ndarray]:
-    """Calculate the Universal Law of the Wall across sublayers.
-    
+    """Universal Law of the Wall: viscous and log limits, Spalding composite.
+
     Viscous sublayer: u+ = y+  (for y+ < 5)
     Log-law layer: u+ = (1/kappa) * ln(y+) + B  (for y+ > 30)
-    Spalding single continuous formula across all regions:
-    y+ = u+ + e^(-kappa*B) * [ e^(kappa*u+) - 1 - kappa*u+ - (kappa*u+)^2 / 2 - (kappa*u+)^3 / 6 ]
+    Buffer: Spalding's implicit interpolation that matches both limits,
+    inverted for u+(y+) by Newton:
+    y+ = u+ + e^(-kappa B) [ e^(kappa u+) - 1 - kappa u+ - (kappa u+)^2/2 - (kappa u+)^3/6 ]
+    This is a blend, not a third physical law.
     """
     y_plus = np.logspace(np.log10(0.1), np.log10(y_plus_max), n_points)
     
@@ -105,20 +143,18 @@ def law_of_the_wall(
     # Pure logarithmic overlap law
     with np.errstate(divide='ignore', invalid='ignore'):
         u_plus_log = (1.0 / kappa) * np.log(y_plus) + B
-        
-    # Composite / Spalding blend approximation
-    u_plus_composite = np.zeros_like(y_plus)
-    for i, yp in enumerate(y_plus):
-        if yp <= 5.0:
-            u_plus_composite[i] = yp
-        elif yp >= 30.0:
-            u_plus_composite[i] = (1.0 / kappa) * np.log(yp) + B
-        else:
-            # Smooth cubic Hermite blend across buffer layer [5, 30]
-            s = (yp - 5.0) / 25.0
-            u_visc_5 = 5.0
-            u_log_30 = (1.0 / kappa) * np.log(30.0) + B
-            u_plus_composite[i] = (1.0 - s) * u_visc_5 + s * u_log_30
+
+    # Invert Spalding y+(u+) at every y+. Seed with the min of the two limits.
+    u = np.minimum(y_plus, np.maximum(u_plus_log, 0.1))
+    exp_m_kB = np.exp(-kappa * B)
+    for _ in range(16):
+        ku = kappa * u
+        y_of_u = u + exp_m_kB * (np.exp(ku) - 1.0 - ku - 0.5 * ku**2 - (ku**3) / 6.0)
+        dy_du = 1.0 + exp_m_kB * (
+            kappa * np.exp(ku) - kappa - kappa**2 * u - 0.5 * kappa**3 * u**2
+        )
+        u = np.maximum(u - (y_of_u - y_plus) / dy_du, 0.0)
+    u_plus_composite = u
             
     return {
         "y_plus": y_plus,

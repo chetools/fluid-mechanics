@@ -14,7 +14,7 @@ from src.theme import apply_plotly_theme
 
 def render_network_lab():
     st.divider()
-    st.markdown('### 2.5 Real pipe sizes · Churchill calculator')
+    st.markdown('### 2.6 Real pipe sizes · Churchill calculator')
     st.markdown('Nominal pipe size names the pipe; the **inside diameter** determines velocity. Choose a schedule or enter a measured bore. These SI calculators use the sidebar density and viscosity.')
     fluid = get_fluid_state()
     rho, mu = fluid['rho'], fluid['mu']
@@ -66,7 +66,7 @@ At small Reynolds number this approaches 64/Re. At zero flow the pressure loss i
             st.write(f'Current substitution: A = {ach:.4e}; B = {bch:.4e}; fD = {f:.6f}; fF = {f/4:.6f}.')
     st.caption(f'[Nominal steel-pipe dimensions: Wheatland manufacturer table]({PIPE_DATA_SOURCE}). ID is calculated from nominal OD and wall, not a pressure rating. Corrosion, lining and tolerances change the bore; material roughness values are illustrative estimates.')
 
-    st.markdown('### 2.6 Solve a piping network')
+    st.markdown('### 2.7 Solve a piping network')
     prose(r'''**Read the example first.** Supply feeds junction A. Flow splits through B and directly to Outlet; B withdraws 2 m³/h. Pipe directions are bookkeeping: a negative result means reverse flow.
 
 **1 · Define nodes.** A Pressure node fixes gauge pressure and elevation; the solver finds its supply or withdrawal. A Junction fixes elevation and external demand; the solver finds pressure. Positive demand is withdrawal, negative demand is injection. A junction without demand has zero net flow.

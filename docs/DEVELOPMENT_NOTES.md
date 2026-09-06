@@ -503,6 +503,15 @@ complete table; it mounts the latest table as a new base only after widget clean
 Replacing the base on every rerun would replay editor deltas and corrupt added or
 deleted rows. Saved network solutions still require a matching input signature.
 
+An explicit widget key controls identity, not lifetime. `persistent_input` saves
+values in a non-widget session dictionary and restores only absent widget keys,
+so a current edit takes priority. Avoid initializing a restored control with
+`session_state.setdefault(widget_key, default)` before calling the helper: that
+creates the key early and prevents restoration. This occurred in the stress
+preset lab. Initialize a preset when it is first selected or actually changes;
+otherwise let the persistence helper restore the previous values. Keep storage
+session-local, and test that a second browser/AppTest session starts at defaults.
+
 The live browser test clicks the visible radio label, waits for the selected chapter's
 recap and for script completion, and then checks for errors. A radio-input click is
 intercepted by the custom label; the old tab selectors do not match anything. The test
@@ -510,11 +519,36 @@ now visits all twelve chapters and verifies an air-feed round trip, network solv
 CSV download. AppTest additionally covers editor cell changes, row insertion/deletion,
 result invalidation and isolation between sessions.
 
+**The browser waits that mattered:**
+
+- On chapter changes, wait for `.st-key-chapter-recap-N`, then the running/Stop
+  indicator to disappear, before checking errors. Immediately checking the DOM
+  after a click can inspect the previous chapter instead.
+- On **same-chapter** changes, the recap already exists. First wait for a
+  distinctive new result (the changed preset explanation or expected bore), then
+  wait for completion. A stable old recap is not an acknowledgement of a rerun.
+- The styled radio input is covered by its label. Click `stRadioOption` containing
+  the named radio, not the input itself; do not work around this with force-clicks.
+- For the searchable preset combobox, click, fill the desired option text, and
+  select that exact option. Reopening it after screenshots/scrolling without
+  filling proved unreliable in the educational test.
+- The sidebar collapse control is revealed by hovering `stSidebarHeader`.
+  Collapse it at desktop width before resizing to phone width, then wait for the
+  sidebar to leave the viewport. Trying to click it after resizing failed when
+  its button was outside the viewport.
+- SVG scrolling belongs to the figure's `stImage` element, not its outer keyed
+  container. Check its `scrollWidth > clientWidth`, move `scrollLeft`, and inspect
+  the result. The Plotly wrapper has a different scrolling structure.
+
 The CFD Poisson residual now uses the same mean-adjusted Neumann source as the solver.
 The signed source mean removed is reported separately as
 `poisson_compatibility_correction`, in the same pressure-Laplacian units as the residual.
 A small iterative residual does not imply a small compatibility correction or exact
 velocity mass conservation.
+
+Test this distinction with a deliberately nonzero-mean source. The solver can
+converge on the compatible equation while the removed mean remains large; a
+zero-mean-only fixture cannot detect using the wrong source in the residual.
 
 Relief sizing rejects non-finite or out-of-range discharge coefficients and back
 pressure at or above the upstream stagnation pressure. Unlike the nozzle capacity
@@ -536,11 +570,28 @@ Report the mean separately: hydrostatic pressure shifts the mean, not the radius
 Zero-radius rigid rotation must appear as a point. Preset explanations are shown
 only while the actual slider values still match the preset.
 
+Tests should check the drawn geometry as well as reported diagnostics. The
+deformation tests compute polygon area from the returned perimeter, compare
+rotation and internal grid lines with the analytical rotation matrix, and check
+the angle of a finite simple shear. Merely asserting an `area_ratio` field of
+one would allow the picture and its label to disagree again. Likewise, a tiny
+stress is not zero: test the Mohr trace values and units, not only that a figure
+builds. `Omega_yx = (dv/dx - du/dy)/2` under the code's gradient convention; match
+the diagram's indices to that convention.
+
 `RELIEF_DEMO_DEFAULTS` is shared by the calculator and its worked example.
 Recompute the hot and high-back-pressure cases from those defaults. At fixed
 required rate, upstream pressure, gas and coefficient, choked area scales as the
 square root of temperature, while bore scales as its fourth root. The lesson's
 fixed-area flow model does not predict real valve lift or certify a device.
+
+The corrected default example gives 49.57 mm bore at 333.15 K and 61.92 mm at
+811 K (approximately 1,930 and 3,011 mm²). These are dated sanity checks, not
+constants to put back into the lesson. The canal recap had a related comparison
+error: at fixed section, depth and Manning roughness, quadrupling slope doubles
+capacity. The calculator instead fixes discharge and solves for normal depth.
+Always identify the dependent variable and the held-fixed inputs before claiming
+a percentage or power law.
 
 The sphere figures distinguish local surface traction from the settling free
 body, and mark separation/wake boundaries as schematic. The nozzle figure shows
@@ -551,4 +602,49 @@ rendering and narrow-screen scrolling. Its screenshots go to the system temp
 directory for visual inspection.
 Teaching SVGs keep an 880 px minimum image width inside their local scroll area;
 shrinking an 880 px drawing to 600 px made its 12 px labels roughly 8 px on phones.
+
+## Reproducing this session's verification
+
+Baseline: **2026-09-05, commit `7f0afdc`**, 276 pytest cases passed, ruff passed,
+and both live Edge scripts passed. Desktop and mobile screenshots were inspected.
+This establishes the tested scenarios, not a comprehensive validation of every
+model, browser or input combination. The educational review began with source
+inspection and direct calculations; browser inspection followed implementation.
+
+Use normal `uv run` commands first. In this Windows session uv intermittently
+failed to initialize its default cache with **WinError 183**, even though earlier
+commands had worked. These alternatives succeeded without deleting the cache or
+changing app dependencies:
+
+```powershell
+# Existing synchronized environment: run one server in a separate terminal.
+uv run --no-cache --no-sync python -m streamlit run app.py --server.headless true --server.address 127.0.0.1 --server.port 8501
+
+# Tests and temporary verification dependencies.
+uv run --no-cache --no-sync pytest -q
+uv run --cache-dir "$env:TEMP\uv-education-cache" --with ruff ruff check .
+uv run --cache-dir "$env:TEMP\uv-education-cache" --with playwright python tests/browser_smoke.py
+uv run --cache-dir "$env:TEMP\uv-education-cache" --with playwright python tests/browser_education.py
+uv run --no-cache --no-sync git diff --check
+```
+
+`--no-sync` assumes the project environment is already installed; it is not an
+installation recipe. A pytest cache-write warning also occurred once while all
+tests passed. Distinguish cache diagnostics from assertion failures rather than
+changing application code to address them. For ad hoc Python output containing
+Unicode on Windows, use `python -X utf8`; a PowerShell single-quoted here-string
+piped to Python avoids nested-quote problems. Prefer `apply_patch` for source
+changes containing LaTeX.
+
+`browser_smoke.py` saves the ignored `network-verification.png` in the repository.
+`browser_education.py` saves images under
+`%TEMP%\fluid-education-verification`. The scripts locate figures using the same
+cleaned-SVG hash as `render_svg`, so text or geometry edits do not require
+hard-coded selector hashes. Temporary screenshots and process IDs are evidence,
+not app inputs or durable launch instructions. Stop diagnostic servers afterward.
+
+For an authorized commit/push, inspect the diff and working tree, check the fetched
+remote for divergence, commit the reviewed scope, and verify the remote branch's
+hash matches local HEAD after pushing. The session's push was to `origin/master`;
+that is history, not an instruction or standing authorization for future pushes.
 

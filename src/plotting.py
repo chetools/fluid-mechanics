@@ -466,7 +466,10 @@ def plot_stokes_first_problem(res: Dict[str, np.ndarray]) -> go.Figure:
         )
         
     fig.update_layout(
-        title="Stokes' First Problem: viscous penetration δ(t) ≈ 3.64 √(ν t) (dotted)",
+        title=(
+            f"Stokes' First Problem: viscous penetration "
+            f"δ(t) = {float(res.get('delta_coeff', 3.643)):.3f} √(ν t) (1% of U, dotted)"
+        ),
         xaxis_title="Velocity u(y, t) [m/s]",
         yaxis_title="Distance from Wall y [m]",
         height=450
@@ -738,7 +741,7 @@ def plot_law_of_the_wall(wall_res: Dict[str, np.ndarray]) -> go.Figure:
         go.Scatter(
             x=y_plus, y=wall_res["u_plus_composite"],
             mode="lines", line=dict(color=SUCCESS, width=3),
-            name="Universal Composite Profile"
+            name="Spalding composite"
         )
     )
     
@@ -812,7 +815,7 @@ def plot_blasius_profile(sim: Dict, plate: Dict) -> go.Figure:
     fig.add_hline(
         y=float(sim["eta_99"]),
         line=dict(color=ACCENT, width=1.5, dash="dash"),
-        annotation_text="δ₉₉ (η ≈ 4.91)",
+        annotation_text=f"δ₉₉ (η = {float(sim['eta_99']):.2f})",
         row=1, col=1,
     )
     fig.add_trace(

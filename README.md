@@ -77,6 +77,7 @@ velocities. Manning and Darcy-Weisbach are both offered, along with the bridge
 `n = R_h^(1/6) sqrt(f/8g)` that relates them; the two disagree by a few percent and
 the app says so rather than hiding it. Steady uniform flow in a prismatic channel
 only - no backwater curves, hydraulic jumps, sediment transport or flood routing.
+Chapter 2 then continues with real pipe sizes (2.6) and the editable network lab (2.7).
 
 ### Impeller geometry and air separation
 

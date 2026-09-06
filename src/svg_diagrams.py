@@ -1239,7 +1239,7 @@ def diagram_transport_geometries() -> str:
         (576, 246, "Pipe, laminar", TEXT_MUTED,
          "Nu = 3.66",
          "Sh = 3.66",
-         "constant &#183; conduction across the profile"),
+         "T_w const &#183; 4.36 if q_w const"),
     ]
     blocks = []
     for x, y, name, colour, heat, mass, note in cards:

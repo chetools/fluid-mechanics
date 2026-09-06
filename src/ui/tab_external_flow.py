@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from src.ui.state import persistent_input
 from src.units import get_fluid_state
-from src.physics.gas_dynamics import sphere_drag
+from src.physics.gas_dynamics import sphere_drag, sphere_terminal_velocity
 from src.svg_diagrams import diagram_sphere_forces, diagram_sphere_separation, render_svg
 from src.ui.pedagogy import render_derivation, render_prose_and_latex as prose, render_plot
 from src.theme import apply_plotly_theme
@@ -214,13 +214,22 @@ The coefficient diverges as U → 0, but the **force tends to zero linearly**. A
     density = persistent_input(c3.number_input, 'Particle density [kg/m³]', min_value=.1, value=2500., key='sphere_rho')
     re = rho*speed*diameter/mu
     drag=3*math.pi*mu*diameter*speed
-    terminal=(density-rho)*9.81*diameter**2/(18*mu)
-    ret=rho*abs(terminal)*diameter/mu
+    settle = sphere_terminal_velocity(diameter, density, rho, mu)
     a,b,c=st.columns(3)
-    a.metric('Re at entered speed',f'{re:.4g}'); b.metric('Stokes drag estimate',f'{drag:.3e} N'); c.metric('Stokes terminal velocity',f'{terminal:.4g} m/s')
-    st.caption(f'Shared fluid: ρ = {rho:g} kg/m³, μ = {mu:g} Pa·s. Positive terminal velocity is downward. Terminal Re = {ret:.3g}; this is a self-consistency check, not a corrected settling solution.')
-    if re > .1 or ret > .1:
-        st.warning('At least one Stokes estimate is outside the conservative Re ≤ 0.1 creeping-flow range. Check finite-inertia drag before accepting it.')
+    a.metric('Re at entered speed',f'{re:.4g}'); b.metric('Stokes drag estimate',f'{drag:.3e} N'); c.metric('Stokes terminal velocity',f'{settle["stokes_u"]:.4g} m/s')
+    st.caption(
+        f'Shared fluid: ρ = {rho:g} kg/m³, μ = {mu:g} Pa·s. Positive terminal velocity is downward. '
+        f'Stokes Re_t = {settle["stokes_re"]:.3g}. '
+        f'Schiller–Naumann terminal speed = {settle["sn_u"]:.4g} m/s (Re_t = {settle["sn_re"]:.3g}), '
+        'from the implicit balance the derivation below requires when Stokes Re_t is not small.'
+    )
+    if re > .1 or settle['stokes_re'] > .1:
+        st.warning('At least one Stokes estimate is outside the conservative Re ≤ 0.1 creeping-flow range. Use the Schiller–Naumann terminal speed rather than the Stokes rearrangement.')
+    if not settle['in_sn_range']:
+        st.warning(
+            f'Schiller–Naumann terminal Re_t = {settle["sn_re"]:.3g} is past the Re = 1000 fit. '
+            'The Newton-regime drag is closer to C_D ≈ 0.44; do not use this settling speed as a prediction.'
+        )
     cd=sphere_drag(re,strict=False)
     force=0.5*rho*speed**2*cd*math.pi*diameter**2/4
     if re <= 1000:

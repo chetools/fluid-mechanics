@@ -1,7 +1,9 @@
 import math
 import pytest
 from src.physics.pipe_network import example_network, solve_network, resolve_pipe, pipe_headloss, flow_from_head, schedule_dimensions
-from src.physics.gas_dynamics import nozzle, normal_shock, gas_machine, sphere_drag
+from src.physics.gas_dynamics import (
+    nozzle, normal_shock, gas_machine, sphere_drag, sphere_terminal_velocity,
+)
 
 
 def test_manufacturer_bore_and_schedule_effect():
@@ -100,6 +102,33 @@ def test_machine_efficiency_changes_work_and_temperature_correctly():
 def test_sphere_drag_recovers_creeping_limit():
     assert sphere_drag(1e-8)*1e-8==pytest.approx(24,rel=1e-5)
     with pytest.raises(ValueError): sphere_drag(1e5)
+
+
+def test_sphere_terminal_recovers_stokes_in_creeping_flow():
+    # 10 µm catalyst particle in water: Re_t ~ 10^{-3}.
+    result = sphere_terminal_velocity(
+        diameter=1e-5, density_particle=2500.0, density_fluid=998.2, viscosity=1.002e-3,
+    )
+    stokes = (2500.0 - 998.2) * 9.81 * 1e-10 / (18 * 1.002e-3)
+    assert result['stokes_u'] == pytest.approx(stokes)
+    assert result['sn_u'] == pytest.approx(stokes, rel=2e-3)
+    assert result['creeping'] is True
+
+
+def test_sphere_terminal_sn_is_slower_than_stokes_when_inertia_matters():
+    result = sphere_terminal_velocity(
+        diameter=1e-3, density_particle=2500.0, density_fluid=998.2, viscosity=1.002e-3,
+    )
+    assert result['stokes_re'] > 0.1
+    assert abs(result['sn_u']) < abs(result['stokes_u'])
+    # Force balance at the SN speed: weight = 1/2 rho U^2 Cd A.
+    d = 1e-3
+    rho = 998.2
+    u = abs(result['sn_u'])
+    cd = sphere_drag(result['sn_re'], strict=False)
+    drag = 0.5 * rho * u * u * cd * math.pi * d * d / 4
+    weight = math.pi * d**3 / 6 * (2500.0 - rho) * 9.81
+    assert drag == pytest.approx(weight, rel=1e-5)
 
 
 # --- choked flow in pressure-relief sizing ---------------------------------

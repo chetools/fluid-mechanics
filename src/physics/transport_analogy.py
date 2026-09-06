@@ -371,16 +371,21 @@ def pohlhausen_theta_gradient(prandtl: float, eta_max: float = 12.0,
     theta_tilde = solution.y[3]
     gradient = 1.0 / float(theta_tilde[-1])
     theta = theta_tilde * gradient
-    # Thermal layer edge, by the same 99% convention used for the velocity layer.
+    # Thermal layer edge, by the same 99% convention used for the velocity layer
+    # of *this* integration — not a quoted 4.91.
     eta = solution.t
+    fp = solution.y[1]
     index = int(np.argmax(theta >= 0.99)) if bool(np.any(theta >= 0.99)) else len(theta) - 1
+    idx_vel = int(np.argmax(fp >= 0.99)) if bool(np.any(fp >= 0.99)) else len(fp) - 1
+    eta_vel_99 = float(eta[idx_vel])
     return {
         "prandtl": prandtl,
         "theta_gradient": gradient,          # theta'(0); Nu_x = this * sqrt(Re_x)
         "power_law_estimate": 0.332 * prandtl ** (1.0 / 3.0),
         "eta": eta,
         "theta": theta,
-        "f_prime": solution.y[1],            # u/U, for plotting beside theta
+        "f_prime": fp,                       # u/U, for plotting beside theta
         "eta_thermal_99": float(eta[index]),
-        "thickness_ratio": float(eta[index]) / 4.91,   # delta_t / delta
+        "eta_velocity_99": eta_vel_99,
+        "thickness_ratio": float(eta[index]) / eta_vel_99,   # delta_t / delta
     }

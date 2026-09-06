@@ -14,11 +14,13 @@ from src.physics.pipe_flow import (
 )
 from src.physics.non_newtonian import power_law_pressure_drop
 from src.physics.open_channel import (
+    CANAL_DEMO_DEFAULTS,
     CHANNEL_ROUGHNESS,
     MANNING_N,
     channel_state,
     rating_curve,
 )
+from src.physics.turbulence import pipe_kinetic_correction
 from src.svg_diagrams import (
     diagram_canal_section,
     diagram_canal_uniform_flow,
@@ -200,7 +202,8 @@ def render_tab_pipe_flow():
         r"""
         **$\alpha$ is the kinetic-energy correction**
         $\alpha=(1/A)\int(u/\bar{u})^3\,dA$, not an angle.
-        Circular pipe: $\alpha=2$ exactly if laminar; $\alpha\approx 1.05$ if turbulent (Tab 4).
+        Circular pipe: $\alpha=2$ exactly if laminar; $\alpha\approx 1.06$ if turbulent
+        (Tab 4 integrates the profile — do not round it back to a table).
         $h_{\mathrm{shaft}}$ is the pump head this lab solves for.
         $h_f$ is Darcy–Weisbach; $h_{\mathrm{minor}}=\sum K_L\,u^2/(2g)$.
         For two large tanks, $u_1\approx u_2\approx 0$ and an outlet $K_L=1$ already dumps
@@ -478,19 +481,34 @@ def render_tab_pipe_flow():
     )
 
     re_line = float(sys_res["reynolds"])
-    alpha = 2.0 if re_line < 2300 else (1.3 if re_line < 4000 else 1.05)
+    corr = pipe_kinetic_correction(re_line)
     g = 9.81
-    kinetic_head = alpha * sys_res["velocity"] ** 2 / (2.0 * g)
+    u_line = float(sys_res["velocity"])
 
     col_pk1, col_pk2, col_pk3, col_pk4 = st.columns(4)
-    col_pk1.metric("Flow Velocity", format_quantity(float(sys_res["velocity"]), "velocity"), help="Economic range is typically 1.0 to 2.5 m/s")
+    col_pk1.metric("Flow Velocity", format_quantity(u_line, "velocity"), help="Economic range is typically 1.0 to 2.5 m/s")
     col_pk2.metric("Total Pressure Drop", f"{sys_res['delta_p_total']/1000.0:.1f} kPa")
     col_pk3.metric("Required Pump Power", f"{sys_res['p_shaft_kw']:.2f} kW ({sys_res['p_shaft_hp']:.1f} HP)")
     col_pk4.metric("Annual Power Cost", f"${sys_res['annual_cost']:,.0f} / yr")
 
+    if corr["regime"] == "transitional":
+        h_lam = corr["alpha_lam"] * u_line ** 2 / (2.0 * g)
+        h_turb = corr["alpha_turb"] * u_line ** 2 / (2.0 * g)
+        alpha_caption = (
+            f"transition (2300 < Re < 4000): no unique profile — "
+            f"α_lam = {corr['alpha_lam']:.3f} → {h_lam:.2f} m, "
+            f"α_turb = {corr['alpha_turb']:.3f} → {h_turb:.2f} m"
+        )
+    else:
+        kinetic_head = corr["alpha"] * u_line ** 2 / (2.0 * g)
+        n_note = f", 1/{int(corr['n_exp'])} law" if corr["regime"] == "turbulent" else ""
+        alpha_caption = (
+            f"α = {corr['alpha']:.3f} ({corr['regime']}{n_note}, integrated) "
+            f"→ α u²/2g = {kinetic_head:.2f} m"
+        )
     st.caption(
         f"Re_D = {re_line:,.0f} ({fluid['name']}) · f_D = {sys_res['f_darcy']:.4f} · "
-        f"f_F = {sys_res['f_fanning']:.4f} · α = {alpha:.2f} → α u²/2g = {kinetic_head:.2f} m "
+        f"f_F = {sys_res['f_fanning']:.4f} · {alpha_caption} "
         "(shown for the energy equation; outlet K_L = 1 already accounts for exit kinetic dump)."
     )
 
@@ -983,57 +1001,67 @@ def render_tab_pipe_flow():
     )
 
     st.markdown("#### 2.5.3 Worked example: an irrigation canal")
+    demo = channel_state(**CANAL_DEMO_DEFAULTS)
+    weedy = channel_state(**{**CANAL_DEMO_DEFAULTS, "manning_n": MANNING_N["Earth canal, some weeds and stones"]})
+    choked = channel_state(**{**CANAL_DEMO_DEFAULTS, "manning_n": MANNING_N["Natural stream, clean and winding"]})
+    yn, A, Pw, Rh = demo["normal_depth"], demo["area"], demo["wetted_perimeter"], demo["hydraulic_radius"]
+    V, Fr, yc = demo["velocity"], demo["froude"], demo["critical_depth"]
+    T, Dh = demo["top_width"], demo["hydraulic_depth"]
+    fb, fb_req = demo["freeboard"], demo["required_freeboard"]
+    Qb, margin = demo["bank_full_capacity"], demo["capacity_margin"]
+    tau = demo["bed_shear_stress"]
+    n0 = CANAL_DEMO_DEFAULTS["manning_n"]
+    n1, n2 = weedy["manning_n"], choked["manning_n"]
     render_prose_and_latex(
-        r"""
-        **Brief.** Carry a design flow of $Q = 8\ \mathrm{m^3/s}$ in an unlined earth canal.
-        Trial section: bottom width $b = 3\ \mathrm{m}$, side slopes 1.5H:1V ($z = 1.5$,
-        near the stable angle for compacted earth), bed slope $S_0 = 0.0008$, Manning
-        $n = 0.022$ for a clean straight earth channel, banks built to 2.5 m above the
-        invert. These are the calculator's defaults below, so every number here can be
-        reproduced without changing an input.
+        rf"""
+        **Brief.** Carry a design flow of $Q = {CANAL_DEMO_DEFAULTS['discharge']:.0f}\ \mathrm{{m^3/s}}$ in an unlined earth canal.
+        Trial section: bottom width $b = {CANAL_DEMO_DEFAULTS['bottom_width']:.0f}\ \mathrm{{m}}$, side slopes 1.5H:1V ($z = {CANAL_DEMO_DEFAULTS['side_slope']}$,
+        near the stable angle for compacted earth), bed slope $S_0 = {CANAL_DEMO_DEFAULTS['bed_slope']}$, Manning
+        $n = {n0}$ for a clean straight earth channel, banks built to {CANAL_DEMO_DEFAULTS['bank_depth']} m above the
+        invert. These are the calculator's defaults below, so every number here is
+        **recomputed from those defaults**, not typed.
 
         **Work it by hand, in this order.**
 
         1. **Geometry at a trial depth $y$.** $A = y(b+zy)$,
-           $P_w = b + 2y\sqrt{1+z^2}$, $R_h = A/P_w$. At $y = 1.359$ m:
-           $A = 1.359(3 + 1.5\times1.359) = 6.85\ \mathrm{m^2}$,
-           $P_w = 3 + 2(1.359)\sqrt{1+2.25} = 7.90\ \mathrm{m}$,
-           $R_h = 0.867\ \mathrm{m}$.
-        2. **Manning.** $V = (1/0.022)(0.867)^{2/3}(0.0008)^{1/2} = 1.17\ \mathrm{m/s}$,
-           so $Q = 1.17 \times 6.85 = 8.0\ \mathrm{m^3/s}$. The trial depth was right. In
+           $P_w = b + 2y\sqrt{{1+z^2}}$, $R_h = A/P_w$. At $y = {yn:.3f}$ m:
+           $A = {A:.2f}\ \mathrm{{m^2}}$,
+           $P_w = {Pw:.2f}\ \mathrm{{m}}$,
+           $R_h = {Rh:.3f}\ \mathrm{{m}}$.
+        2. **Manning.** $V = {V:.2f}\ \mathrm{{m/s}}$,
+           so $Q = {V:.2f} \times {A:.2f} = {CANAL_DEMO_DEFAULTS['discharge']:.1f}\ \mathrm{{m^3/s}}$. The trial depth was right. In
            practice you iterate on $y$ — which is exactly what the solver below does, with
            a bracketed root find that always converges because $Q(y)$ is monotonic.
         3. **Check the velocity against scour and siltation.** Unlined earth canals are kept
            between roughly 0.6 and 1.5 m/s: slower and suspended sediment settles out and
-           silts the channel up, faster and the bed erodes. 1.17 m/s sits comfortably in the
+           silts the channel up, faster and the bed erodes. {V:.2f} m/s sits comfortably in the
            middle. **This check, not the head loss, usually sets the design** — which is the
            sharpest difference between canal design and pipe design.
-        4. **Check the regime.** $T = 7.08\ \mathrm{m}$, $D_h = A/T = 0.967\ \mathrm{m}$,
-           $\mathrm{Fr} = 1.17/\sqrt{9.81\times0.967} = 0.38$. Subcritical, as an irrigation
+        4. **Check the regime.** $T = {T:.2f}\ \mathrm{{m}}$, $D_h = A/T = {Dh:.3f}\ \mathrm{{m}}$,
+           $\mathrm{{Fr}} = {Fr:.2f}$. Subcritical, as an irrigation
            canal should be — supercritical flow over erodible earth is a scour problem
-           waiting to happen. Critical depth is 0.78 m, well below the normal depth of
-           1.36 m, which says the same thing a second way.
-        5. **Check the freeboard.** Bank at 2.5 m, water at 1.36 m, so freeboard is 1.14 m
-           against a requirement of about $\max(0.3\ \mathrm{m},\ 0.2y_n) = 0.30\ \mathrm{m}$.
+           waiting to happen. Critical depth is {yc:.2f} m, well below the normal depth of
+           {yn:.2f} m, which says the same thing a second way.
+        5. **Check the freeboard.** Bank at {CANAL_DEMO_DEFAULTS['bank_depth']} m, water at {yn:.2f} m, so freeboard is {fb:.2f} m
+           against a requirement of about $\max(0.3\ \mathrm{{m}},\ 0.2y_n) = {fb_req:.2f}\ \mathrm{{m}}$.
            Ample.
-        6. **Check the flood case.** Filled to the top of bank at 2.5 m the same section
-           would carry $27.2\ \mathrm{m^3/s}$ — 3.4 times the design flow. **That margin,
+        6. **Check the flood case.** Filled to the top of bank at {CANAL_DEMO_DEFAULTS['bank_depth']} m the same section
+           would carry ${Qb:.1f}\ \mathrm{{m^3/s}}$ — {margin:.1f} times the design flow. **That margin,
            not the design point, is the answer to "will it flood".**
-        7. **Check the bed shear.** $\tau_w = \rho g R_h S_0 = 998 \times 9.81 \times 0.867
-           \times 0.0008 = 6.8\ \mathrm{Pa}$. Compare against the permissible tractive stress
+        7. **Check the bed shear.** $\tau_w = \rho g R_h S_0 = {tau:.1f}\ \mathrm{{Pa}}$. Compare against the permissible tractive stress
            for the bed material. Chow's table gives roughly 1.3 Pa for noncolloidal fine
            sand and about 12 Pa for stiff colloidal clay, so sand would scour badly here
            while compacted clay would hold comfortably.
         """
     )
     render_callout(
-        """
-        **And now the failure mode.** Let the weeds grow so $n$ rises from 0.022 to 0.030 —
+        rf"""
+        **And now the failure mode.** Let the weeds grow so $n$ rises from {n0} to {n1:.3f} —
         entirely routine for an unmaintained earth canal by late summer, and only one row
         down the material list in the calculator below. The normal depth for the *same*
-        8 m³/s rises from 1.36 m to 1.59 m, and the freeboard falls from 1.14 m to 0.91 m.
+        {CANAL_DEMO_DEFAULTS['discharge']:.0f} m³/s rises from {yn:.2f} m to {weedy['normal_depth']:.2f} m, and the freeboard falls from {fb:.2f} m to {weedy['freeboard']:.2f} m.
         Nothing about the canal changed except its roughness. Let it go further, to the
-        0.040 of a weed-choked winding channel, and the depth reaches 1.84 m. Now put a
+        {n2:.3f} of a weed-choked winding channel, and the depth reaches {choked['normal_depth']:.2f} m. Now put a
         storm event on top of a weedy channel and the two effects compound. Real canal
         failures are almost never a wrong Manning calculation; they are a right calculation
         done with last year's $n$.
@@ -1044,16 +1072,16 @@ def render_tab_pipe_flow():
     st.markdown("#### 2.5.4 Canal and channel calculator")
     ch1, ch2, ch3 = st.columns(3)
     ch_q = persistent_input(ch1.number_input, "Design discharge Q [m³/s]", min_value=0.01, max_value=5000.0,
-                            value=8.0, step=0.5, key="canal_q")
+                            value=CANAL_DEMO_DEFAULTS["discharge"], step=0.5, key="canal_q")
     ch_b = persistent_input(ch1.number_input, "Bottom width b [m]", min_value=0.0, max_value=200.0,
-                            value=3.0, step=0.5, key="canal_b")
+                            value=CANAL_DEMO_DEFAULTS["bottom_width"], step=0.5, key="canal_b")
     ch_z = persistent_input(ch2.number_input, "Side slope z (horizontal per 1 vertical)", min_value=0.0,
-                            max_value=6.0, value=1.5, step=0.25, key="canal_z")
+                            max_value=6.0, value=CANAL_DEMO_DEFAULTS["side_slope"], step=0.25, key="canal_z")
     ch_slope = persistent_input(ch2.number_input, "Bed slope S₀ [m/m]", min_value=1e-6, max_value=0.2,
-                                value=0.0008, step=0.0002, format="%.5f", key="canal_s")
+                                value=CANAL_DEMO_DEFAULTS["bed_slope"], step=0.0002, format="%.5f", key="canal_s")
     ch_material = persistent_input(ch3.selectbox, "Channel surface", list(MANNING_N.keys()), index=4, key="canal_mat")
     ch_bank = persistent_input(ch3.number_input, "Bank height above invert [m]", min_value=0.05, max_value=60.0,
-                               value=2.5, step=0.1, key="canal_bank")
+                               value=CANAL_DEMO_DEFAULTS["bank_depth"], step=0.1, key="canal_bank")
 
     if ch_b == 0.0 and ch_z == 0.0:
         st.error("A channel needs a bottom width, a side slope, or both.")

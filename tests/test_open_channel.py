@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from src.physics.open_channel import (
+    CANAL_DEMO_DEFAULTS,
     G,
     MANNING_N,
     channel_state,
@@ -181,3 +182,20 @@ def test_invalid_geometry_is_rejected(kwargs):
 def test_invalid_manning_inputs_are_rejected(bad):
     with pytest.raises(ValueError):
         manning_discharge(1.0, 4.0, 0.0, **bad)
+
+
+def test_canal_demo_defaults_match_the_clean_earth_calculator():
+    """The worked example and the calculator must share one set of inputs."""
+    assert CANAL_DEMO_DEFAULTS["manning_n"] == MANNING_N["Clean earth canal, straight"]
+    assert list(MANNING_N.keys())[4] == "Clean earth canal, straight"
+    state = channel_state(**CANAL_DEMO_DEFAULTS)
+    assert state["discharge"] == CANAL_DEMO_DEFAULTS["discharge"]
+    # Sanity: the design sits in the unlined-earth velocity band and is subcritical.
+    assert 0.6 < state["velocity"] < 1.5
+    assert state["regime"] == "subcritical"
+    assert state["freeboard_adequate"] is True
+    weedy = channel_state(
+        **{**CANAL_DEMO_DEFAULTS, "manning_n": MANNING_N["Earth canal, some weeds and stones"]}
+    )
+    assert weedy["normal_depth"] > state["normal_depth"]
+    assert weedy["freeboard"] < state["freeboard"]

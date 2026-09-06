@@ -88,7 +88,7 @@ def render_tab_cheme_energy():
                 r"\alpha",
                 "kinetic-energy correction: $\\alpha=(1/A)\\int(u/\\bar{u})^3\\,dA$. "
                 "Circular pipe: $\\alpha=2$ exactly if laminar (parabola); "
-                "$\\alpha\\approx 1.05$ if turbulent (blunt core); "
+                r"$\alpha\approx 1.06$ if turbulent (Tab 4 integrates the profile); "
                 "$\\alpha=1$ only for a uniform plug. Plane channel: $\\alpha=54/35\\approx 1.54$ (Tab 7).",
             ),
             (r"g", r"gravitational acceleration, $9.81\,\mathrm{m/s^2}$."),

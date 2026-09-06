@@ -77,6 +77,60 @@ def sphere_drag(reynolds, strict=True):
     return 24 / reynolds * (1 + 0.15 * reynolds**0.687)
 
 
+def sphere_terminal_velocity(
+    diameter, density_particle, density_fluid, viscosity, gravity=9.81,
+):
+    """Stokes settling speed, plus the Schiller–Naumann root when Re_t is not creeping.
+
+    Weight minus buoyancy equals drag. Stokes drag is linear in U, so U_t
+    rearranges in closed form. Schiller–Naumann is not, so that balance is a
+    scalar root in U. The Stokes value is always returned as the creeping
+    check; the SN value is the finite-inertia estimate, flagged when Re_t
+    leaves the fit.
+    """
+    from scipy.optimize import brentq
+
+    d = positive(diameter, 'Diameter')
+    mu = positive(viscosity, 'Viscosity')
+    rho = positive(density_fluid, 'Fluid density')
+    rho_p = float(density_particle)
+    if not math.isfinite(rho_p) or rho_p <= 0:
+        raise ValueError('Particle density must be finite and positive.')
+    g = positive(gravity, 'Gravity')
+    delta = rho_p - rho
+    stokes_u = delta * g * d * d / (18.0 * mu)
+    stokes_re = rho * abs(stokes_u) * d / mu
+    area = math.pi * d * d / 4.0
+    net_weight = (math.pi * d**3 / 6.0) * delta * g
+    if abs(net_weight) < 1e-30:
+        sn_u = 0.0
+    else:
+        weight = abs(net_weight)
+
+        def residual(speed):
+            re = rho * speed * d / mu
+            if re < 1e-14:
+                return -weight
+            cd = sphere_drag(re, strict=False)
+            return 0.5 * rho * speed * speed * cd * area - weight
+
+        hi = max(abs(stokes_u) * 2.0, 1e-9)
+        while residual(hi) < 0.0:
+            hi *= 2.0
+            if hi > 1e6:
+                raise ValueError('Could not bracket a terminal speed.')
+        sn_u = math.copysign(brentq(residual, 0.0, hi), delta)
+    sn_re = rho * abs(sn_u) * d / mu
+    return dict(
+        stokes_u=stokes_u,
+        stokes_re=stokes_re,
+        sn_u=sn_u,
+        sn_re=sn_re,
+        in_sn_range=sn_re <= SCHILLER_NAUMANN_RE_MAX,
+        creeping=max(stokes_re, sn_re) <= 0.1,
+    )
+
+
 def critical_pressure_ratio(gamma=1.4):
     """p*/p0 at which a converging passage chokes: (2/(gamma+1))^(gamma/(gamma-1)).
 

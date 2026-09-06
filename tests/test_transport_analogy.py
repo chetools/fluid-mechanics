@@ -73,6 +73,13 @@ def test_thermal_layer_thickness_ratio_follows_prandtl_to_the_minus_third():
     assert thin < thick
 
 
+def test_prandtl_one_thermal_layer_matches_the_velocity_layer():
+    """At Pr = 1 the energy equation is the differentiated Blasius equation."""
+    result = pohlhausen_theta_gradient(1.0)
+    assert result["thickness_ratio"] == pytest.approx(1.0, rel=1e-3)
+    assert result["eta_thermal_99"] == pytest.approx(result["eta_velocity_99"], rel=1e-3)
+
+
 def test_higher_prandtl_gives_a_steeper_wall_gradient():
     gradients = [pohlhausen_theta_gradient(pr)["theta_gradient"] for pr in (0.7, 7.0, 70.0)]
     assert gradients[0] < gradients[1] < gradients[2]

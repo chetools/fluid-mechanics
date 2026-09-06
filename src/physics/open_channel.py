@@ -56,6 +56,17 @@ MANNING_N = {
     "Floodplain, heavy brush and timber": 0.100,
 }
 
+# Shared by the calculator and the worked irrigation-canal example.
+CANAL_DEMO_DEFAULTS = dict(
+    discharge=8.0,
+    bottom_width=3.0,
+    side_slope=1.5,
+    manning_n=0.022,
+    bed_slope=0.0008,
+    bank_depth=2.5,
+)
+
+
 # Equivalent sand-grain roughness for the Darcy route [m].
 CHANNEL_ROUGHNESS = {
     "Glass / smooth plastic flume": 3.0e-6,

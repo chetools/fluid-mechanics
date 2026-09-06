@@ -238,7 +238,8 @@ def render_tab_turbulence():
     col_pr3.metric("Pipe kinetic-energy factor α", f"Laminar: {prof_res['alpha_lam']:.2f} | Turb: {prof_res['alpha_turb']:.2f}")
     st.caption(
         "α = 2 and u_avg/u_max = 1/2 are **circular pipe**. A plane channel has "
-        "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.54 (see Tab 7 Couette–Poiseuille)."
+        "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.543 for pure plane Poiseuille "
+        "(Tab 7 integrates the actual Couette–Poiseuille profile)."
     )
     render_what_to_notice("Equal mean velocity: the turbulent profile is blunter, so the wall gradient (and τ_w) is steeper.")
     
@@ -324,7 +325,7 @@ def render_tab_turbulence():
                 r"""
                 In a laminar line — polymer melt, heavy crude, a capillary — writing
                 $\alpha=1$ halves the velocity head, a $100\%$ error in that term. In a
-                turbulent line $\alpha\approx1.05$ is usually buried inside the uncertainty
+                turbulent line $\alpha\approx1.06$ is usually buried inside the uncertainty
                 of $h_f$, which is why the shortcut became a habit. Both statements are
                 **circular-pipe** results: a plane slit has $\bar{u}/u_{\max}=2/3$ and
                 $\alpha=54/35\approx1.54$ (Tab 7).
@@ -336,7 +337,7 @@ def render_tab_turbulence():
                 r"\alpha",
                 r"kinetic-energy correction $\alpha=(1/A)\int(u/\bar{u})^3\,dA$. "
                 "Not an angle, not thermal diffusivity, not Tab 6's angular acceleration $\\alpha_z$. "
-                "Circular pipe: $\\alpha=2$ laminar, $\\alpha\\approx 1.05$ turbulent.",
+                "Circular pipe: $\\alpha=2$ laminar, $\\alpha\\approx 1.06$ turbulent (integrated).",
             ),
             (r"\beta", r"momentum correction $(1/A)\int(u/\bar{u})^2\,dA$; $4/3$ for the laminar parabola."),
             (r"\dot{E}_k", r"true kinetic-energy flux through the cross-section (W)."),
@@ -473,7 +474,10 @@ def render_tab_turbulence():
         karman_k, wall_b = 0.41, 5.0
 
     wall_res = law_of_the_wall(kappa=karman_k, B=wall_b)
-    render_what_to_notice("y⁺ < 5 is linear (viscous sublayer). y⁺ > 30 is the log overlap. The buffer is a blend, not a third law.")
+    render_what_to_notice(
+        "y⁺ < 5 is linear (viscous sublayer). y⁺ > 30 is the log overlap. "
+        "The green curve is Spalding's interpolation — a blend, not a third law."
+    )
     fig_wall = plot_law_of_the_wall(wall_res)
     render_plot(fig_wall, key="tab_turbulence-fig_wall")
 

@@ -1,7 +1,13 @@
 """Unit tests for turbulence velocity profiles and Law of the Wall."""
 
+import math
 import numpy as np
-from src.physics.turbulence import velocity_profile_comparison, law_of_the_wall
+from src.physics.turbulence import (
+    velocity_profile_comparison,
+    law_of_the_wall,
+    pipe_kinetic_correction,
+    _spalding_y_plus,
+)
 
 def test_velocity_profiles_laminar_vs_turbulent():
     """Verify laminar parabolic apex and turbulent blunt apex and kinetic energy factors."""
@@ -56,3 +62,27 @@ def test_law_of_the_wall_sublayers():
     idx_100 = np.argmin(np.abs(y_plus - 100.0))
     expected_log = (1.0 / 0.41) * np.log(100.0) + 5.0
     assert np.isclose(res["u_plus_composite"][idx_100], expected_log, rtol=0.02)
+
+
+def test_composite_wall_law_is_spalding_not_a_linear_blend():
+    """The docstring and plot claim Spalding; invert y+(u+) and recover y+."""
+    kappa, B = 0.41, 5.0
+    res = law_of_the_wall(kappa=kappa, B=B)
+    y_of_u = _spalding_y_plus(res["u_plus_composite"], kappa, B)
+    assert np.allclose(y_of_u, res["y_plus"], rtol=1e-5, atol=1e-5)
+    # A linear blend between (5,5) and (30, log(30)) would miss Spalding in the buffer.
+    idx_15 = np.argmin(np.abs(res["y_plus"] - 15.0))
+    u_linear = 5.0 + (15.0 - 5.0) / 25.0 * ((1.0 / kappa) * np.log(30.0) + B - 5.0)
+    assert abs(res["u_plus_composite"][idx_15] - u_linear) > 0.2
+
+
+def test_pipe_kinetic_correction_picks_the_integrated_profile():
+    lam = pipe_kinetic_correction(1000.0)
+    assert lam["regime"] == "laminar"
+    assert np.isclose(lam["alpha"], 2.0, rtol=1e-6)
+    turb = pipe_kinetic_correction(5e4)
+    assert turb["regime"] == "turbulent"
+    assert 1.05 < turb["alpha"] < 1.08
+    trans = pipe_kinetic_correction(3000.0)
+    assert trans["regime"] == "transitional"
+    assert math.isnan(trans["alpha"])

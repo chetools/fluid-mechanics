@@ -7,9 +7,30 @@ Contains canonical laminar flows where non-linear convective terms vanish identi
 4. Stokes' First Problem / Rayleigh Problem (unsteady momentum diffusion)
 """
 
-from typing import Dict
+from typing import Dict, Tuple
 import numpy as np
-from scipy.special import erfc
+from scipy.special import erfc, erfcinv
+
+
+def _flux_corrections(u: np.ndarray, coord: np.ndarray, weight: np.ndarray) -> Tuple[float, float]:
+    """Kinetic-energy (alpha) and momentum (beta) corrections on a discrete profile.
+
+    alpha = (1/A) int (u/ubar)^3 dA,  beta = (1/A) int (u/ubar)^2 dA,
+    with dA = weight d(coord). Undefined when the net flux is ~0 (strong reversal).
+    """
+    area = float(np.trapezoid(weight, coord))
+    flux = float(np.trapezoid(u * weight, coord))
+    if area <= 0.0 or abs(flux) < 1e-16 * max(1.0, abs(area)):
+        return float("nan"), float("nan")
+    shape = u * (area / flux)
+    alpha = float(np.trapezoid(shape**3 * weight, coord) / area)
+    beta = float(np.trapezoid(shape**2 * weight, coord) / area)
+    return alpha, beta
+
+
+# 1% station of erfc: u/U = erfc(eta) = 0.01 => y = 2 eta sqrt(nu t).
+STOKES_ETA_ONE_PERCENT = float(erfcinv(0.01))
+STOKES_DELTA_COEFF = 2.0 * STOKES_ETA_ONE_PERCENT
 
 def couette_poiseuille_channel(
     h: float = 0.05,            # Channel height (m)
@@ -54,6 +75,14 @@ def couette_poiseuille_channel(
         p_param = np.inf
         
     reynolds = (rho * abs(u_mean) * h) / mu if mu > 0 else np.inf
+
+    # Plane channel: dA = dy (unit depth), A = h. Integrate on a dense grid;
+    # the ~150 plot points leave a visible error in the cube. The lesson quotes
+    # 54/35 for pure Poiseuille and says wall motion changes alpha, so this
+    # must be the integral of the profile the sliders actually set.
+    y_int = np.linspace(0.0, h, 4001)
+    u_int = u_wall * (y_int / h) + (1.0 / (2.0 * mu)) * (-dp_dx) * y_int * (h - y_int)
+    alpha, beta = _flux_corrections(u_int, y_int, np.ones_like(y_int))
     
     return {
         "y": y,
@@ -69,6 +98,8 @@ def couette_poiseuille_channel(
         "reynolds": reynolds,
         "tau_wall_bottom": tau[0],
         "tau_wall_top": tau[-1],
+        "alpha": alpha,
+        "beta": beta,
     }
 
 def hagen_poiseuille_pipe(
@@ -100,6 +131,12 @@ def hagen_poiseuille_pipe(
     # Pipe Reynolds number based on diameter D = 2*R
     diameter = 2.0 * radius
     reynolds = (rho * u_avg * diameter) / mu if mu > 0 else np.inf
+
+    # Annular area element dA = 2 pi r dr; the 2 pi cancels in the ratio.
+    # Dense grid: the cube of a parabola is not integrated accurately on 150 points.
+    r_int = np.linspace(0.0, radius, 4001)
+    u_int = (1.0 / (4.0 * mu)) * (-dp_dx) * (radius**2 - r_int**2)
+    alpha, beta = _flux_corrections(u_int, r_int, r_int)
     
     return {
         "r": r,
@@ -111,13 +148,15 @@ def hagen_poiseuille_pipe(
         "tau_wall": tau_wall,
         "diameter": diameter,
         "reynolds": reynolds,
+        "alpha": alpha,
+        "beta": beta,
     }
 
 def stokes_first_problem(
     u_wall: float = 1.0,        # Suddenly started wall velocity (m/s)
     nu: float = 1.0e-5,         # Kinematic viscosity nu = mu/rho (m^2/s)
     times: np.ndarray = None,   # Array of evaluation times (s)
-    y_max: float = 0.08,        # Max height (m)
+    y_max: float = None,        # Max height (m); default scales with the 1% station
     n_y: int = 200,
 ) -> Dict[str, np.ndarray]:
     """Calculate Stokes' First Problem (Rayleigh Problem) for unsteady viscous diffusion.
@@ -129,10 +168,16 @@ def stokes_first_problem(
     """
     if times is None:
         times = np.array([0.05, 0.2, 0.5, 1.0, 2.0])
+    if y_max is None:
+        t_max = float(np.max(times)) if len(times) else 1.0
+        # eta = 4 at the top of the frame so the 1% station (eta ≈ 1.82) is
+        # on-plot for water *and* glycerin. A fixed 80 mm window hid the
+        # glycerin layer (δ ≈ 0.17 m at t = 2 s).
+        y_max = 8.0 * np.sqrt(max(float(nu), 1e-16) * max(t_max, 1e-16))
         
     y = np.linspace(0, y_max, n_y)
     profiles = {}
-    delta_viscous = {}  # Penetration thickness where u = 0.01 * U_wall (eta ~ 1.82 => y ~ 3.64 * sqrt(nu*t))
+    delta_viscous = {}
     
     for t in times:
         if t <= 0:
@@ -142,13 +187,17 @@ def stokes_first_problem(
             
         eta = y / (2.0 * np.sqrt(nu * t))
         profiles[t] = u_wall * erfc(eta)
-        delta_viscous[t] = 3.64 * np.sqrt(nu * t)
+        # Definition: u = 0.01 U_wall. Invert the exact erfc profile rather
+        # than quoting 3.64.
+        delta_viscous[t] = STOKES_DELTA_COEFF * np.sqrt(nu * t)
         
     return {
         "y": y,
         "times": times,
         "profiles": profiles,
         "delta_viscous": delta_viscous,
+        "delta_coeff": STOKES_DELTA_COEFF,
+        "eta_one_percent": STOKES_ETA_ONE_PERCENT,
         "nu": nu,
         "u_wall": u_wall,
     }

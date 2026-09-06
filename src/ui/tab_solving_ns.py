@@ -1,5 +1,6 @@
-"""UI module for Panel 4: Exact NS solutions and laminar boundary layers."""
+"""UI module for chapter 7: Exact NS solutions and laminar boundary layers."""
 
+import math
 import streamlit as st
 from src.ui.state import persistent_input
 from src.ui.pedagogy import render_plot
@@ -15,7 +16,12 @@ from src.physics.exact_solutions import (
     hagen_poiseuille_pipe,
     stokes_first_problem,
 )
-from src.physics.boundary_layer import blasius_similarity_profile, blasius_plate, cylinder_outer_flow_and_separation
+from src.physics.boundary_layer import (
+    blasius_similarity_profile,
+    blasius_plate,
+    blasius_integral_coefficients,
+    cylinder_outer_flow_and_separation,
+)
 from src.plotting import (
     plot_exact_channel_flow,
     plot_stokes_first_problem,
@@ -38,6 +44,7 @@ from src.ui.pedagogy import (
 def render_tab_solving_ns():
     """Exact solutions plus Blasius / cylinder separation."""
     fluid = get_fluid_state()
+    bl_coeff = blasius_integral_coefficients()
     st.markdown(
         """
         Except for a handful of highly symmetric cases, **no general closed-form
@@ -51,7 +58,7 @@ def render_tab_solving_ns():
         [
             "Recover Couette–Poiseuille and Hagen–Poiseuille by dropping $(\\mathbf{u}\\cdot\\nabla)\\mathbf{u}$.",
             "Watch viscous momentum diffuse as $\\delta \\sim \\sqrt{\\nu t}$.",
-            "State $\\delta/x \\approx 4.91/\\sqrt{\\mathrm{Re}_x}$ and $c_f = 0.664/\\sqrt{\\mathrm{Re}_x}$.",
+            rf"State $\delta/x \approx {bl_coeff['eta_99']:.2f}/\sqrt{{\mathrm{{Re}}_x}}$ and $c_f = {bl_coeff['cf_coeff']:.3f}/\sqrt{{\mathrm{{Re}}_x}}$ from the integrated profile.",
             "Mark where the cylinder outer flow becomes adverse (90°) and where a laminar BL separates (~105°).",
         ]
     )
@@ -106,50 +113,85 @@ def render_tab_solving_ns():
             rho=float(fluid["rho"]),
         )
 
-        col_cpm1, col_cpm2, col_cpm3 = st.columns(3)
-        col_cpm1.metric("Flow Rate Q", format_quantity(float(res_cp["q_flow"]), "flow_rate"))
+        col_cpm1, col_cpm2, col_cpm3, col_cpm4 = st.columns(4)
+        col_cpm1.metric("Q per unit depth", f"{float(res_cp['q_flow']):.3e} m²/s")
         col_cpm2.metric("Mean Velocity", format_quantity(float(res_cp["u_mean"]), "velocity"))
-        col_cpm3.metric("Bottom Wall Shear τ₀", format_quantity(float(res_cp["tau_wall_bottom"]), "shear_stress"))
+        if math.isfinite(res_cp["alpha"]):
+            col_cpm3.metric("α = (1/h)∫(u/ū)³ dy", f"{res_cp['alpha']:.3f}")
+        else:
+            col_cpm3.metric("α = (1/h)∫(u/ū)³ dy", "undefined")
+        col_cpm4.metric("Bottom Wall Shear τ₀", format_quantity(float(res_cp["tau_wall_bottom"]), "shear_stress"))
 
         if res_cp["p_param"] < -1.0:
             st.info(
                 "Adverse pressure gradient is strong enough for near-wall reversal "
                 f"(P = {res_cp['p_param']:.2f} < −1). Look for u = 0 inside the gap."
             )
-        st.caption(
-            f"μ = {fluid['mu']:.3e} Pa·s from **{fluid['name']}**. "
-            "For pure pressure-driven plane Poiseuille flow, α = 54/35 ≈ 1.54. "
-            "Adding wall motion changes the profile and its correction factor."
-        )
+        if math.isfinite(res_cp["alpha"]):
+            st.caption(
+                f"μ = {fluid['mu']:.3e} Pa·s from **{fluid['name']}**. "
+                f"α = {res_cp['alpha']:.3f} and β = {res_cp['beta']:.3f} are integrated on "
+                "the green profile above (plane channel, dA = dy). Q is per unit depth "
+                "(m²/s), not m³/s. Pure Poiseuille is "
+                "54/35 ≈ 1.543; pure Couette is 2. Wall motion plus a pressure gradient "
+                "is neither."
+            )
+        else:
+            st.caption(
+                f"μ = {fluid['mu']:.3e} Pa·s from **{fluid['name']}**. "
+                "Q is per unit depth (m²/s). "
+                "α is undefined when the net flux is ~0: there is no ū to scale by."
+            )
         render_what_to_notice("Green = total u(y). Dashed = linear Couette. Dotted = parabolic Poiseuille.")
         fig_cp = plot_exact_channel_flow(res_cp)
         render_plot(fig_cp, key="tab_solving_ns-fig_cp")
 
-        with st.expander("🔍 Step-by-Step Derivation of Couette-Poiseuille Flow", expanded=False):
-            render_prose_and_latex(
-                r"""
-                For steady, fully developed 2D flow between infinite parallel plates:
-                $$\mathbf{u} = (u(y), 0, 0)$$
-                Continuity equation: $\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} = \frac{\partial u}{\partial x} = 0 \implies u = u(y)$.
-
-                Evaluating the convective acceleration term:
-                $$(\mathbf{u}\cdot\nabla)\mathbf{u} = u\frac{\partial u}{\partial x} + v\frac{\partial u}{\partial y} = u(0) + 0\left(\frac{du}{dy}\right) = 0$$
-
-                The $x$-momentum equation simplifies to:
-                $$\mu \frac{d^2 u}{dy^2} = \frac{dp}{dx} = \text{const}$$
-
-                Integrating twice with respect to $y$:
-                $$\frac{du}{dy} = \frac{1}{\mu}\frac{dp}{dx} y + C_1$$
-                $$u(y) = \frac{1}{2\mu}\frac{dp}{dx} y^2 + C_1 y + C_2$$
-
-                Applying no-slip boundary conditions:
-                * At $y = 0$: $u(0) = 0 \implies C_2 = 0$
-                * At $y = h$: $u(h) = U_{\text{wall}} \implies U_{\text{wall}} = \frac{1}{2\mu}\frac{dp}{dx} h^2 + C_1 h \implies C_1 = \frac{U_{\text{wall}}}{h} - \frac{1}{2\mu}\frac{dp}{dx} h$
-
-                Substituting $C_1$ and $C_2$ back:
-                $$u(y) = \underbrace{U_{\text{wall}}\frac{y}{h}}_{\text{Couette linear shear}} + \underbrace{\frac{1}{2\mu}\left(-\frac{dp}{dx}\right) y (h - y)}_{\text{Poiseuille parabolic profile}}$$
-                """
-            )
+        render_derivation(
+            r"Couette–Poiseuille: superposition because the leftover ODE is linear",
+            [
+                (
+                    "Fully developed parallel flow kills the convective term identically",
+                    r"""
+                    Steady flow between infinite plates with $\mathbf u=(u(y),0,0)$:
+                    continuity is $\partial u/\partial x=0$, so $u=u(y)$ only. Then
+                    $$(\mathbf u\cdot\nabla)\mathbf u
+                    = u\frac{\partial u}{\partial x}+v\frac{\partial u}{\partial y}=0$$
+                    — not approximated, genuinely zero, because the only non-zero velocity
+                    does not vary in the direction it points.
+                    """,
+                ),
+                (
+                    "What remains is a linear ordinary differential equation",
+                    r"""
+                    The $x$-momentum equation collapses to
+                    $$\mu\frac{d^2 u}{dy^2}=\frac{dp}{dx}=\text{const}$$
+                    Linear in $u$, so any two solutions may be added. That is the whole
+                    licence for writing Couette plus Poiseuille rather than solving a new
+                    problem when both a moving wall and a pressure gradient are present.
+                    """,
+                ),
+                (
+                    "Integrate twice, then let no-slip fix both constants",
+                    r"""
+                    $$\frac{du}{dy}=\frac{1}{\mu}\frac{dp}{dx}y+C_1,\qquad
+                    u(y)=\frac{1}{2\mu}\frac{dp}{dx}y^2+C_1 y+C_2$$
+                    $u(0)=0$ forces $C_2=0$. $u(h)=U_{\mathrm{wall}}$ fixes $C_1$, and
+                    $$u(y)=\underbrace{U_{\mathrm{wall}}\frac{y}{h}}_{\text{Couette}}
+                    +\underbrace{\frac{1}{2\mu}\left(-\frac{dp}{dx}\right)y(h-y)}_{\text{Poiseuille}}$$
+                    """,
+                ),
+                (
+                    "The kinetic-energy correction is an integral of *this* profile",
+                    r"""
+                    For a plane channel the area element is $dy$, not $2\pi r\,dr$, so
+                    $$\alpha=\frac{1}{h}\int_0^h\left(\frac{u}{\bar u}\right)^3 dy$$
+                    Pure Poiseuille ($U_{\mathrm{wall}}=0$) gives $\alpha=54/35$; pure Couette
+                    ($dp/dx=0$) gives $\alpha=2$. The metric above integrates the green
+                    curve you actually set, so moving the sliders moves $\alpha$.
+                    """,
+                ),
+            ],
+        )
 
     with exact_tab2:
         render_prose_and_latex(
@@ -249,13 +291,16 @@ def render_tab_solving_ns():
             mu=float(fluid["mu"]),
             rho=float(fluid["rho"]),
         )
-        col_h1, col_h2, col_h3 = st.columns(3)
+        col_h1, col_h2, col_h3, col_h4 = st.columns(4)
         col_h1.metric("u_max (centerline)", format_quantity(float(res_hp["u_max"]), "velocity"))
         col_h2.metric("u_avg = u_max / 2", format_quantity(float(res_hp["u_avg"]), "velocity"))
-        col_h3.metric("Pipe Re (ρ u_avg D / μ)", f"{res_hp['reynolds']:.1f}")
+        col_h3.metric("α (annular integral)", f"{res_hp['alpha']:.3f}")
+        col_h4.metric("Pipe Re (ρ u_avg D / μ)", f"{res_hp['reynolds']:.1f}")
         st.caption(
             f"Q = {res_hp['flow_rate']:.3e} m³/s · τ_wall = {res_hp['tau_wall']:.3f} Pa · "
-            f"μ from {fluid['name']}. Switch the sidebar to Glycerin and watch Q collapse."
+            f"α = {res_hp['alpha']:.3f}, β = {res_hp['beta']:.3f} integrated on the parabola "
+            f"(exactly 2 and 4/3). μ from {fluid['name']}. Switch the sidebar to Glycerin "
+            "and watch Q collapse."
         )
         render_what_to_notice("Parabola in a round pipe; mean velocity is half the apex (not 2/3 — that is a plane channel).")
         fig_hp = plot_hagen_poiseuille(res_hp)
@@ -270,7 +315,11 @@ def render_tab_solving_ns():
             """
         )
         nu_fluid = float(fluid["mu"]) / float(fluid["rho"])
-        st.caption(f"ν = μ/ρ = {nu_fluid:.3e} m²/s from **{fluid['name']}**. Dotted horizontals are δ ≈ 3.64 √(ν t).")
+        st.caption(
+            f"ν = μ/ρ = {nu_fluid:.3e} m²/s from **{fluid['name']}**. "
+            "Dotted horizontals are the 1% station of the erfc profile, "
+            r"$\delta=2\,\mathrm{erfcinv}(0.01)\sqrt{\nu t}$."
+        )
         override = persistent_input(st.checkbox, "Override ν (compare fluids)", value=False, key="tab_solving_ns_override_compare_fluids")
         if override:
             nu_val = persistent_input(st.select_slider,
@@ -285,28 +334,59 @@ def render_tab_solving_ns():
         fig_stokes = plot_stokes_first_problem(res_stokes)
         render_plot(fig_stokes, key="tab_solving_ns-fig_stokes")
 
-        with st.expander("🔍 Mathematical Derivation: Self-Similar Solution via Error Function"):
-            render_prose_and_latex(
-                r"""
-                Governing diffusion PDE:
-                $$\frac{\partial u}{\partial t} = \nu \frac{\partial^2 u}{\partial y^2}$$
-                Boundary conditions: $u(0, t) = U_0$, $u(\infty, t) = 0$, $u(y, 0) = 0$.
-
-                Define the dimensionless similarity variable:
-                $$\eta = \frac{y}{2\sqrt{\nu t}}$$
-                Assuming $u(y, t) = U_0 f(\eta)$, we evaluate derivatives using the chain rule:
-                $$\frac{\partial \eta}{\partial t} = -\frac{y}{4 t \sqrt{\nu t}} = -\frac{\eta}{2t}, \quad \frac{\partial \eta}{\partial y} = \frac{1}{2\sqrt{\nu t}}$$
-                $$\frac{\partial u}{\partial t} = U_0 f'(\eta)\left(-\frac{\eta}{2t}\right), \quad \frac{\partial^2 u}{\partial y^2} = U_0 f''(\eta)\frac{1}{4\nu t}$$
-                Substituting into the PDE:
-                $$-U_0 \frac{\eta}{2t} f'(\eta) = \nu U_0 \frac{1}{4\nu t} f''(\eta) \implies f''(\eta) + 2\eta f'(\eta) = 0$$
-                Integrating once: $\frac{f''}{f'} = -2\eta \implies \ln f' = -\eta^2 + \ln C_1 \implies f'(\eta) = C_1 e^{-\eta^2}$.
-                Integrating again:
-                $$f(\eta) = C_1 \int_0^\eta e^{-s^2} ds + C_2 = C_1 \frac{\sqrt{\pi}}{2}\operatorname{erf}(\eta) + C_2$$
-                Applying boundary conditions $f(0) = 1 \implies C_2 = 1$ and $f(\infty) = 0 \implies C_1 = -\frac{2}{\sqrt{\pi}}$:
-                $$u(y, t) = U_0 \left[1 - \operatorname{erf}\left(\frac{y}{2\sqrt{\nu t}}\right)\right] = U_0 \operatorname{erfc}\left(\frac{y}{2\sqrt{\nu t}}\right)$$
-                The viscous boundary layer penetrates to depth $\delta(t) \approx 3.64\sqrt{\nu t}$, proving that **viscosity is pure momentum diffusion**!
-                """
-            )
+        render_derivation(
+            r"Stokes' first problem: why the profile is an error function",
+            [
+                (
+                    "No convection, only diffusion — and that is geometry, not modelling",
+                    r"""
+                    An infinite plate in $x$ is impulsively set to $U_0$. Nothing varies
+                    with $x$, so $(\mathbf u\cdot\nabla)\mathbf u=0$ and the Navier–Stokes
+                    $x$-momentum equation is the heat equation
+                    $$\frac{\partial u}{\partial t}=\nu\frac{\partial^2 u}{\partial y^2}$$
+                    with $u(0,t)=U_0$, $u(\infty,t)=0$, $u(y,0)=0$. Viscosity is the
+                    diffusivity of momentum; $\nu$ has units $\mathrm{m}^2/\mathrm{s}$.
+                    """,
+                ),
+                (
+                    "The problem has only one dimensionless combination of $y$ and $t$",
+                    r"""
+                    The list $y,t,\nu$ has two dimensions (length, time), so one group:
+                    $\eta=y/(2\sqrt{\nu t})$. The 2 is a convention that makes the ODE
+                    below look like the derivative of a Gaussian. Seek $u=U_0 f(\eta)$.
+                    """,
+                ),
+                (
+                    "The chain rule turns the PDE into an ODE",
+                    r"""
+                    $\partial\eta/\partial t=-\eta/(2t)$ and $\partial\eta/\partial y=1/(2\sqrt{\nu t})$,
+                    so
+                    $$\frac{\partial u}{\partial t}=U_0 f'\left(-\frac{\eta}{2t}\right),\qquad
+                    \frac{\partial^2 u}{\partial y^2}=U_0 f''\frac{1}{4\nu t}$$
+                    Substitute: $f''+2\eta f'=0$.
+                    """,
+                ),
+                (
+                    "Integrate to the error function, then apply the two ends",
+                    r"""
+                    $f'/f'=-2\eta$ integrates to $f'=C_1 e^{-\eta^2}$, then
+                    $$f(\eta)=C_1\frac{\sqrt{\pi}}{2}\operatorname{erf}(\eta)+C_2$$
+                    $f(0)=1$ gives $C_2=1$; $f(\infty)=0$ gives $C_1=-2/\sqrt{\pi}$:
+                    $$u(y,t)=U_0\operatorname{erfc}\left(\frac{y}{2\sqrt{\nu t}}\right)$$
+                    """,
+                ),
+                (
+                    r"The dotted $\delta$ is a station of this profile, not a new constant",
+                    rf"""
+                    Define the edge as $u=0.01\,U_0$, so $\operatorname{{erfc}}(\eta)=0.01$.
+                    Then $\eta=\operatorname{{erfcinv}}(0.01)={res_stokes['eta_one_percent']:.4f}$ and
+                    $$\delta(t)={res_stokes['delta_coeff']:.3f}\sqrt{{\nu t}}$$
+                    The coefficient is $2\operatorname{{erfcinv}}(0.01)$, inverted from the
+                    exact solution, not a quoted $3.64$.
+                    """,
+                ),
+            ],
+        )
 
     render_self_check(
         "exact_self_check_pipe_apex",
@@ -539,11 +619,13 @@ def render_tab_solving_ns():
 
         The standard remedy is **shooting**: guess $f''(0)$, integrate to large $\eta$, and
         compare $f'(\infty)$ with 1. The residual is monotone in the guess, so a root find
-        converges quickly. Howarth's value, which this app integrates to,
+        converges quickly. Howarth's value
         $$f''(0) = 0.332057\ldots$$
-        is not a fitted constant. It is the unique shooting parameter that makes the
-        solution approach the free stream instead of overshooting or stalling — and,
-        as step 7 shows, it *is* the drag.
+        is that unique shooting parameter — not a fitted constant. This app takes
+        Howarth's number as the initial condition of an IVP and integrates it; it does
+        **not** re-shoot on every rerun. The checks that the integration is right are
+        $f'(\eta_{\max})\to 1$ in the metrics below, and that $\theta$ and $2f''(0)$
+        agree, which is the momentum integral.
         """
     )
 
@@ -588,45 +670,55 @@ def render_tab_solving_ns():
         "At the wall the curvature is exactly zero, because f''' = -(1/2) f f'' and f(0) = 0 "
         "— the marginal case that dp/dx = 0 buys you, and the reason 7.3's adverse "
         "gradient is so destructive. Above the wall the profile bends over monotonically. "
-        "Right: δ, δ* and θ all grow like √x, holding fixed ratios 1 : 0.35 : 0.135."
+        f"Right: δ, δ* and θ all grow like √x, holding fixed ratios "
+        f"1 : {sim['delta_star_coeff']/sim['eta_99']:.2f} : {sim['theta_coeff']/sim['eta_99']:.3f}."
     )
     fig_bl = plot_blasius_profile(sim, plate)
     render_plot(fig_bl, key="tab_solving_ns-fig_bl")
 
     st.markdown("#### Step 7 · Reading the answer: f″(0) is the drag")
+    fpp_s = f"{sim['fpp0']:.3f}"
+    cf_s = f"{sim['cf_coeff']:.3f}"
+    cf_mean_s = f"{2.0 * sim['cf_coeff']:.3f}"
+    ds_s = f"{sim['delta_star_coeff']:.3f}"
+    th_s = f"{sim['theta_coeff']:.3f}"
+    H_s = f"{sim['shape_factor']:.2f}"
+    eta99_s = f"{sim['eta_99']:.2f}"
     render_prose_and_latex(
-        r"""
-        Wall shear stress is $\tau_w = \mu(\partial u/\partial y)|_{y=0}$. Using step 5's
+        rf"""
+        Wall shear stress is $\tau_w = \mu(\partial u/\partial y)|_{{y=0}}$. Using step 5's
         derivative at $\eta = 0$:
-        $$\tau_w = \mu U_\infty f''(0)\sqrt{\frac{U_\infty}{\nu x}}
-        = 0.332\,\rho U_\infty^2\,\mathrm{Re}_x^{-1/2}$$
+        $$\tau_w = \mu U_\infty f''(0)\sqrt{{\frac{{U_\infty}}{{\nu x}}}}
+        = {fpp_s}\,\rho U_\infty^2\,\mathrm{{Re}}_x^{{-1/2}}$$
         so the local skin-friction coefficient is
-        $$c_f \equiv \frac{\tau_w}{\tfrac12 \rho U_\infty^2} = \frac{0.664}{\sqrt{\mathrm{Re}_x}}$$
+        $$c_f \equiv \frac{{\tau_w}}{{\tfrac12 \rho U_\infty^2}} = \frac{{{cf_s}}}{{\sqrt{{\mathrm{{Re}}_x}}}}$$
         Integrating $\tau_w$ over a plate of length $L$ doubles the coefficient — the
-        $x^{-1/2}$ integrates to $2x^{1/2}$ — giving the mean
-        $$C_F = \frac{1.328}{\sqrt{\mathrm{Re}_L}}$$
+        $x^{{-1/2}}$ integrates to $2x^{{1/2}}$ — giving the mean
+        $$C_F = \frac{{{cf_mean_s}}}{{\sqrt{{\mathrm{{Re}}_L}}}}$$
+        The numbers are $f''(0)$ and $2f''(0)$ from the integration above, not a table.
 
-        **Three readings of the same result.** (i) $\tau_w \propto x^{-1/2}$: shear is
+        **Three readings of the same result.** (i) $\tau_w \propto x^{{-1/2}}$: shear is
         *infinite* at the leading edge and decays downstream, because the velocity gradient
         is squeezed into an ever-thinner layer near $x = 0$. The singularity is integrable,
         so the total drag is finite; it also signals that boundary-layer theory itself fails
-        in the first millimetre, where $\delta \not\ll x$. (ii) Drag grows like $\sqrt{L}$,
+        in the first millimetre, where $\delta \not\ll x$. (ii) Drag grows like $\sqrt{{L}}$,
         not $L$: the back of a plate contributes less than the front. (iii) $c_f$ falls with
-        Reynolds number but total drag $\propto U_\infty^{3/2}$ still rises — laminar skin
+        Reynolds number but total drag $\propto U_\infty^{{3/2}}$ still rises — laminar skin
         friction is *sub*-quadratic in speed, unlike pressure drag.
         """
     )
 
     st.markdown("#### Step 8 · δ, δ* and θ: three thicknesses that mean different things")
     render_prose_and_latex(
-        r"""
-        $\delta_{99}$ is a convention — the height where $u = 0.99U_\infty$ — and the
+        rf"""
+        $\delta_{{99}}$ is a convention — the height where $u = 0.99U_\infty$, here
+        $\eta={eta99_s}$ — and the
         approach to the free stream is exponential, so any threshold is arbitrary. Two
         integral thicknesses are not arbitrary, because each answers a physical question.
 
         **Displacement thickness** $\delta^*$ answers: *by how much must the wall be moved
         outward so that an inviscid flow carries the same mass?*
-        $$\delta^* = \int_0^\infty\left(1 - \frac{u}{U_\infty}\right)dy = \frac{1.721\,x}{\sqrt{\mathrm{Re}_x}}$$
+        $$\delta^* = \int_0^\infty\left(1 - \frac{{u}}{{U_\infty}}\right)dy = \frac{{{ds_s}\,x}}{{\sqrt{{\mathrm{{Re}}_x}}}}$$
         The slow fluid near the wall represents a mass-flow deficit; the outer flow is pushed
         aside by exactly $\delta^*$. This is how a boundary layer talks *back* to the
         inviscid solution — a wing's effective shape is its geometry plus $\delta^*$, and
@@ -634,15 +726,15 @@ def render_tab_solving_ns():
 
         **Momentum thickness** $\theta$ answers: *by how much must the wall be moved outward
         to account for the momentum deficit?*
-        $$\theta = \int_0^\infty \frac{u}{U_\infty}\left(1 - \frac{u}{U_\infty}\right)dy
-        = \frac{0.664\,x}{\sqrt{\mathrm{Re}_x}}$$
+        $$\theta = \int_0^\infty \frac{{u}}{{U_\infty}}\left(1 - \frac{{u}}{{U_\infty}}\right)dy
+        = \frac{{{th_s}\,x}}{{\sqrt{{\mathrm{{Re}}_x}}}}$$
         The von Kármán momentum integral makes this exact and general:
         $\tau_w = \rho U_\infty^2 \, d\theta/dx$ for zero pressure gradient. So
         **$\theta$ is the drag, accumulated**: total drag per unit width up to $x$ equals
         $\rho U_\infty^2 \theta(x)$, no solution needed. The numerical coincidence
-        $\theta/x = c_f = 0.664/\sqrt{\mathrm{Re}_x}$ is that identity in disguise.
+        $\theta/x = c_f = {th_s}/\sqrt{{\mathrm{{Re}}_x}}$ is that identity in disguise.
 
-        Their ratio is the **shape factor** $H = \delta^*/\theta = 1.721/0.664 = 2.59$ for
+        Their ratio is the **shape factor** $H = \delta^*/\theta = {ds_s}/{th_s} = {H_s}$ for
         Blasius. $H$ is a health check on a boundary layer: it **rises as the
         profile becomes *less* full** — more retarded near the wall, carrying proportionally
         less momentum — and laminar separation is approached around $H \approx 3.5$. Turbulent layers run near $H \approx 1.4$ — far more
@@ -704,13 +796,13 @@ def render_tab_solving_ns():
             ),
             (
                 "Check it against the solution we already have",
-                r"""
-                Blasius gives $\theta=0.664\,x/\sqrt{\mathrm{Re}_x}$, so
-                $d\theta/dx=0.332/\sqrt{\mathrm{Re}_x}$ and
-                $\tau_w=0.332\rho U_\infty^{2}\mathrm{Re}_x^{-1/2}$ — identical to Step 7's
+                rf"""
+                Blasius gives $\theta={th_s}\,x/\sqrt{{\mathrm{{Re}}_x}}$, so
+                $d\theta/dx={fpp_s}/\sqrt{{\mathrm{{Re}}_x}}$ and
+                $\tau_w={fpp_s}\rho U_\infty^{{2}}\mathrm{{Re}}_x^{{-1/2}}$ — identical to Step 7's
                 result from $\mu\,\partial u/\partial y$ at the wall. The apparent coincidence
                 $\theta/x=c_f$ is this identity, not a numerological accident. The
-                coefficients $1.721$ and $0.664$ themselves are numerical integrals of the
+                coefficients ${ds_s}$ and ${th_s}$ themselves are numerical integrals of the
                 computed $f'(\eta)$; the app integrates them rather than quoting them.
                 """,
             ),

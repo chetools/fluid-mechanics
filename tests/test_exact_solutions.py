@@ -1,9 +1,12 @@
 """Unit tests for exact analytical solutions to the Navier-Stokes equations."""
 
 import numpy as np
+from scipy.special import erfc
 from src.physics.exact_solutions import (
+    STOKES_DELTA_COEFF,
     couette_poiseuille_channel,
-    stokes_first_problem
+    hagen_poiseuille_pipe,
+    stokes_first_problem,
 )
 
 def test_pure_couette_flow():
@@ -39,6 +42,31 @@ def test_pure_poiseuille_flow():
     u_max_expected = (h**2 / (8.0 * mu)) * (-dp_dx)
     mid_idx = len(res["y"]) // 2
     assert np.isclose(res["u_total"][mid_idx], u_max_expected, rtol=1e-3)
+    # The lesson quotes 54/35; it must be the integral of this profile.
+    assert np.isclose(res["alpha"], 54.0 / 35.0, rtol=1e-6)
+    assert np.isclose(res["beta"], 6.0 / 5.0, rtol=1e-6)
+
+
+def test_pure_couette_alpha_is_two():
+    res = couette_poiseuille_channel(h=0.05, u_wall=2.0, dp_dx=0.0, mu=1.0e-3)
+    assert np.isclose(res["alpha"], 2.0, rtol=1e-6)
+    assert np.isclose(res["beta"], 4.0 / 3.0, rtol=1e-6)
+
+
+def test_hagen_poiseuille_corrections_are_the_annular_integrals():
+    res = hagen_poiseuille_pipe(radius=0.025, dp_dx=-20.0, mu=1.0e-3)
+    assert np.isclose(res["alpha"], 2.0, rtol=1e-6)
+    assert np.isclose(res["beta"], 4.0 / 3.0, rtol=1e-6)
+    assert np.isclose(res["u_avg"], 0.5 * res["u_max"])
+
+
+def test_combined_couette_poiseuille_alpha_is_neither_limit():
+    """The caption says wall motion changes alpha; the metric must move."""
+    poiseuille = couette_poiseuille_channel(h=0.05, u_wall=0.0, dp_dx=-15.0, mu=1.0e-3)
+    combined = couette_poiseuille_channel(h=0.05, u_wall=1.0, dp_dx=-15.0, mu=1.0e-3)
+    assert np.isclose(poiseuille["alpha"], 54.0 / 35.0, rtol=1e-6)
+    assert not np.isclose(combined["alpha"], poiseuille["alpha"], rtol=1e-3)
+    assert not np.isclose(combined["alpha"], 2.0, rtol=1e-3)
 
 def test_stokes_first_problem_similarity():
     """Verify Stokes' first problem boundary conditions and diffusion expansion."""
@@ -55,3 +83,20 @@ def test_stokes_first_problem_similarity():
     # Penetration thickness must grow monotonically with time: delta ~ sqrt(t)
     deltas = [res["delta_viscous"][t] for t in times]
     assert deltas[0] < deltas[1] < deltas[2]
+    # The 1% station is inverted from erfc, not a quoted 3.64.
+    assert abs(erfc(res["eta_one_percent"]) - 0.01) < 1e-12
+    nu = 1.0e-5
+    for t in times:
+        assert np.isclose(res["delta_viscous"][t], STOKES_DELTA_COEFF * np.sqrt(nu * t))
+        eta_edge = res["delta_viscous"][t] / (2.0 * np.sqrt(nu * t))
+        assert np.isclose(erfc(eta_edge), 0.01, atol=1e-12)
+
+
+def test_stokes_frame_contains_the_glycerin_layer():
+    """A fixed 80 mm window hid δ ≈ 0.17 m for glycerin at t = 2 s."""
+    nu = 1.412 / 1261.0
+    res = stokes_first_problem(u_wall=1.0, nu=nu, times=np.array([2.0]))
+    delta = res["delta_viscous"][2.0]
+    assert delta > 0.08
+    assert res["y"][-1] > delta
+    assert np.isclose(res["profiles"][2.0][-1], 0.0, atol=1e-3)

@@ -26,7 +26,7 @@ def render_tab_reference():
             {"Symbol": "ν", "Quantity": "Kinematic viscosity (ν = μ/ρ)", "SI Units": "m²/s", "Dimensions": "[L² T⁻¹]"},
             {"Symbol": "g", "Quantity": "Gravitational acceleration", "SI Units": "m/s²", "Dimensions": "[L T⁻²]"},
             {"Symbol": "z", "Quantity": "Elevation above a datum", "SI Units": "m", "Dimensions": "[L]"},
-            {"Symbol": "α (pipe)", "Quantity": "Kinetic-energy correction (1/A)∫(u/ū)³ dA. Circular pipe: 2 laminar, ≈1.05 turbulent. Not an angle.", "SI Units": "[-]", "Dimensions": "[1]"},
+            {"Symbol": "α (pipe)", "Quantity": "Kinetic-energy correction (1/A)∫(u/ū)³ dA. Circular pipe: 2 laminar, ≈1.06 turbulent (integrated). Not an angle.", "SI Units": "[-]", "Dimensions": "[1]"},
             {"Symbol": "α_z (Tab 6)", "Quantity": "Angular acceleration about z (stress-symmetry proof). Not the pipe α.", "SI Units": "rad/s²", "Dimensions": "[T⁻²]"},
             {"Symbol": "w_shaft", "Quantity": "Shaft work per unit mass (pump positive)", "SI Units": "J/kg", "Dimensions": "[L² T⁻²]"},
             {"Symbol": "h_shaft", "Quantity": "Pump head w_shaft/g", "SI Units": "m", "Dimensions": "[L]"},
