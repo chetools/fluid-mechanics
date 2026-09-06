@@ -1,6 +1,6 @@
-# Educational Fluid Mechanics: From Euler to Navier–Stokes & Chemical Engineering Applications
+# Fluid Mechanics
 
-An interactive, rigorous educational Streamlit application for fluid mechanics and transport phenomena—modeled after the pedagogical, mathematical, and visual standards of the isopropanol-water distillation reference platform.
+An interactive Streamlit application for fluid mechanics and transport phenomena, in twelve chapters.
 
 [![Deploy with Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/deploy?repository=chetools/fluid-mechanics&branch=master&mainModule=app.py)
 

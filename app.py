@@ -1,4 +1,4 @@
-"""Euler to Navier-Stokes.
+"""Fluid Mechanics.
 
 Twelve chapters in six parts: vector schematics, exact analytical solutions
 and a live 2D incompressible CFD solver.
@@ -110,7 +110,7 @@ from src.ui.tab_turbomachinery import render_tab_turbomachinery
 from src.ui.tab_compressible import render_tab_compressible
 
 st.set_page_config(
-    page_title="Euler to Navier–Stokes",
+    page_title="Fluid Mechanics",
     page_icon="🌊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -122,12 +122,9 @@ st.markdown(theme.app_css(), unsafe_allow_html=True)
 # Initialize unit system state
 units.init_units()
 
-# Sidebar controls & information
+# Sidebar controls & information. It opens on the controls: the page needs no
+# title of its own, and the browser tab already carries the name.
 with st.sidebar:
-    st.markdown("### 🌊 Euler to Navier–Stokes")
-    st.caption("Twelve chapters, six parts.")
-    st.markdown("---")
-
     st.markdown("#### Shared fluid")
     st.caption(
         "Sets ρ, μ, a and vapour pressure for the liquid, incompressible and "
