@@ -122,9 +122,11 @@ st.markdown(theme.app_css(), unsafe_allow_html=True)
 # Initialize unit system state
 units.init_units()
 
-# Sidebar controls & information. It opens on the controls: the page needs no
-# title of its own, and the browser tab already carries the name.
+# Sidebar controls & information.
 with st.sidebar:
+    st.markdown("### 🌊 Fluid Mechanics")
+    st.markdown("---")
+
     st.markdown("#### Shared fluid")
     st.caption(
         "Sets ρ, μ, a and vapour pressure for the liquid, incompressible and "
