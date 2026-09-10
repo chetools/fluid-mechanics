@@ -765,65 +765,55 @@ def diagram_reynolds_experiment() -> str:
     </svg>
     """
 
-def diagram_laminar_vs_turbulent_profiles() -> str:
-    """Side-by-side comparison of laminar parabolic vs turbulent blunt velocity profiles."""
-    # The 1/7 law has a cusp at r = 0 because it uses |r|; the real profile is
-    # smooth there. Round |r/R| as sqrt((r/R)^2 + eps^2) so the nose is blunt
-    # instead of pointed, at the cost of ~2 px of centreline velocity.
-    def _turb_x(y: float) -> float:
-        t = (y - 150.0) / 60.0
-        s = (t * t + 0.12**2) ** 0.5
-        return 485 + 145 * (1 - min(s, 1.0)) ** (1 / 7)
+def diagram_laminar_vs_turbulent_profiles(profiles: dict | None = None) -> str:
+    """Draw the actual three profiles; never round a power law behind its label."""
+    from src.physics.turbulence import velocity_profile_comparison
 
-    turbulent_path = "M " + " L ".join(
-        f"{_turb_x(y):.2f},{y}" for y in range(90, 211)
-    )
+    data = profiles if profiles is not None else velocity_profile_comparison()
+    mean = data["u_max_lam"] / 2.0
+
+    def path(field, origin):
+        pairs = list(zip(data["r_norm"], data[field]))
+        full = [(-r, u) for r, u in reversed(pairs[1:])] + pairs
+        return "M " + " L ".join(
+            f"{origin + 130 * u / mean:.3f},{240 - 90 * r:.3f}" for r, u in full
+        )
+
     return f"""
-    <svg viewBox="0 0 740 300" width="100%" height="300" xmlns="http://www.w3.org/2000/svg"
+    <svg viewBox="0 0 880 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg"
          style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
-        {_arrow_defs()}
-        
-        <!-- Left Panel: Laminar Poiseuille -->
-        <rect x="20" y="20" width="335" height="260" rx="6" fill="{SURFACE_RAISED}" stroke="{BORDER}" />
-        <text x="40" y="48" fill="{SUCCESS}" font-size="14" font-weight="bold">Laminar Poiseuille Flow (Re &lt; 2300)</text>
-        <text x="40" y="68" fill="{TEXT_DIM}" font-size="11">Parabolic profile: u(r) = u_max · (1 - (r/R)²)</text>
-        
-        <!-- Pipe walls -->
-        <line x1="50" y1="90" x2="330" y2="90" stroke="{TEXT_MUTED}" stroke-width="3" />
-        <line x1="50" y1="210" x2="330" y2="210" stroke="{TEXT_MUTED}" stroke-width="3" />
-        <line x1="50" y1="150" x2="330" y2="150" stroke="{BORDER_STRONG}" stroke-dasharray="4,4" stroke-width="1" />
-        <text x="55" y="145" fill="{TEXT_DIM}" font-size="10">Centerline</text>
-        
-        <!-- Parabolic profile curve -->
-        <path d="M 120 90 Q 440 150 120 210" fill="none" stroke="{SUCCESS}" stroke-width="3" />
-        <!-- Velocity arrows -->
-        <line x1="120" y1="150" x2="275" y2="150" stroke="{SUCCESS}" stroke-width="2" marker-end="url(#arrow-sky)" />
-        <line x1="120" y1="120" x2="235" y2="120" stroke="{SUCCESS}" stroke-width="1.5" marker-end="url(#arrow-sky)" />
-        <line x1="120" y1="180" x2="235" y2="180" stroke="{SUCCESS}" stroke-width="1.5" marker-end="url(#arrow-sky)" />
-        
-        <text x="40" y="240" fill="{TEXT_MUTED}" font-size="12">u_avg / u_max = <tspan font-weight="bold">0.50</tspan> (Parabolic profile)</text>
-        <text x="40" y="260" fill="{SHEAR}" font-size="12">Wall shear: τ_w = 4μ · u_avg / R</text>
-        
-        <!-- Right Panel: Turbulent Power-Law -->
-        <rect x="385" y="20" width="335" height="260" rx="6" fill="{SURFACE_RAISED}" stroke="{BORDER}" />
-        <text x="405" y="48" fill="{PRESSURE}" font-size="14" font-weight="bold">Turbulent Flow (Re &gt; 4000)</text>
-        <text x="405" y="68" fill="{TEXT_DIM}" font-size="11">Blunt 1/7th power-law: u(r) ≈ u_max · (1 - r/R)^(1/7)</text>
-        
-        <!-- Pipe walls -->
-        <line x1="415" y1="90" x2="695" y2="90" stroke="{TEXT_MUTED}" stroke-width="3" />
-        <line x1="415" y1="210" x2="695" y2="210" stroke="{TEXT_MUTED}" stroke-width="3" />
-        <line x1="415" y1="150" x2="695" y2="150" stroke="{BORDER_STRONG}" stroke-dasharray="4,4" stroke-width="1" />
-        <text x="420" y="145" fill="{TEXT_DIM}" font-size="10">Centerline</text>
-        
-        <!-- Blunt profile curve with steep wall gradients -->
-        <path d="{turbulent_path}" fill="none" stroke="{PRESSURE}" stroke-width="3" />
-        <!-- Velocity arrows -->
-        <line x1="485" y1="150" x2="625" y2="150" stroke="{PRESSURE}" stroke-width="2" marker-end="url(#arrow-red)" />
-        <line x1="485" y1="120" x2="615" y2="120" stroke="{PRESSURE}" stroke-width="1.5" marker-end="url(#arrow-red)" />
-        <line x1="485" y1="180" x2="615" y2="180" stroke="{PRESSURE}" stroke-width="1.5" marker-end="url(#arrow-red)" />
-        
-        <text x="405" y="240" fill="{TEXT_MUTED}" font-size="12">u_avg / u_max ≈ <tspan font-weight="bold">0.82</tspan> (Blunt core)</text>
-        <text x="405" y="260" fill="{PRESSURE}" font-size="12">Wall shear needs the near-wall model.</text>
+        <text x="24" y="30" fill="{TEXT}" font-size="18" font-weight="700">A blunt turbulent core is still smooth at its centre</text>
+        <text x="24" y="54" fill="{TEXT_DIM}" font-size="13">Same area-mean speed and velocity scale in both panels &#183; turbulent case Re = {data['reynolds']:g}</text>
+        <rect x="16" y="74" width="410" height="338" rx="8" fill="{SURFACE_RAISED}"/>
+        <rect x="442" y="74" width="422" height="338" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="36" y="103" fill="{SUCCESS}" font-size="15" font-weight="700">Laminar reference: parabolic</text>
+        <text x="36" y="126" fill="{TEXT_DIM}" font-size="13">Shown for comparison at equal mean speed</text>
+        <line x1="463" y1="99" x2="495" y2="99" stroke="{ACCENT}" stroke-width="3"/>
+        <text x="507" y="103" fill="{ACCENT}" font-size="14">Smooth mean sketch</text>
+        <line x1="463" y1="123" x2="495" y2="123" stroke="{PRESSURE}" stroke-width="2.5" stroke-dasharray="6,4"/>
+        <text x="507" y="127" fill="{PRESSURE}" font-size="14">1/{data['n_exp']:g} approximation &#8212; unmodified</text>
+        <line x1="60" y1="150" x2="405" y2="150" stroke="{TEXT_MUTED}" stroke-width="2"/>
+        <line x1="60" y1="330" x2="405" y2="330" stroke="{TEXT_MUTED}" stroke-width="2"/>
+        <line x1="465" y1="150" x2="844" y2="150" stroke="{TEXT_MUTED}" stroke-width="2"/>
+        <line x1="465" y1="330" x2="844" y2="330" stroke="{TEXT_MUTED}" stroke-width="2"/>
+        <line x1="60" y1="240" x2="405" y2="240" stroke="{TEXT_FAINT}" stroke-dasharray="4,4"/>
+        <line x1="465" y1="240" x2="844" y2="240" stroke="{TEXT_FAINT}" stroke-dasharray="4,4"/>
+        <line x1="80" y1="150" x2="80" y2="330" stroke="{TEXT_FAINT}" stroke-dasharray="3,4"/>
+        <line x1="505" y1="150" x2="505" y2="330" stroke="{TEXT_FAINT}" stroke-dasharray="3,4"/>
+        <text x="28" y="155" fill="{TEXT_DIM}" font-size="13">+R</text>
+        <text x="28" y="245" fill="{TEXT_DIM}" font-size="13">0</text>
+        <text x="28" y="335" fill="{TEXT_DIM}" font-size="13">&#8722;R</text>
+        <path data-profile="laminar" d="{path('u_laminar', 80)}" fill="none" stroke="{SUCCESS}" stroke-width="3"/>
+        <path data-profile="power-law" d="{path('u_turbulent', 505)}" fill="none" stroke="{PRESSURE}" stroke-width="2.5" stroke-dasharray="6,4"/>
+        <path data-profile="smooth" d="{path('u_smooth', 505)}" fill="none" stroke="{ACCENT}" stroke-width="3"/>
+        <text x="701" y="208" fill="{ACCENT}" font-size="13">Smooth maximum:</text>
+        <text x="701" y="227" fill="{ACCENT}" font-size="13">zero centre slope</text>
+        <text x="701" y="274" fill="{PRESSURE}" font-size="13">Dashed cusp:</text>
+        <text x="701" y="293" fill="{PRESSURE}" font-size="13">a model limitation</text>
+        <text x="36" y="364" fill="{TEXT}" font-size="13">Centre speed / mean = {data['u_max_lam']/mean:.2f}</text>
+        <text x="36" y="390" fill="{TEXT_DIM}" font-size="13">No slip at each wall; finite wall gradient.</text>
+        <text x="463" y="364" fill="{TEXT}" font-size="13">Smooth centre / mean = {data['u_max_smooth']/mean:.3f}</text>
+        <text x="463" y="390" fill="{TEXT_DIM}" font-size="13">The dashed law cannot give wall shear.</text>
     </svg>
     """
 

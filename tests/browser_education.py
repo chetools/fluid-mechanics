@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from src.svg_diagrams import (
     clean_svg, diagram_nozzle_information, diagram_relief_valve,
     diagram_sphere_forces, diagram_sphere_separation,
-    diagram_newtonian_origin, diagram_actuator_disc,
+    diagram_newtonian_origin, diagram_actuator_disc, diagram_laminar_vs_turbulent_profiles,
 )
 
 
@@ -79,7 +79,7 @@ if __name__ == '__main__':
     with sync_playwright() as p:
         browser = p.chromium.launch(channel='msedge', headless=True)
         try:
-            for generator in (diagram_newtonian_origin, diagram_actuator_disc):
+            for generator in (diagram_newtonian_origin, diagram_actuator_disc, diagram_laminar_vs_turbulent_profiles):
                 verify_text_layout(browser, generator, output)
             page = browser.new_page(viewport={'width': 1400, 'height': 1000})
             errors = []
@@ -105,6 +105,32 @@ if __name__ == '__main__':
                 wait_for_chapter(page, 6)
                 expect(page.get_by_text('Computed area ratio', exact=False)).to_contain_text('= 1.000000')
                 page.locator('.st-key-plot-tab_stress_ns-fig_deform').screenshot(path=str(output / f'{filename}.png'))
+
+            select_chapter(page, '4 · Turbulence')
+            capture_responsive_figure(page, diagram_laminar_vs_turbulent_profiles, output)
+            for key in ('plot-tab_turbulence-fig_prof', 'plot-turbulence-profile-limits'):
+                figure = page.locator(f'.st-key-{key}')
+                figure.screenshot(path=str(output / f'{key}-desktop.png'))
+                page.set_viewport_size({'width': 390, 'height': 844})
+                figure.scroll_into_view_if_needed()
+                page.screenshot(path=str(output / f'{key}-mobile.png'))
+                assert figure.evaluate('(el) => el.scrollWidth > el.clientWidth')
+                figure.evaluate('(el) => { el.scrollLeft = el.scrollWidth; }')
+                assert figure.evaluate('(el) => el.scrollLeft > 0')
+                page.screenshot(path=str(output / f'{key}-mobile-right.png'))
+                page.set_viewport_size({'width': 1400, 'height': 1000})
+            page.get_by_text('🔍 Derivation · Why the centre is smooth, and how the blue sketch is constructed', exact=True).click()
+            page.get_by_text('Step 4 — Integrate from no slip, then match the requested bulk flow', exact=True).scroll_into_view_if_needed()
+            page.screenshot(path=str(output / 'smooth-profile-derivation.png'))
+            expect(page.locator('.katex-error')).to_have_count(0)
+            reynolds = page.locator('.st-key-tab_turbulence_turbulent_reynolds_number').get_by_role('slider')
+            reynolds.focus()
+            reynolds.press('End')
+            reynolds.press('ArrowLeft')
+            reynolds.press('Tab')
+            expect(page.get_by_test_id('stMetric').filter(has=page.get_by_text('Power-law centre speed', exact=True))).to_contain_text('1.765', timeout=60000)
+            wait_for_chapter(page, 4)
+            expect(page.locator('.katex-error')).to_have_count(0)
 
             select_chapter(page, '7 · Non-Newtonian')
             capture_responsive_figure(page, diagram_newtonian_origin, output)
@@ -169,6 +195,6 @@ if __name__ == '__main__':
             expect(page.locator('.katex-error')).to_have_count(0)
             expect(page.locator('[data-testid="stException"]')).to_have_count(0)
             assert not errors, errors
-            print(f'PASS: stress presets, plug/SVD/disc derivations, singular endpoint, relief bore, SVG text bounds and mobile scrolling. Screenshots: {output}')
+            print(f'PASS: turbulent profiles and live Re control, stress presets, plug/SVD/disc derivations, singular endpoint, relief bore, SVG text bounds and mobile scrolling. Screenshots: {output}')
         finally:
             browser.close()

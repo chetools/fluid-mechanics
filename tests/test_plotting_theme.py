@@ -59,6 +59,7 @@ def _figures():
         ),
         "moody": plotting.plot_moody_chart(re_operating=5e4, eps_d_operating=1e-3, f_operating=0.022),
         "profiles": plotting.plot_laminar_turbulent_profiles(velocity_profile_comparison()),
+        "profile_limits": plotting.plot_pipe_profile_limits(velocity_profile_comparison()),
         "wall": plotting.plot_law_of_the_wall(law_of_the_wall()),
         "blasius": plotting.plot_blasius_profile(sim, blasius_plate(x=0.5, u_inf=1.0, nu=1e-6)),
         "separation": plotting.plot_cylinder_separation(cylinder_outer_flow_and_separation()),
@@ -102,7 +103,7 @@ def _figures():
 
 FIGURE_NAMES = (
     "venturi", "cylinder", "channel", "stokes", "hagen", "cavity",
-    "moody", "profiles", "wall", "blasius", "separation", "straws",
+    "moody", "profiles", "profile_limits", "wall", "blasius", "separation", "straws",
     "impeller", "canal", "thermal", "transport", "relief",
     "power_law", "flow_curves", "yield_pipe", "thixotropy", "viscoelastic",
 )

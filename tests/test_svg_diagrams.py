@@ -1,6 +1,9 @@
 """Unit tests verifying textbook SVG diagram generators."""
 
 import xml.etree.ElementTree as ET
+import re
+import numpy as np
+from src.physics.turbulence import velocity_profile_comparison
 from src.svg_diagrams import (
     diagram_energy_budget,
     diagram_injection_work,
@@ -50,6 +53,23 @@ from src.svg_impeller import (
     diagram_impeller_meridional,
     diagram_outlet_triangle_true_shape,
 )
+
+def test_pipe_svg_uses_the_actual_profiles_without_rounding_the_power_law():
+    data = velocity_profile_comparison(reynolds=500000)
+    root = ET.fromstring(clean_svg(diagram_laminar_vs_turbulent_profiles(data)))
+    paths = {el.attrib['data-profile']: el for el in root.iter()
+             if 'data-profile' in el.attrib}
+    for name, field, origin in [('laminar', 'u_laminar', 80),
+                                ('power-law', 'u_turbulent', 505),
+                                ('smooth', 'u_smooth', 505)]:
+        coords = np.array([float(x) for x in re.findall(r'-?\d+\.\d+', paths[name].attrib['d'])]).reshape(-1, 2)
+        velocity = np.concatenate([data[field][:0:-1], data[field]])
+        signed_radius = np.concatenate([-data['r_norm'][:0:-1], data['r_norm']])
+        assert np.allclose(coords[:, 0], origin + 130 * velocity / 1.5, atol=0.00051)
+        assert np.allclose(coords[:, 1], 240 - 90 * signed_radius, atol=0.00051)
+    assert '1/8.8 approximation' in ''.join(root.itertext())
+    assert paths['power-law'].attrib['stroke-dasharray']
+
 
 def test_svg_diagrams_render_valid_xml():
     """Verify all diagram functions return well-formed SVG strings."""

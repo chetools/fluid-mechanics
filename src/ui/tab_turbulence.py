@@ -16,7 +16,7 @@ from src.physics.pipe_flow import (
     laminar_fanning_from_force_balance,
     straw_bundle_comparison,
 )
-from src.plotting import plot_laminar_turbulent_profiles, plot_law_of_the_wall, plot_straw_bundle
+from src.plotting import plot_laminar_turbulent_profiles, plot_pipe_profile_limits, plot_law_of_the_wall, plot_straw_bundle
 from src.units import get_fluid_state
 from src.ui.pedagogy import (
     render_objectives,
@@ -210,16 +210,15 @@ def render_tab_turbulence():
     # PART 2: Velocity Profile Comparison
     # -------------------------------------------------------------------------
     st.markdown("---")
-    st.markdown("### 4.2 Velocity Profile Comparison: Parabolic vs. 1/7th Power Law")
+    st.markdown("### 4.2 Pipe profiles: the power-law approximation and a smooth mean")
     st.markdown(
         """
-        Turbulent momentum exchange by fluctuating eddy eddies ($\\overline{u'v'}$) dramatically 
-        flattens the velocity profile across the pipe core while creating an intense velocity gradient 
-        immediately adjacent to the wall.
+        Turbulent momentum exchange flattens the **time-averaged** velocity profile
+        across the pipe core. A fully developed, axisymmetric mean profile is still
+        smooth at the centre, and its thin viscous wall layer has a finite gradient.
+        The dashed power law below is retained to show where an economical fit fails.
         """
     )
-    
-    render_svg(diagram_laminar_vs_turbulent_profiles())
     
     col_v1, col_v2 = st.columns(2)
     with col_v1:
@@ -231,20 +230,133 @@ def render_tab_turbulence():
             value=50000, key="tab_turbulence_turbulent_reynolds_number")
         
     prof_res = velocity_profile_comparison(pipe_radius=0.05, u_avg=u_mean_input, reynolds=re_turb_prof)
+    render_svg(diagram_laminar_vs_turbulent_profiles(prof_res))
+    render_callout(
+        title="The 1/7 rule has two endpoint defects",
+        body=r"""
+        The dashed curve is the unmodified $u/u_{max}=(1-r/R)^{1/n}$ fit
+        ($n=7$ at the default Reynolds number). It has a **nonzero radial slope at
+        the centre**, making a cusp when mirrored, and an **infinite slope at the wall**.
+        Neither is physical. Do not infer wall shear by differentiating this fit.
+
+        The solid blue curve is a **smooth mean sketch from an illustrative eddy-viscosity
+        model**, not measured data or a calibrated design correlation. It satisfies
+        centreline symmetry, no slip and a finite viscous wall gradient. Its assumed
+        eddy viscosity is stated in the derivation below. The green parabola is a
+        laminar reference shape shown at the same mean speed; the selected Reynolds
+        number sets the turbulent curves.
+        """,
+    )
     
     col_pr1, col_pr2, col_pr3 = st.columns(3)
-    col_pr1.metric("Laminar Centerline Apex", f"{prof_res['u_max_lam']:.2f} m/s (2.0 × u_avg)")
-    col_pr2.metric("Turbulent Centerline Apex", f"{prof_res['u_max_turb']:.2f} m/s ({prof_res['u_max_turb']/u_mean_input:.2f} × u_avg)")
-    col_pr3.metric("Pipe kinetic-energy factor α", f"Laminar: {prof_res['alpha_lam']:.2f} | Turb: {prof_res['alpha_turb']:.2f}")
+    col_pr1.metric("Laminar centre speed", f"{prof_res['u_max_lam']:.3f} m/s")
+    col_pr2.metric("Power-law centre speed", f"{prof_res['u_max_turb']:.3f} m/s")
+    col_pr3.metric("Smooth-sketch centre speed", f"{prof_res['u_max_smooth']:.3f} m/s")
+    st.dataframe([
+        {"Profile": label, "Kinetic-energy factor α": prof_res[f"alpha_{suffix}"],
+         "Momentum factor β": prof_res[f"beta_{suffix}"]}
+        for label, suffix in (("Laminar reference", "lam"),
+                              (f"1/{prof_res['n_exp']:g} approximation", "turb"),
+                              ("Smooth mean sketch", "smooth"))
+    ], hide_index=True, width="stretch")
+    st.caption(
+        "Each coefficient is integrated from its own profile. The energy and momentum "
+        "calculators elsewhere retain the power-law approximation; the smooth sketch is illustrative. "
+        "Here Re and mean speed are independent shape controls at R = 0.05 m, so their "
+        "implied kinematic viscosity is 2R × mean speed / Re; this comparison does not use the sidebar fluid."
+    )
     st.caption(
         "α = 2 and u_avg/u_max = 1/2 are **circular pipe**. A plane channel has "
         "u_avg/u_max = 2/3 and α = 54/35 ≈ 1.543 for pure plane Poiseuille "
         "(Tab 8 integrates the actual Couette–Poiseuille profile)."
     )
-    render_what_to_notice("Equal mean velocity: the turbulent profile is blunter, so the wall gradient (and τ_w) is steeper.")
+    render_what_to_notice(
+        "All three curves have the same area-mean speed. The blue curve rounds smoothly "
+        "through the centre; the dashed tip is the power law's defect. Near the wall, "
+        "the blue model approaches a finite slope while the dashed law does not."
+    )
     
     fig_prof = plot_laminar_turbulent_profiles(prof_res)
     render_plot(fig_prof, key="tab_turbulence-fig_prof")
+    render_plot(plot_pipe_profile_limits(prof_res), key="turbulence-profile-limits")
+    st.caption(
+        "The core inset turns the axes so the centreline defect is easier to see. "
+        "The wall inset resolves the first five wall units of the smooth sketch. "
+        "On the full-diameter plot that viscous layer is too thin to judge reliably."
+    )
+    render_derivation(
+        "Why the centre is smooth, and how the blue sketch is constructed",
+        [
+            (
+                "Apply symmetry before choosing a curve",
+                r"""
+                A smooth axisymmetric mean has no preferred radial direction at the
+                axis. Opposite sides therefore join with zero radial gradient:
+                $$\left.\frac{du}{dr}\right|_{r=0}=0$$
+                Differentiating the power law instead gives
+                $$\frac{du}{dr}=-\frac{u_{max}}{nR}(1-r/R)^{1/n-1}$$
+                At $r=0$ this is nonzero; at $r=R$ it diverges for $n>1$.
+                Its finite area integrals can be useful even though these local
+                gradients are wrong. A plotting spline would conceal the defect.
+                """,
+            ),
+            (
+                "Keep molecular stress in the pipe momentum balance",
+                r"""
+                Section 4.1b's cylindrical balance gives total shear magnitude
+                $\tau_{tot}=\tau_w r/R$. For the decreasing radial velocity define
+                $q=-du/dr\ge0$ and $u_\tau=\sqrt{\tau_w/\rho}$.
+                Model the turbulent contribution with an eddy viscosity $\nu_t$,
+                while retaining molecular viscosity $\nu=\mu/\rho$:
+                $$(\nu+\nu_t)q=u_\tau^2\eta,\qquad\eta=r/R$$
+                This is a closure assumption, not an exact turbulence solution.
+                At the centre its right-hand side vanishes, so $q=0$. At the wall
+                turbulence must vanish; then $q_w=u_\tau^2/\nu$ is finite.
+                """,
+            ),
+            (
+                "State the illustrative eddy viscosity instead of hiding a smoothing rule",
+                r"""
+                Choose an effective mixing scale that behaves like wall distance nearby
+                and is even and bounded through the core:
+                $$d/R=(1-\eta^2)(1+2\eta^2)/6,\qquad
+                E=\frac{\nu_t}{\nu}=0.41\,Re_\tau(d/R)
+                \left[1-\exp\left(-\frac{Re_\tau(d/R)}{26}\right)\right]^2$$
+                Here $Re_\tau=u_\tau R/\nu$. The constants and this particular
+                outer continuation define the teaching sketch; they have not been
+                fitted to pipe data. The damping drives $\nu_t$ to zero at the wall;
+                in the core it stays finite and even in the signed diameter coordinate.
+                With $S=qR/u_\tau$, the total-shear balance gives
+                $$S=\frac{Re_\tau\eta}{1+E}$$
+                Thus $S(0)=0$ with a smooth parabolic core to leading order, while
+                $S(1)=Re_\tau$ gives a finite viscous wall gradient. Away from the
+                wall damping, $\nu_t$ grows approximately as $0.41u_\tau y$, producing
+                a logarithmic region when molecular stress becomes small.
+                """,
+            ),
+            (
+                "Integrate from no slip, then match the requested bulk flow",
+                r"""
+                The wall fixes $u^+(1)=0$, so integrate the gradient inward:
+                $$u^+(\eta)=\int_\eta^1S(t)\,dt,\qquad
+                \bar u^+=2\int_0^1u^+(\eta)\eta\,d\eta$$
+                The same circular-area weighting used for flow rate then relates
+                the friction Reynolds number to the specified bulk Reynolds number:
+                $$Re_D=2Re_\tau\bar u^+$$
+                The app solves this equation for $Re_\tau$, rescales to the selected
+                mean speed, and integrates this curve's own energy and momentum
+                corrections. Smooth-wall, steady, fully developed assumptions apply;
+                transition, roughness and developing flow are not modelled.
+                """,
+            ),
+        ],
+    )
+    st.caption(
+        "References: [power-law limitations]"
+        "(https://www-mdp.eng.cam.ac.uk/web/library/enginfo/aerothermal_dvd_only/aero/fprops/pipeflow/node22.html) "
+        "and [mixing-length models for full pipe profiles]"
+        "(https://doi.org/10.1017/jfm.2019.669). The blue sketch uses the explicit teaching closure above."
+    )
     
     render_derivation(
         r"the kinetic-energy correction $\alpha$, and why it is exactly $2$ for a laminar pipe",
@@ -300,14 +412,16 @@ def render_tab_turbulence():
                 """,
             ),
             (
-                "Repeat on the blunt turbulent profile and watch it collapse toward 1",
+                "Integrate the retained power-law approximation",
                 r"""
                 With the empirical $u/u_{\max}=(1-r/R)^{1/7}$, the same annular integral
                 (substitute $s=1-\eta$) gives $\bar{u}/u_{\max}=2(\tfrac{7}{8}-\tfrac{7}{15})=\tfrac{49}{60}$ and
                 $$\alpha_{\text{turbulent}}=\left(\frac{60}{49}\right)^{3}\cdot 2\left(\tfrac{7}{10}-\tfrac{7}{17}\right)
                 =\left(\frac{60}{49}\right)^{3}\frac{49}{85}\approx 1.06$$
-                The metric above reports both numbers from the app's own profile integration,
-                so you can watch $\alpha$ move as you change $\mathrm{Re}$.
+                The table above labels this as the power-law approximation and reports
+                the blue sketch's integral separately. Neither coefficient is a universal
+                turbulent constant. Here $n=7$; the selectable empirical exponent changes
+                the dashed curve and its coefficients at other Reynolds numbers.
                 """,
             ),
             (
@@ -451,9 +565,10 @@ def render_tab_turbulence():
         **Where the $1/7$ power law of §4.2 came from.** $u/u_{\max}=(1-r/R)^{1/7}$ is an
         algebraic *fit* that tracks the logarithm over about a decade of $y^{+}$ and, unlike
         the log, integrates in closed form — which is why §4.2 could get $\bar{u}/u_{\max}=49/60$
-        from it. It is the same approximation that underlies Blasius'
-        $f_F=0.0791\,\mathrm{Re}^{-1/4}$ (as $f_D=0.316\,\mathrm{Re}^{-1/4}$),
-        and like Blasius it fails above roughly $\mathrm{Re}=10^{5}$. It is not a derivation,
+        from it. Blasius' smooth-pipe friction fit,
+        $f_F=0.0791\,\mathrm{Re}^{-1/4}$ (or $f_D=0.3164\,\mathrm{Re}^{-1/4}$),
+        is a separate empirical approximation, not the wall derivative of this profile.
+        A fixed exponent does not fit all Reynolds numbers. The power law is not a derivation,
         and it is wrong at both ends: differentiating it gives an *infinite* shear at the wall
         (where the real profile is the linear $u^{+}=y^{+}$) and a non-zero slope on the
         centreline (where symmetry demands zero).
@@ -550,7 +665,8 @@ def render_tab_turbulence():
                 $$\Delta p\propto u^{-1/4}\cdot u^{2}=u^{7/4}=u^{1.75}$$
                 The exponent is $2$ *reduced* by a quarter, because faster flow is slightly
                 more slippery per unit velocity head. It is empirical, not derived: the
-                $-1/4$ comes from the same power-law profile fit as §4.3's closing note.
+                $-1/4$ is the exponent in the measured smooth-pipe friction fit;
+                it cannot be obtained by evaluating the power-law velocity gradient at the wall.
                 """,
             ),
             (

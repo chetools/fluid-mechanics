@@ -725,3 +725,25 @@ remote for divergence, commit the reviewed scope, and verify the remote branch's
 hash matches local HEAD after pushing. The session's push was to `origin/master`;
 that is history, not an instruction or standing authorization for future pushes.
 
+### Turbulent mean-profile figures
+
+The mirrored `1/n` power law has a centreline cusp and an infinite wall
+derivative. Preserve this curve as a dashed approximation, with its limitations
+visible; never round it with a plotting spline while retaining the power-law
+label. Both the SVG and Plotly comparison now use the same computed arrays.
+The diameter coordinate is signed `s/R`; the physical radius is nonnegative.
+
+The separate blue curve is an illustrative damped eddy-viscosity closure in
+`src/physics/turbulence.py`, not a calibrated friction correlation or DNS.
+Its finite, even core eddy viscosity and retained molecular viscosity enforce
+zero centre slope and finite wall slope. Integrating the total-shear balance
+and solving for friction Reynolds number matches the requested bulk Re.
+Each curve has the same area-mean velocity and its own integrated alpha/beta.
+Existing energy/momentum calculators continue using the power-law coefficients.
+The lesson states the closure and assumptions, with centre and wall close-ups.
+
+Tests check mean flow, no slip, symmetry, total shear, wall gradients and grid
+convergence through Re = 1e6. Browser education checks cover the native SVG,
+both plots, horizontal scrolling on a 390 px viewport, and a live Reynolds
+number change. AppTest also checks mean-speed changes and chapter round trips.
+

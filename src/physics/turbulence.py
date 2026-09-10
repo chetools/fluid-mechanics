@@ -9,19 +9,72 @@ Implements:
 
 from typing import Dict
 import numpy as np
+from scipy.integrate import cumulative_trapezoid
+from scipy.optimize import brentq
+
+
+def smooth_pipe_profile(reynolds: float = 50000.0, n_points: int = 8001) -> Dict:
+    """A physically constrained mean-profile sketch, not a calibrated pipe correlation.
+
+    Steady, fully developed Newtonian flow in a smooth circular pipe. Total
+    shear is linear in radius. Use a simple damped eddy viscosity E = nu_t/nu:
+      d/R = (1-eta**2)*(1+2*eta**2)/6,
+      E = 0.41*Re_tau*(d/R)*(1-exp(-Re_tau*(d/R)/26))**2.
+    The chosen effective mixing scale equals y/R to leading order at the wall
+    and is even and bounded through the core. It is an illustrative closure,
+    not the five-parameter Cantwell model, DNS, or an engineering friction fit.
+    Retain molecular viscosity, integrate from the no-slip wall, and solve
+    Re_D = 2 Re_tau U_bulk+ for the requested bulk Reynolds number. At eta=0
+    symmetry gives zero gradient; at eta=1 molecular viscosity gives finite shear.
+    Low-Re outputs are mathematical continuations, not a transition prediction.
+    """
+    if not np.isfinite(reynolds) or reynolds <= 0:
+        raise ValueError("Bulk Reynolds number must be finite and positive.")
+    if n_points < 3:
+        raise ValueError("At least three radial points are required.")
+    eta = 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, n_points)))
+    distance = (1.0 - eta**2) * (1.0 + 2.0 * eta**2) / 6.0
+
+    def at_friction_re(re_tau):
+        damping = -np.expm1(-re_tau * distance / 26.0)
+        eddy_ratio = 0.41 * re_tau * distance * damping**2
+        # S = -d(u/u_tau)/d(eta), from the linear total-shear balance.
+        # Finite core eddy viscosity gives a parabolic centreline expansion.
+        shear = re_tau * eta / (1.0 + eddy_ratio)
+        u_plus = -cumulative_trapezoid(shear[::-1], eta[::-1], initial=0.0)[::-1]
+        bulk_plus = 2.0 * np.trapezoid(u_plus * eta, eta)
+        return u_plus, bulk_plus, shear, eddy_ratio
+
+    re_tau = brentq(lambda rt: 2.0 * rt * at_friction_re(rt)[1] - reynolds,
+                    1e-8, max(reynolds, 1.0), xtol=1e-10)
+    u_plus, bulk_plus, shear, eddy_ratio = at_friction_re(re_tau)
+    shape = u_plus / bulk_plus
+    return {
+        "eta": eta, "u_over_mean": shape,
+        "gradient_over_mean": -shear / bulk_plus,
+        "shear_plus": shear, "eddy_viscosity_ratio": eddy_ratio,
+        "re_tau": re_tau, "bulk_plus": bulk_plus,
+        "u_tau_over_mean": 1.0 / bulk_plus,
+        "alpha": float(2.0 * np.trapezoid(shape**3 * eta, eta)),
+        "beta": float(2.0 * np.trapezoid(shape**2 * eta, eta)),
+    }
 
 def velocity_profile_comparison(
     pipe_radius: float = 0.05,
     u_avg: float = 1.5,
     reynolds: float = 50000.0,
-    n_points: int = 150,
+    n_points: int = 501,
+    include_smooth: bool = True,
 ) -> Dict[str, np.ndarray]:
     """Compare normalized radial velocity profiles for laminar and turbulent flow.
     
     Laminar: u(r) = 2 * u_avg * (1 - (r/R)^2)
-    Turbulent: u(r) = u_max * (1 - r/R)^(1/n), with n(Re) ~ 7
+    Power-law approximation: u(r) = u_max * (1 - r/R)^(1/n), with n(Re) ~ 7.
+    Its nonzero centre slope and infinite wall slope are retained, not rounded.
+    A separate damped eddy-viscosity sketch respects both boundary gradients.
+    Historical alpha_turb/beta_turb fields remain integrals of the power law.
     """
-    r = np.linspace(0, pipe_radius, n_points)
+    r = pipe_radius * 0.5 * (1.0 - np.cos(np.linspace(0.0, np.pi, n_points)))
     r_norm = r / pipe_radius
     
     # 1. Laminar profile
@@ -68,7 +121,7 @@ def velocity_profile_comparison(
     alpha_turb = _flux_correction(shapes["turb"], 3)
     beta_turb = _flux_correction(shapes["turb"], 2)
 
-    return {
+    result = {
         "r": r,
         "r_norm": r_norm,
         "u_laminar": u_laminar,
@@ -82,7 +135,20 @@ def velocity_profile_comparison(
         "beta_lam": beta_lam,
         "beta_turb": beta_turb,
         "n_exp": n_exp,
+        "reynolds": float(reynolds),
     }
+    if not include_smooth:
+        return result
+    smooth = smooth_pipe_profile(float(reynolds))
+    result.update({
+        "u_smooth": u_avg * np.interp(r_norm, smooth["eta"], smooth["u_over_mean"]),
+        "u_max_smooth": u_avg * smooth["u_over_mean"][0],
+        "alpha_smooth": smooth["alpha"],
+        "beta_smooth": smooth["beta"],
+        "re_tau_smooth": smooth["re_tau"],
+        "smooth_wall_gradient": u_avg / pipe_radius * smooth["gradient_over_mean"][-1],
+    })
+    return result
 
 
 def pipe_kinetic_correction(reynolds: float) -> Dict[str, float]:
@@ -93,7 +159,7 @@ def pipe_kinetic_correction(reynolds: float) -> Dict[str, float]:
     Transition: no unique profile; alpha/beta are left unset so a caption
     cannot invent a number such as 1.3.
     """
-    prof = velocity_profile_comparison(reynolds=float(reynolds))
+    prof = velocity_profile_comparison(reynolds=float(reynolds), include_smooth=False)
     re = float(reynolds)
     out = {
         "alpha_lam": float(prof["alpha_lam"]),

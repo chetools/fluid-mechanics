@@ -2,12 +2,56 @@
 
 import math
 import numpy as np
+import pytest
 from src.physics.turbulence import (
     velocity_profile_comparison,
     law_of_the_wall,
     pipe_kinetic_correction,
     _spalding_y_plus,
+    smooth_pipe_profile,
 )
+
+
+@pytest.mark.parametrize("reynolds", [5000.0, 50000.0, 1e6])
+def test_smooth_pipe_sketch_obeys_bulk_flow_shear_balance_and_boundaries(reynolds):
+    p = smooth_pipe_profile(reynolds)
+    eta, velocity = p["eta"], p["u_over_mean"]
+    assert 2 * np.trapezoid(velocity * eta, eta) == pytest.approx(1.0)
+    assert 2 * p["re_tau"] * p["bulk_plus"] == pytest.approx(reynolds)
+    assert velocity[-1] == 0.0
+    assert p["gradient_over_mean"][0] == 0.0
+    assert np.all(np.diff(velocity) <= 0)
+    assert np.all(np.isfinite(p["gradient_over_mean"]))
+    assert np.allclose((1 + p["eddy_viscosity_ratio"]) * p["shear_plus"] / p["re_tau"], eta)
+    # At the wall all stress is molecular; no infinite derivative is allowed.
+    assert p["eddy_viscosity_ratio"][-1] == 0
+    assert p["shear_plus"][-1] == pytest.approx(p["re_tau"])
+    wall_slope = (velocity[-2] - velocity[-1]) / (eta[-1] - eta[-2])
+    assert wall_slope == pytest.approx(-p["gradient_over_mean"][-1], rel=2e-4)
+    # Check the drawn profile itself: a quadratic, smooth maximum in the core.
+    curvatures = [(velocity[0] - velocity[j]) / eta[j]**2 for j in (30, 60)]
+    assert curvatures[0] == pytest.approx(curvatures[1], rel=2e-3)
+    assert 1 < p["alpha"] < 2 and 1 < p["beta"] < 4/3
+
+
+def test_smooth_profile_coefficients_converge_independently_of_plot_sampling():
+    coarse, fine = smooth_pipe_profile(1e6), smooth_pipe_profile(1e6, n_points=16001)
+    for field in ("alpha", "beta", "re_tau"):
+        assert coarse[field] == pytest.approx(fine[field], rel=2e-5)
+
+
+def test_comparison_keeps_power_law_cusp_and_separate_mean_normalizations():
+    p = velocity_profile_comparison(reynolds=500000, u_avg=1.5)
+    eta = p["r_norm"]
+    assert p["n_exp"] == 8.8
+    assert np.allclose(p["u_turbulent"], p["u_max_turb"] * (1-eta)**(1/8.8))
+    power_slope = (p["u_turbulent"][0] - p["u_turbulent"][1]) / eta[1]
+    smooth_slope = (p["u_smooth"][0] - p["u_smooth"][1]) / eta[1]
+    assert power_slope == pytest.approx(p["u_max_turb"]/8.8, rel=1e-4)
+    assert smooth_slope < power_slope / 1000
+    for field in ("u_laminar", "u_turbulent", "u_smooth"):
+        assert 2 * np.trapezoid(p[field] * eta, eta) == pytest.approx(1.5, rel=2e-4)
+    assert pipe_kinetic_correction(0)["regime"] == "laminar"
 
 def test_velocity_profiles_laminar_vs_turbulent():
     """Verify laminar parabolic apex and turbulent blunt apex and kinetic energy factors."""

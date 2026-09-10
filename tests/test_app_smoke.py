@@ -9,10 +9,27 @@ from pathlib import Path
 
 import pytest
 from streamlit.testing.v1 import AppTest
-
 import app as app_module
 
 APP = str(Path(__file__).resolve().parents[1] / "app.py")
+
+
+def test_turbulent_profile_controls_recompute_and_survive_navigation():
+    from src.physics.turbulence import velocity_profile_comparison
+
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key='chapter_nav').set_value('4 · Turbulence').run()
+    at.select_slider(key='tab_turbulence_turbulent_reynolds_number').set_value(500000).run()
+    at.slider(key='tab_turbulence_mean_flow_velocity_u_avg_m_s').set_value(3.0).run()
+    at.radio(key='chapter_nav').set_value('1 · Energy').run()
+    at.radio(key='chapter_nav').set_value('4 · Turbulence').run()
+    assert not at.exception
+    assert at.select_slider(key='tab_turbulence_turbulent_reynolds_number').value == 500000
+    assert at.slider(key='tab_turbulence_mean_flow_velocity_u_avg_m_s').value == 3.0
+    expected = velocity_profile_comparison(reynolds=500000, u_avg=3.0)
+    metrics = {metric.label: metric.value for metric in at.metric}
+    assert metrics['Smooth-sketch centre speed'] == f"{expected['u_max_smooth']:.3f} m/s"
+    assert metrics['Power-law centre speed'] == f"{expected['u_max_turb']:.3f} m/s"
 
 EXPECTED_TABS = [
     "1 · Energy", "2 · Pipes", "3 · Scaling", "4 · Turbulence",

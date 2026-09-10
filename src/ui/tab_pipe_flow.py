@@ -522,7 +522,7 @@ def render_tab_pipe_flow():
         )
     else:
         kinetic_head = corr["alpha"] * u_line ** 2 / (2.0 * g)
-        n_note = f", 1/{int(corr['n_exp'])} law" if corr["regime"] == "turbulent" else ""
+        n_note = f", 1/{corr['n_exp']:g} power-law approximation" if corr["regime"] == "turbulent" else ""
         alpha_caption = (
             f"α = {corr['alpha']:.3f} ({corr['regime']}{n_note}, integrated) "
             f"→ α u²/2g = {kinetic_head:.2f} m"

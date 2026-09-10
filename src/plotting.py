@@ -673,12 +673,13 @@ def plot_moody_chart(
     return apply_plotly_theme(fig)
 
 def plot_laminar_turbulent_profiles(prof_res: Dict[str, np.ndarray]) -> go.Figure:
-    """Create radial velocity profile comparison: Laminar vs. Turbulent."""
+    """Keep the power-law cusp visible alongside a smooth mean-profile sketch."""
     r_norm = prof_res["r_norm"]
     # Mirror coordinates to show full pipe diameter from -R to +R
-    r_full = np.concatenate([-r_norm[::-1], r_norm])
-    u_lam_full = np.concatenate([prof_res["u_laminar"][::-1], prof_res["u_laminar"]])
-    u_turb_full = np.concatenate([prof_res["u_turbulent"][::-1], prof_res["u_turbulent"]])
+    r_full = np.concatenate([-r_norm[:0:-1], r_norm])
+    u_lam_full = np.concatenate([prof_res["u_laminar"][:0:-1], prof_res["u_laminar"]])
+    u_turb_full = np.concatenate([prof_res["u_turbulent"][:0:-1], prof_res["u_turbulent"]])
+    u_smooth_full = np.concatenate([prof_res["u_smooth"][:0:-1], prof_res["u_smooth"]])
     
     fig = go.Figure()
     
@@ -686,28 +687,65 @@ def plot_laminar_turbulent_profiles(prof_res: Dict[str, np.ndarray]) -> go.Figur
         go.Scatter(
             x=u_lam_full, y=r_full,
             mode="lines", line=dict(color=SUCCESS, width=3),
-            name=f"Laminar Parabolic (Apex = {prof_res['u_max_lam']:.2f} m/s, α = {prof_res['alpha_lam']:.2f})"
+            name=f"Laminar reference (α = {prof_res['alpha_lam']:.3f})"
         )
     )
     fig.add_trace(
         go.Scatter(
             x=u_turb_full, y=r_full,
-            mode="lines", line=dict(color=PRESSURE, width=3),
-            name=f"Turbulent 1/{int(prof_res['n_exp'])}th Law (Apex = {prof_res['u_max_turb']:.2f} m/s, α = {prof_res['alpha_turb']:.2f})"
+            mode="lines", line=dict(color=PRESSURE, width=2.5, dash="dash"),
+            name=f"1/{prof_res['n_exp']:g} power-law approximation (α = {prof_res['alpha_turb']:.3f})"
         )
     )
+    fig.add_trace(go.Scatter(
+        x=u_smooth_full, y=r_full, mode="lines",
+        line=dict(color=ACCENT, width=3),
+        name=f"Smooth mean sketch (α = {prof_res['alpha_smooth']:.3f})",
+    ))
     
     # Pipe wall reference lines at r/R = -1 and +1
-    fig.add_hline(y=1.0, line=dict(color=TEXT_MUTED, width=2, dash="dash"), annotation_text="Top Pipe Wall (r = +R)")
-    fig.add_hline(y=-1.0, line=dict(color=TEXT_MUTED, width=2, dash="dash"), annotation_text="Bottom Pipe Wall (r = -R)")
+    fig.add_hline(y=1.0, line=dict(color=TEXT_MUTED, width=2, dash="dash"), annotation_text="Top pipe wall (s = +R)")
+    fig.add_hline(y=-1.0, line=dict(color=TEXT_MUTED, width=2, dash="dash"), annotation_text="Bottom pipe wall (s = −R)")
     fig.add_hline(y=0.0, line=dict(color=BORDER_STRONG, width=1, dash="dot"), annotation_text="Centerline")
     
     fig.update_layout(
-        title="Pipe Radial Velocity Profile Comparison u(r) at Equal Mean Velocity",
+        title="Pipe profiles at equal area-mean velocity",
         xaxis_title="Local Velocity u(r) [m/s]",
-        yaxis_title="Normalized Radial Position r/R [-]",
-        height=460
+        yaxis_title="Signed position across diameter s/R [-]",
+        height=560,
+        legend=dict(orientation="h", y=-0.22, x=0.0),
+        margin=dict(b=140),
+        xaxis=dict(range=[0, 1.08 * prof_res["u_max_lam"]]),
     )
+    return apply_plotly_theme(fig)
+
+
+def plot_pipe_profile_limits(prof_res: Dict) -> go.Figure:
+    """Resolve the two places where the power law fails without hiding either."""
+    eta = prof_res["r_norm"]
+    mean = prof_res["u_max_lam"] / 2.0
+    fig = make_subplots(rows=1, cols=2, subplot_titles=(
+        "Core: a smooth maximum", "Wall: finite slope and no slip"))
+    for field, color, dash, name in (
+        ("u_turbulent", PRESSURE, "dash", f"1/{prof_res['n_exp']:g} power law"),
+        ("u_smooth", ACCENT, "solid", "Smooth mean sketch"),
+    ):
+        core = eta <= 0.2
+        core_x = np.concatenate([-eta[core][:0:-1], eta[core]])
+        core_u = np.concatenate([prof_res[field][core][:0:-1], prof_res[field][core]]) / mean
+        fig.add_trace(go.Scatter(x=core_x, y=core_u, mode="lines", name=name,
+                                line=dict(color=color, dash=dash)), row=1, col=1)
+        distance = 1.0 - eta
+        near = distance * prof_res["re_tau_smooth"] <= 5.0
+        fig.add_trace(go.Scatter(x=distance[near][::-1], y=prof_res[field][near][::-1] / mean,
+                                mode="lines", name=name, showlegend=False,
+                                line=dict(color=color, dash=dash)), row=1, col=2)
+    fig.update_xaxes(title_text="Signed position s/R", row=1, col=1)
+    fig.update_yaxes(title_text="u / mean velocity", row=1, col=1)
+    fig.update_xaxes(title_text="Distance from wall y/R", tickformat=".1e", row=1, col=2)
+    fig.update_yaxes(title_text="u / mean velocity", row=1, col=2)
+    fig.update_layout(title="Why the centre and wall need a different model", height=440,
+                      legend=dict(orientation="h", y=-0.3), margin=dict(b=110))
     return apply_plotly_theme(fig)
 
 def plot_law_of_the_wall(wall_res: Dict[str, np.ndarray]) -> go.Figure:
