@@ -61,6 +61,28 @@ def test_switching_chapter_renders_that_chapter():
     )
 
 
+def test_carreau_caption_recomputes_and_survives_navigation():
+    at = AppTest.from_file(APP, default_timeout=300).run()
+    at.radio(key="chapter_nav").set_value("7 · Non-Newtonian").run()
+    default_caption = next(c.value for c in at.caption if "For these settings" in c.value)
+    at.slider(key="nn_curve_n").set_value(1.0).run()
+    assert not at.exception
+    caption = next(c.value for c in at.caption if "For these settings" in c.value)
+    assert caption != default_caption
+    assert "constant viscosity" in caption
+    assert "ratio is 1 across" in caption
+    assert next(m.value for m in at.metric if m.label == "Low/high shear viscosity ratio") == "1×"
+    at.radio(key="chapter_nav").set_value("1 · Energy").run()
+    at.radio(key="chapter_nav").set_value("7 · Non-Newtonian").run()
+    assert at.slider(key="nn_curve_n").value == 1.0
+    assert next(c.value for c in at.caption if "For these settings" in c.value) == caption
+    at.slider(key="nn_curve_n").set_value(1.5).run()
+    assert not at.exception
+    assert "constant viscosity" not in next(c.value for c in at.caption if "For these settings" in c.value)
+    ratio = next(m.value for m in at.metric if m.label == "Low/high shear viscosity ratio")
+    assert 0 < float(ratio.removesuffix("×")) < 1
+
+
 def test_the_chapters_have_one_structure_and_one_set_of_names():
     """A landing banner used to number the twelve chapters 01-06 while the
     navigation below it numbered them 1-12, so "04 · External flow" in the

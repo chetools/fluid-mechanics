@@ -37,6 +37,17 @@ def test_shear_thinning_is_blunter_than_newtonian():
     assert thin["ratio_max_avg"] < newt["ratio_max_avg"] < thick["ratio_max_avg"]
 
 
+def test_normalized_power_law_profile_has_the_explained_core_shape():
+    # Compare shapes at the same radius fraction, not absolute velocities.
+    values = []
+    for n in (0.1, 0.5, 1.0, 2.0):
+        flow = power_law_pipe(0.025, -40, K=0.1, n=n, n_points=101)
+        values.append(flow["u"][50] / flow["u_max"])
+    assert values[0] > values[1] > values[2] > values[3]
+    assert values[2] == pytest.approx(0.75)
+    assert values[0] > 0.99
+
+
 def test_power_law_pressure_drop_inverts_q():
     R, L, K, n = 0.04, 20.0, 0.2, 0.7
     dp = -1500.0
@@ -84,6 +95,32 @@ def test_plug_radius_is_where_the_stress_line_crosses_the_yield_stress():
     # Doubling the gradient halves the plug: the stress profile steepens.
     steeper = herschel_bulkley_pipe(radius=R, dp_dz=2 * dp, K=0.02, n=1.0, tau_y=tau_y)
     assert np.isclose(steeper["plug_fraction"], 0.5 * hb["plug_fraction"])
+
+
+@pytest.mark.parametrize("n", [0.6, 1.0, 1.4])
+@pytest.mark.parametrize("tau_y", [0.0, 0.2])
+def test_hb_friction_reconstructs_imposed_pressure_gradient(n, tau_y):
+    radius, gradient, rho = 0.025, 40.0, 1000.0
+    hb = herschel_bulkley_pipe(radius, -gradient, K=0.02, n=n, tau_y=tau_y, rho=rho)
+    reconstructed = hb["f_darcy"] / (2 * radius) * rho * hb["u_avg"]**2 / 2
+    assert reconstructed == pytest.approx(gradient)
+    assert hb["f_darcy"] == pytest.approx(4 * hb["f_fanning"])
+    if tau_y == 0:
+        assert hb["f_fanning"] == pytest.approx(16 / hb["re_mr"], rel=1e-4)
+
+
+@pytest.mark.parametrize("n", [0.6, 1.0, 1.4])
+def test_bingham_number_is_invariant_at_fixed_shear_rate_scale(n):
+    # Scale R by ten and G by 1/ten: stresses and U/D stay fixed,
+    # so a dimensionless yield/viscous stress ratio must stay fixed too.
+    small = herschel_bulkley_pipe(0.025, -40.0, K=0.02, n=n, tau_y=0.2)
+    large = herschel_bulkley_pipe(0.25, -4.0, K=0.02, n=n, tau_y=0.2)
+    assert large["u_avg"] == pytest.approx(10 * small["u_avg"])
+    assert large["bingham_number"] == pytest.approx(small["bingham_number"])
+    if n == 1:
+        # Independent Bingham closed form supplies the velocity scale.
+        speed = buckingham_reiner_flow(0.025, -40, 0.02, 0.2) / (np.pi * 0.025**2)
+        assert small["bingham_number"] == pytest.approx(0.2 * 0.05 / (0.02 * speed), rel=1e-4)
 
 
 def test_the_plug_really_is_unsheared():

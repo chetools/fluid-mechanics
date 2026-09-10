@@ -279,8 +279,11 @@ def herschel_bulkley_pipe(
     # guide, so it is reported next to the Bingham number rather than alone.
     mr_denom = K * (8.0 ** (n - 1.0)) * (((3.0 * n + 1.0) / (4.0 * n)) ** n)
     re_mr = (rho * (u_avg ** (2.0 - n)) * (D**n) / mr_denom) if mr_denom > 0 else 0.0
-    bn = (tau_y * D / (K * (u_avg / D) ** n)) if u_avg > 0 else float("inf")
-    f_fanning = (16.0 / re_mr) if re_mr > 0 else float("inf")
+    # Yield stress / viscous stress, using the stated shear-rate scale U/D.
+    bn = (tau_y / (K * (u_avg / D) ** n)) if u_avg > 0 else float("inf")
+    # The power-law-only Re_MR omits yield stress: 16/Re_MR is not the
+    # Herschel-Bulkley friction factor. Use the actual wall momentum balance.
+    f_fanning = tau_w / (0.5 * rho * u_avg**2) if u_avg > 0 else float("inf")
     return {
         "r": r, "r_norm": r / R, "u": u, "tau_r": tau_r,
         "u_max": u_max, "u_avg": u_avg, "flow_rate": q,

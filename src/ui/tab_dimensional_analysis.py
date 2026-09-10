@@ -45,8 +45,8 @@ def render_tab_dimensional_analysis():
 
         After the energy and pipe labs, this panel is **how you design the experiment**
         that produces a Moody chart: collapse $\\Delta p = f(D,L,u,\\rho,\\mu,\\varepsilon)$
-        onto $\\mathrm{Eu}=\\Phi(\\mathrm{Re},\\varepsilon/D,L/D)$, then rotate the SVD
-        kernel until those named groups appear. The sidebar Re is one Π group, not the whole story.
+        onto $\\mathrm{Eu}=\\Phi(\\mathrm{Re},\\varepsilon/D,L/D)$, then change basis within the SVD
+        kernel to recover those named groups. The sidebar Re is one Π group, not the whole story.
         """
     )
     render_objectives(
@@ -281,7 +281,10 @@ def render_tab_dimensional_analysis():
         $$\mathbf{A} = \mathbf{U}\,\boldsymbol{\Sigma}\,\mathbf{V}^{T}$$
         where $\mathbf{U}$ and $\mathbf{V}$ are **orthogonal** (their columns are unit
         vectors at right angles, so they rotate and reflect without stretching), and
-        $\boldsymbol{\Sigma}$ is **diagonal** with non-negative entries
+        For an $m\times n$ matrix, the full factors have shapes
+        $U:m\times m$, $\Sigma:m\times n$, $V:n\times n$.
+        The possibly rectangular $\boldsymbol{\Sigma}$ is zero off its main diagonal,
+        with non-negative diagonal entries
         $\sigma_1 \ge \sigma_2 \ge \dots \ge 0$, the **singular values**.
 
         No exceptions, no conditions: square or not, invertible or not, every matrix has one.
@@ -309,17 +312,20 @@ def render_tab_dimensional_analysis():
         **The one consequence that matters here.** A stretch factor of *zero* collapses a
         direction: whatever went in along that axis comes out as $\mathbf{0}$. So the input
         directions that $\mathbf{A}$ annihilates are exactly the columns of $\mathbf{V}$
-        whose singular value is zero. Read off the decomposition:
+        corresponding to **zero columns of the full rectangular $\Sigma$**.
+        This includes both zero diagonal entries and any extra zero columns when
+        there are more input directions than output directions. Read off the decomposition:
 
         * The number of **non-zero** singular values is the $\operatorname{rank}$ — the number
           of directions that survive.
-        * The columns of $\mathbf{V}$ with $\sigma = 0$ are an **orthonormal basis of the null
+        * The last $n-r$ columns of full $\mathbf{V}$, with $r=\operatorname{rank}(A)$,
+          are an **orthonormal basis of the null
           space** $\ker(\mathbf{A})$ — the directions that are crushed.
         * Counting the columns of $\mathbf{V}$ two ways gives rank–nullity for free:
         $$\operatorname{rank}(\mathbf{A}) + \dim\ker(\mathbf{A}) = n$$
 
-        We never had to prove any of this; it is visible in the decomposition once the
-        decomposition is granted.
+        A library typically returns only $\min(m,n)$ singular values. Counting just
+        the zeros in that returned list can therefore miss null directions.
         """
     )
     render_prose_and_latex(
@@ -339,8 +345,8 @@ def render_tab_dimensional_analysis():
         | Question about scaling | Answer from the SVD of $\mathbf{A}$ |
         |---|---|
         | How many independent $\Pi$ groups? | $p = n - \operatorname{rank}(\mathbf{A})$, and the rank is the count of non-zero $\sigma$ |
-        | Which products are dimensionless? | the columns of $\mathbf{V}$ with $\sigma = 0$, read as exponent vectors |
-        | Why isn't the answer unique? | any basis of a subspace may be rotated; every choice is equally valid |
+        | Which products are dimensionless? | any exponent vector in the span of the last $n-r$ columns of full $V$ |
+        | Why isn't the answer unique? | any invertible change of basis spans the same nullspace |
         | Are my groups independent? | a basis is linearly independent by construction |
 
         Buckingham's theorem is the third row of that table plus a counting argument. The SVD
@@ -352,22 +358,57 @@ def render_tab_dimensional_analysis():
         "The non-uniqueness is not a defect and not a licence for sloppiness. The kernel is a "
         "subspace, so it has infinitely many bases; Re, Eu and ε/D are one conventional "
         "choice, and the raw SVD basis is another. §3.4 below computes the raw basis and then "
-        "rotates it onto the named groups, so you can watch the same subspace wear two "
+        "changes basis to the named groups, so you can watch the same subspace wear two "
         "different sets of labels."
     )
 
     render_svg(diagram_null_space_matrix())
 
-    with st.expander("🔍 Why a zero singular value means a dimensionless group"):
+    render_derivation(
+        "Four null directions even when all three returned singular values are positive",
+        [
+            (
+                "Keep the full rectangular matrix in view",
+                r"""
+                A full-rank $3\times7$ dimensional matrix maps seven variable exponents
+                into three base-dimension exponents. Its full middle factor is
+                $$\Sigma=\left[\begin{array}{ccc|cccc}
+                \sigma_1&0&0&0&0&0&0\\
+                0&\sigma_2&0&0&0&0&0\\
+                0&0&\sigma_3&0&0&0&0
+                \end{array}\right]$$
+                All three displayed singular values are positive. The four columns
+                to the right of the divider are still zero: there is no fourth output
+                dimension for them to stretch into. An economy-sized SVD can omit the
+                corresponding columns of $V$, which is why we specify the full SVD here.
+                """,
+            ),
+            (
+                "Follow one of those input directions through the map",
+                r"""
+                Orthogonality gives $V^T v_j=e_j$. For $j=4,5,6,7$, the vector
+                $\Sigma e_j$ selects a zero column, so
+                $$Av_j=U\Sigma e_j=0,\qquad N=[v_4\ v_5\ v_6\ v_7]$$
+                These four independent vectors span the kernel. In general, keep columns
+                $r+1$ through $n$; with zero-based array indexing this is `N = V[:, r:]`.
+                Thus three positive returned singular values and a four-dimensional
+                nullspace are fully consistent. The pipe example below computes both.
+                """,
+            ),
+        ],
+    )
+
+    with st.expander("🔍 Why a zero column of Σ gives a dimensionless group"):
         render_prose_and_latex(
             r"""
-            Take $\mathbf{v}$, a column of $\mathbf{V}$ with singular value $0$. Because
-            $\mathbf{V}$ is orthogonal, $\mathbf{V}^{T}\mathbf{v} = \mathbf{e}$, the standard
+            Take $\mathbf{v}_j$, a column of full $\mathbf{V}$ whose corresponding
+            column of $\Sigma$ is zero. Because
+            $\mathbf{V}$ is orthogonal, $\mathbf{V}^{T}\mathbf{v}_j = \mathbf{e}_j$, the standard
             basis vector picking out that column's slot. Then
-            $$\mathbf{A}\mathbf{v} = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^{T}\mathbf{v}
-            = \mathbf{U}\boldsymbol{\Sigma}\mathbf{e} = \mathbf{U}(\sigma\,\mathbf{e}) = \mathbf{0}$$
-            since $\sigma = 0$. The middle step is the only one doing work: $\boldsymbol{\Sigma}$
-            is diagonal, so it just multiplies that slot by its own singular value.
+            $$\mathbf{A}\mathbf{v}_j = \mathbf{U}\boldsymbol{\Sigma}\mathbf{V}^{T}\mathbf{v}_j
+            = \mathbf{U}\boldsymbol{\Sigma}\mathbf{e}_j = \mathbf{U}\mathbf{0} = \mathbf{0}$$
+            Here $\Sigma e_j$ is an $m$-component zero vector. This column argument
+            works for rectangular matrices as well as square ones.
 
             Reading $\mathbf{v}$ as a list of exponents, $\mathbf{A}\mathbf{v} = \mathbf{0}$
             says every base dimension cancels in
@@ -375,12 +416,12 @@ def render_tab_dimensional_analysis():
 
             **A caution the algebra makes obvious.** These exponents are components of a unit
             vector, so they are generally irrational and the products look nothing like the
-            named groups. Rounding them to neat integers leaves the null space and stops being
-            dimensionless. If you want integers, rotate the basis deliberately, as §3.4 does;
+            named groups. Arbitrary rounding can leave the null space and stop being
+            dimensionless. If you want conventional groups, change basis deliberately, as §3.4 does;
             do not round.
 
-            **Where floating point enters.** A singular value is never exactly zero
-            numerically. Rank is decided by counting $\sigma_i$ above a tolerance, so a matrix
+            **Where floating point enters.** A theoretical zero singular value may be
+            returned as a small nonzero value. Rank is decided by counting $\sigma_i$ above a tolerance, so a matrix
             that is nearly degenerate can have its rank — and therefore its number of $\Pi$
             groups — reported differently by different tolerances. That is a real limitation
             of doing this on a computer, not an artefact of this app.
@@ -431,6 +472,12 @@ def render_tab_dimensional_analysis():
     col_st1.metric("Variables (n)", f"{res_dim['n_vars']}")
     col_st2.metric("Matrix Rank r = rank(A)", f"{res_dim['rank']}")
     col_st3.metric("Nullity (p = n - r)", f"{res_dim['nullity']} Dimensionless Groups")
+    st.caption(
+        "Returned singular values: "
+        + ", ".join(f"{value:.4g}" for value in res_dim["singular_values"])
+        + f". The full V has {res_dim['n_vars']} columns; "
+        f"its last {res_dim['nullity']} span the nullspace."
+    )
     
     st.markdown("#### Dimensional Matrix A (Rows = [M, L, T], Columns = Variables)")
     dim_df = pd.DataFrame(
@@ -460,13 +507,15 @@ def render_tab_dimensional_analysis():
             st.latex(rf"\Pi_{{{i+1}}} = {pi['formula_latex']}")
             st.caption(f"Exponent vector $\\mathbf{{x}}_{{{i+1}}} = {list(pi['vector'])}$")
 
-    st.markdown("#### Rotate the SVD kernel onto the named groups")
+    st.markdown("#### Change from the SVD basis to the named groups")
     st.markdown(
         r"""
         SVD returns *an* orthonormal basis $N$ of $\ker(A)$. Named ChemE groups
         $C = [\mathrm{Eu},\,\mathrm{Re},\,\varepsilon/D,\,L/D]$ are another basis of the
-        **same** subspace. A $p\times p$ rotation (really a change of basis)
-        $R$ satisfies $N R \approx C$:
+        **same** subspace. An invertible $p\times p$ change-of-basis matrix
+        $R$ satisfies $N R \approx C$. Its columns mix and scale the SVD basis vectors;
+        $R$ need not be orthogonal, because conventional exponent vectors need not
+        have unit length or be perpendicular:
         """
     )
     rot = res_dim.get("rotation")
@@ -477,7 +526,7 @@ def render_tab_dimensional_analysis():
             st.markdown(f"- **{mix['name']}** $= {mix['mix']}$")
         st.caption(
             f"Relative reconstruction error ||NR - C|| / ||C|| = {rot['reconstruction_error']:.2e}. "
-            "If this is tiny, the SVD kernel *already contained* Re and Eu; we only rotated the labels."
+            "If this is tiny, the SVD kernel already contained these conventional exponent vectors."
         )
         r_df = pd.DataFrame(
             np.round(rot["R"], 3),
@@ -486,13 +535,13 @@ def render_tab_dimensional_analysis():
         )
         st.dataframe(r_df, width="stretch")
         render_what_to_notice(
-            "Raw SVD groups look like random products. After R they are the Moody variables. "
-            "Do not treat an unrotated SVD column as Re."
+            "Raw SVD groups can have unfamiliar exponents. R expresses the conventional groups "
+            "as combinations of those columns. A raw column need not be Re."
         )
     else:
-        st.caption("Rotation needs a square match between SVD columns and named groups.")
+        st.caption("A square change of basis requires equal numbers of SVD columns and conventional groups.")
 
-    with st.expander("Raw SVD kernel (unrotated — usually not Re or Eu)"):
+    with st.expander("Raw SVD kernel (orthonormal basis — usually not Re or Eu)"):
         st.markdown(
             "These columns of $\\ker(A)$ from SVD are orthonormal in $\\mathbb{R}^n$ "
             "before integer rounding. They span the same space as the named groups above."
@@ -525,8 +574,8 @@ def render_tab_dimensional_analysis():
         st.markdown("**Intuition (no information theory required)**")
         st.markdown(
             r"""
-1. Any candidate Π-set is just a rotation of the SVD kernel above. Some rotations
-   make the Moody plot a *single* curve; others smear it.
+1. Each candidate Π product has an exponent vector in the SVD kernel above.
+   Selecting useful combinations can reveal a simpler relation in the data.
 2. **Mutual information** $I(\Pi_{\mathrm{out}}; \Pi_{\mathrm{in}})$ measures how
    much of the output (say $f_F$ or $C_f$) is already determined by those inputs.
    If $I$ is infinite, an exact law exists (Hagen–Poiseuille). If $I$ is finite,
@@ -550,7 +599,7 @@ def render_tab_dimensional_analysis():
 
         **What to do in the lab.** After you have the kernel (this tab), you still
         choose *which* combination to hold constant in a pilot plant. Prefer the
-        rotation that (i) matches named groups when they collapse data, and
+        combination that (i) matches named groups when they collapse data, and
         (ii) drops Π's that do not change $I$. That is experimental design, not
         extra algebra.
         """

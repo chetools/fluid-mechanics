@@ -20,6 +20,7 @@ from src.svg_diagrams import (
     diagram_npsh,
     diagram_power_law,
     diagram_newtonian_origin,
+    diagram_actuator_disc,
     diagram_microstructure_gallery,
     diagram_viscoelastic_effects,
     diagram_deborah_timescales,
@@ -71,6 +72,7 @@ def test_svg_diagrams_render_valid_xml():
         diagram_npsh(),
         diagram_power_law(),
         diagram_newtonian_origin(),
+        diagram_actuator_disc(),
         diagram_microstructure_gallery(),
         diagram_viscoelastic_effects(),
         diagram_deborah_timescales(),
@@ -128,9 +130,15 @@ def test_renderer_uses_native_image_api(monkeypatch):
     monkeypatch.setattr(svg_diagrams.st, "container", lambda **kwargs: nullcontext())
     monkeypatch.setattr(svg_diagrams.st, "caption", lambda *args: None)
     monkeypatch.setattr(svg_diagrams.st, "image", lambda image, **kwargs: images.append(image))
-    svg_diagrams.render_svg(diagram_energy_budget())
-    assert len(images) == 1
-    assert ET.fromstring(images[0]).tag == "{http://www.w3.org/2000/svg}svg"
+    for generator in (diagram_energy_budget, diagram_newtonian_origin, diagram_actuator_disc):
+        svg_diagrams.render_svg(generator())
+    assert len(images) == 3
+    for image in images:
+        # Validate the final image payload too: renderer-added attributes can
+        # duplicate attributes in a valid source SVG and make browsers reject it.
+        root = ET.fromstring(image)
+        assert root.tag == "{http://www.w3.org/2000/svg}svg"
+        assert root.attrib["role"] == "img"
 
 
 def test_new_physical_diagrams_state_their_conventions_and_limits():

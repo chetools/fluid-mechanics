@@ -258,6 +258,17 @@ def test_gravity_loss_is_charged_for_the_time_spent_thrusting():
 # --------------------------------------------------------------------------
 # Actuator disc
 # --------------------------------------------------------------------------
+def test_actuator_disc_endpoint_is_a_singular_wake_not_zero_power():
+    rho, area, wind = 1.225, 100.0, 10.0
+    endpoint = mom.actuator_disk(rho, area, wind, 0.5)
+    assert endpoint["power_coefficient"] == pytest.approx(0.5)
+    assert endpoint["u_wake"] == 0
+    assert endpoint["u_disk"] == wind / 2
+    near = mom.actuator_disk(rho, area, wind, 0.499)
+    nearer = mom.actuator_disk(rho, area, wind, 0.4999)
+    assert nearer["u_disk"] / nearer["u_wake"] > 9 * near["u_disk"] / near["u_wake"]
+
+
 def test_betz_limit_is_where_the_power_coefficient_actually_peaks():
     """Maximise Cp(a) numerically rather than trusting the quoted 16/27."""
     best = minimize_scalar(

@@ -458,8 +458,12 @@ def actuator_disk(
         T = 2 rho A U^2 a (1-a),   P = T U (1-a) = 2 rho A U^3 a (1-a)^2,
 
     so Cp = 4a(1-a)^2 peaks at a = 1/3 with Cp = 16/27: the Betz limit. It is a
-    momentum-and-energy statement about any device in an open stream, not a
-    statement about blades, so no rotor design evades it.
+    momentum-and-energy result for an ideal unshrouded turbine in an unbounded,
+    steady incompressible stream, with no wake swirl or external losses and
+    power normalized by the disc area. Ducts and confinement are different models.
+    At a = 0.5 the algebraic endpoint has Cp = 0.5 and zero wake speed; finite
+    mass flow would require infinite wake area. It is a singular limiting value,
+    not a realizable finite wake. High-induction real wakes require corrections.
     """
     a = float(induction)
     u_disk = free_stream * (1.0 - a)

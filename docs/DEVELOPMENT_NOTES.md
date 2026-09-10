@@ -125,6 +125,60 @@ For future diagnosis, first wait for the final reference chapter to exist and th
 
 ## Physics contracts and model limits
 
+### Yield-stress friction and dimensionless comparisons
+
+The Chapter 7 velocity integral applies only in the yielded annulus. Show its
+limits before evaluating it, then derive the plug's constant velocity from zero
+shear and continuity at the yield radius. Do not evaluate a fractional power of
+negative excess stress in the plug. In the zero-yield power law, `1 + 1/n` grows
+without bound as `n` tends to zero; it falls below two when `n > 1`. Compare
+normalized profiles at fixed radius fraction when explaining their shape.
+
+The molecular viscosity argument is a dilute-gas, near-equilibrium estimate.
+Compare `abs(shear_rate) * mean_free_path` with thermal speed, or compare
+collision and deformation times; a shear rate cannot be compared directly with
+a speed. Dense liquids require a different microscopic treatment.
+
+The power-law-only Metzner–Reed number in the Herschel–Bulkley calculator is a
+diagnostic guide. With nonzero yield stress, do not use `16/Re_MR` as its Fanning
+friction factor: compute `tau_wall / (rho * u_avg**2 / 2)` from the wall balance.
+The zero-yield limit recovers the power-law identity within profile quadrature
+accuracy. Test that Darcy friction reconstructs the imposed pressure gradient.
+
+The Bingham number here uses shear-rate scale `u_avg/D`, giving
+`tau_y / (K * (u_avg/D)**n)`. Multiplying this by another diameter gives a length,
+not a dimensionless number. Scaling radius and velocity together at fixed wall
+stress must preserve this Bingham number.
+
+Flow-curve explanations must handle every allowed index: at `n = 1`, both the
+power-law and Carreau–Yasuda models have constant viscosity. Report the actual
+low/high shear viscosity ratio with enough precision to represent values below
+one for `n > 1`. `tests/browser_non_newtonian.py` checks the live constant-viscosity
+caption and chapter round trip and saves desktop/mobile screenshots in the
+system temporary directory.
+
+### Rectangular SVD and turbine endpoint explanations
+
+For a full-rank 3-by-7 matrix, the returned singular-value list has three positive
+entries while full V still has four null directions. Use the zero columns of
+rectangular Sigma to explain this; in zero-based indexing the kernel basis is
+`V[:, rank:]`. The map from an orthonormal kernel basis to conventional exponent
+vectors is a change of basis that includes scaling, not necessarily a rotation.
+
+The ideal turbine coefficient tends to 0.5 as induction tends to 0.5, while its
+far-wake speed tends to zero. Continuity then requires infinite wake area, so the
+endpoint is a singular limit, not zero extracted power in a finite stagnant wake.
+Keep the two Bernoulli balances on separate sides of the disc and state the
+unbounded, unshrouded, no-swirl model assumptions.
+
+The SVG renderer adds `role` and an accessible label. Adding another `role`
+attribute in a diagram makes the final native-image payload invalid even when
+the source SVG parses. Test the renderer's output XML and assert an actual
+browser image has `naturalWidth > 0`; a scrollable image wrapper alone does not
+prove that its SVG loaded. The education browser test also checks rendered text
+bounds and pairwise text overlaps for the Newtonian-origin and actuator-disc
+figures. Inspect their screenshots for line/text collisions as well.
+
 ### Churchill and nominal pipe sizes
 
 Churchill returns the **Darcy** friction factor; Fanning is one quarter of Darcy. At small positive Reynolds number use the laminar limit `64/Re`. At zero flow the friction factor is undefined, but losses and pumping power must be zero. Preserve the finite laminar slope of signed head loss at zero flow for network iteration.

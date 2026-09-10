@@ -1412,60 +1412,109 @@ def diagram_relief_valve() -> str:
 # Newtonian and non-Newtonian fluids: why the linear law holds, and what breaks it
 # =============================================================================
 
-def diagram_newtonian_origin() -> str:
-    """Where tau = mu du/dy comes from, and the two assumptions hiding in it."""
-    gamma = "&#947;&#775;"      # gamma with a dot above
+def diagram_actuator_disc() -> str:
+    """Axial section of an ideal turbine streamtube and its pressure jump.
+
+    Geometry and pressure paths are schematic; no radii or axial distances are
+    claimed as a computed flow solution. No projection or angle marks are used.
+    """
     return f"""
-    <svg viewBox="0 0 880 430" width="100%" height="430" xmlns="http://www.w3.org/2000/svg"
+    <svg viewBox="0 0 880 570" width="100%" height="570" xmlns="http://www.w3.org/2000/svg"
          style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        <title id="disc-title">A turbine slows the flow and expands its streamtube</title>
+        <desc id="disc-desc">Axial section with upstream, disc and far-wake stations. The pressure rises before the disc, drops across it and recovers to ambient downstream. Separate Bernoulli regions stop at the two disc faces. Dimensions and pressure curves are schematic.</desc>
         {_arrow_defs()}
-        <text x="24" y="30" fill="{TEXT}" font-size="17" font-weight="bold">A Newtonian fluid is not a fluid with a special viscosity &#8212; it is one with nothing to remember</text>
-        <text x="24" y="52" fill="{TEXT_DIM}" font-size="12">Left: the momentum bookkeeping that makes the law linear. Right: the two facts about the microstructure that let it be written at all.</text>
+        <text x="24" y="30" fill="{TEXT}" font-size="18" font-weight="700">An ideal turbine: one streamtube, two Bernoulli balances</text>
+        <text x="24" y="54" fill="{TEXT_DIM}" font-size="13">Axial section &#183; schematic geometry &#183; arrows mark direction; speed is continuous across the disc</text>
 
-        <rect x="16" y="68" width="440" height="342" rx="8" fill="{SURFACE_RAISED}"/>
-        <text x="34" y="94" fill="{ACCENT}" font-size="13.5" font-weight="700">Momentum crossing a plane between two layers</text>
+        <text x="102" y="88" fill="{TEXT}" font-size="14" font-weight="700">Far upstream</text>
+        <text x="371" y="88" fill="{TEXT}" font-size="14" font-weight="700">Disc, area A</text>
+        <text x="702" y="88" fill="{TEXT}" font-size="14" font-weight="700">Far wake</text>
+        <path d="M 90 174 C 235 174 315 146 410 138 C 515 127 620 100 790 100 L 790 320 C 620 320 515 293 410 282 C 315 274 235 246 90 246 Z"
+              fill="{rgba(ACCENT,0.07)}" stroke="{ACCENT}" stroke-width="2"/>
+        <line x1="70" y1="210" x2="810" y2="210" stroke="{TEXT_FAINT}" stroke-width="1" stroke-dasharray="5,5"/>
+        <line x1="410" y1="138" x2="410" y2="282" stroke="{WARNING}" stroke-width="7"/>
+        <line x1="140" y1="182" x2="140" y2="238" stroke="{TEXT_DIM}" stroke-dasharray="3,3"/>
+        <line x1="740" y1="110" x2="740" y2="310" stroke="{TEXT_DIM}" stroke-dasharray="3,3"/>
+        <line x1="105" y1="200" x2="185" y2="200" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="368" y1="200" x2="445" y2="200" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="705" y1="200" x2="777" y2="200" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <text x="105" y="155" fill="{TEXT}" font-size="13">U, p&#8734;</text>
+        <text x="330" y="119" fill="{TEXT}" font-size="13">u{_sub('d')} = U(1 &#8722; a)</text>
+        <text x="625" y="155" fill="{TEXT}" font-size="13">u{_sub('w')} = U(1 &#8722; 2a), p&#8734;</text>
+        <text x="90" y="272" fill="{TEXT_DIM}" font-size="13">A{_sub('up')}</text>
+        <text x="790" y="300" fill="{TEXT_DIM}" font-size="13">A{_sub('w')}</text>
+        <text x="361" y="264" fill="{WARNING}" font-size="13">p+</text>
+        <text x="431" y="264" fill="{WARNING}" font-size="13">p&#8722;</text>
+        <text x="252" y="336" fill="{TEXT_DIM}" font-size="13">Same mass flow at all three stations; lower speed needs larger area.</text>
 
-        <line x1="60" y1="120" x2="410" y2="120" stroke="{BORDER_STRONG}" stroke-width="3"/>
-        <line x1="60" y1="330" x2="410" y2="330" stroke="{BORDER_STRONG}" stroke-width="3"/>
-        <line x1="60" y1="225" x2="410" y2="225" stroke="{TEXT_DIM}" stroke-width="1.4" stroke-dasharray="6,4"/>
-        <text x="316" y="218" fill="{TEXT_DIM}" font-size="11.5">imaginary plane, area A</text>
+        <line x1="410" y1="365" x2="410" y2="499" stroke="{TEXT_FAINT}" stroke-width="1" stroke-dasharray="4,4"/>
+        <text x="24" y="354" fill="{TEXT}" font-size="14" font-weight="700">Static pressure along the streamtube</text>
+        <line x1="90" y1="422" x2="802" y2="422" stroke="{TEXT_DIM}" stroke-width="1" stroke-dasharray="5,4"/>
+        <text x="36" y="427" fill="{TEXT_DIM}" font-size="13">p&#8734;</text>
+        <path d="M 90 422 C 215 422 300 376 410 376" fill="none" stroke="{SUCCESS}" stroke-width="2.5"/>
+        <line x1="410" y1="377" x2="410" y2="478" stroke="{WARNING}" stroke-width="2.5"/>
+        <path d="M 404 472 L 410 482 L 416 472 Z" fill="{WARNING}"/>
+        <path d="M 410 482 C 520 482 620 422 790 422" fill="none" stroke="{VORTICITY}" stroke-width="2.5"/>
+        <text x="321" y="373" fill="{SUCCESS}" font-size="13">p+</text>
+        <text x="430" y="495" fill="{VORTICITY}" font-size="13">p&#8722;</text>
+        <text x="425" y="402" fill="{WARNING}" font-size="13">&#916;p: energy removed here</text>
+        <path d="M 90 508 V 516 H 394 V 508" fill="none" stroke="{SUCCESS}" stroke-width="1.5"/>
+        <path d="M 426 508 V 516 H 790 V 508" fill="none" stroke="{VORTICITY}" stroke-width="1.5"/>
+        <text x="133" y="540" fill="{SUCCESS}" font-size="13">Bernoulli: upstream to p+</text>
+        <text x="477" y="540" fill="{VORTICITY}" font-size="13">Bernoulli: p&#8722; to far wake</text>
+    </svg>
+    """
 
-        <line x1="80" y1="140" x2="200" y2="140" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
-        <line x1="80" y1="180" x2="168" y2="180" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
-        <line x1="80" y1="225" x2="140" y2="225" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
-        <line x1="80" y1="270" x2="112" y2="270" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
-        <text x="212" y="145" fill="{ACCENT}" font-size="12">u(y): faster above</text>
 
-        <circle cx="250" cy="196" r="7" fill="{rgba(SUCCESS,0.35)}" stroke="{SUCCESS}" stroke-width="1.6"/>
-        <circle cx="292" cy="256" r="7" fill="{rgba(PRESSURE,0.35)}" stroke="{PRESSURE}" stroke-width="1.6"/>
-        <path d="M 250 196 Q 264 226 292 252" fill="none" stroke="{SUCCESS}" stroke-width="2" marker-end="url(#arrow-green)"/>
-        <path d="M 292 256 Q 274 228 252 202" fill="none" stroke="{PRESSURE}" stroke-width="2" marker-end="url(#arrow-red)"/>
-        <text x="306" y="196" fill="{SUCCESS}" font-size="11.5">a fast molecule drops down</text>
-        <text x="306" y="212" fill="{SUCCESS}" font-size="11.5">and speeds the slow layer up</text>
-        <text x="306" y="276" fill="{PRESSURE}" font-size="11.5">a slow one rises</text>
-        <text x="306" y="292" fill="{PRESSURE}" font-size="11.5">and drags the fast layer back</text>
+def diagram_newtonian_origin() -> str:
+    """Dilute-gas momentum exchange; longer explanation lives in the lesson."""
+    return f"""
+    <svg viewBox="0 0 880 420" width="100%" height="420" xmlns="http://www.w3.org/2000/svg"
+         style="background-color: {SURFACE}; border-radius: 8px; border: 1px solid {BORDER}; font-family: Inter, sans-serif;">
+        <title id="newtonian-title">Molecular exchange transfers momentum between gas layers</title>
+        <desc id="newtonian-desc">A positive velocity gradient: faster molecules move down and slower molecules move up across an imaginary plane. A bracket marks a representative normal flight distance of order the mean free path. Two short cards state the near-equilibrium assumptions.</desc>
+        {_arrow_defs()}
+        <text x="24" y="30" fill="{TEXT}" font-size="18" font-weight="bold">How molecular motion transfers shear momentum</text>
+        <text x="24" y="54" fill="{TEXT_DIM}" font-size="13">Dilute gas near local equilibrium &#183; schematic molecular paths, not a trajectory simulation</text>
 
-        <text x="34" y="366" fill="{TEXT}" font-size="12.5">Each crossing carries momentum m&#183;&#916;u, and &#916;u across one mean free path is (du/dy)&#8467;.</text>
-        <text x="34" y="386" fill="{TEXT}" font-size="12.5">The crossing rate is set by thermal speed, which the flow does not change, so the flux is</text>
-        <text x="34" y="406" fill="{SUCCESS}" font-size="14" font-family="'JetBrains Mono', monospace">&#964; = &#956; du/dy &#8212; strictly proportional, with &#956; a property of the fluid alone.</text>
+        <rect x="16" y="74" width="494" height="326" rx="8" fill="{SURFACE_RAISED}"/>
+        <text x="34" y="100" fill="{ACCENT}" font-size="14" font-weight="700">Mean flow: faster above, slower below</text>
 
-        <rect x="472" y="68" width="392" height="150" rx="8" fill="{rgba(SUCCESS,0.10)}" stroke="{SUCCESS}" stroke-width="1.6"/>
-        <text x="490" y="94" fill="{SUCCESS}" font-size="13.5" font-weight="700">Assumption 1 &#183; nothing to orient</text>
-        <text x="490" y="118" fill="{TEXT}" font-size="12">The molecules are small and round on the scale of the flow.</text>
-        <text x="490" y="138" fill="{TEXT}" font-size="12">Shear cannot line them up, stretch them or pack them into</text>
-        <text x="490" y="158" fill="{TEXT}" font-size="12">chains, so the fluid looks the same at every shear rate and</text>
-        <text x="490" y="178" fill="{TEXT}" font-size="12">&#956; cannot depend on {gamma}.</text>
-        <text x="490" y="204" fill="{TEXT_DIM}" font-size="11.5">Break it and you get shear thinning, thickening or a yield stress.</text>
+        <line x1="76" y1="240" x2="484" y2="240" stroke="{TEXT_DIM}" stroke-width="1.4" stroke-dasharray="6,4"/>
+        <text x="80" y="263" fill="{TEXT_DIM}" font-size="13">plane y = 0</text>
 
-        <rect x="472" y="232" width="392" height="150" rx="8" fill="{rgba(VORTICITY,0.10)}" stroke="{VORTICITY}" stroke-width="1.6"/>
-        <text x="490" y="258" fill="{VORTICITY}" font-size="13.5" font-weight="700">Assumption 2 &#183; no memory</text>
-        <text x="490" y="282" fill="{TEXT}" font-size="12">Any distortion relaxes in about 10&#8315;&#185;&#178; s, which is far shorter</text>
-        <text x="490" y="302" fill="{TEXT}" font-size="12">than the time any flow takes to deform a parcel. By the time</text>
-        <text x="490" y="322" fill="{TEXT}" font-size="12">the next layer slides past, the structure is already restored,</text>
-        <text x="490" y="342" fill="{TEXT}" font-size="12">so &#964; can depend on the strain rate *now* and on nothing else.</text>
-        <text x="490" y="368" fill="{TEXT_DIM}" font-size="11.5">Break it and you get elasticity, normal stresses and thixotropy.</text>
+        <line x1="80" y1="145" x2="218" y2="145" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="80" y1="190" x2="185" y2="190" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <line x1="80" y1="295" x2="126" y2="295" stroke="{ACCENT}" stroke-width="2.5" marker-end="url(#arrow-sky)"/>
+        <text x="230" y="149" fill="{ACCENT}" font-size="13">u(y)</text>
 
-        <text x="472" y="406" fill="{WARNING}" font-size="12.5">Both assumptions are about the microstructure, not about the equations. That is why a "non-Newtonian" fluid is a structural fact.</text>
+        <circle cx="270" cy="190" r="6" fill="{SUCCESS}"/>
+        <line x1="270" y1="196" x2="300" y2="280" stroke="{SUCCESS}" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+        <circle cx="326" cy="294" r="6" fill="{PRESSURE}"/>
+        <line x1="326" y1="288" x2="355" y2="204" stroke="{PRESSURE}" stroke-width="2.5" marker-end="url(#arrow-red)"/>
+        <text x="365" y="180" fill="{SUCCESS}" font-size="13">Fast goes down</text>
+        <text x="365" y="306" fill="{PRESSURE}" font-size="13">Slow goes up</text>
+        <path d="M 240 190 H 230 V 240 H 240" fill="none" stroke="{TEXT}" stroke-width="1.5"/>
+        <text x="190" y="220" fill="{TEXT}" font-size="13">~ &#8467;</text>
+
+        <path d="M 54 330 V 292 M 54 330 H 98" fill="none" stroke="{TEXT_DIM}" stroke-width="1.5"/>
+        <text x="43" y="286" fill="{TEXT_DIM}" font-size="13">y</text>
+        <text x="104" y="335" fill="{TEXT_DIM}" font-size="13">x</text>
+        <text x="34" y="366" fill="{TEXT}" font-size="13">Equal opposing mass transfers; unequal x-momentum.</text>
+        <text x="34" y="388" fill="{TEXT_DIM}" font-size="13">Net momentum transfer is towards the slower layer.</text>
+
+        <rect x="526" y="74" width="338" height="150" rx="8" fill="{rgba(SUCCESS,0.10)}" stroke="{SUCCESS}" stroke-width="1.6"/>
+        <text x="544" y="103" fill="{SUCCESS}" font-size="14" font-weight="700">1 &#183; Weak departure from equilibrium</text>
+        <text x="544" y="135" fill="{TEXT}" font-size="13">Velocity changes little over one flight</text>
+        <text x="544" y="157" fill="{TEXT}" font-size="13">compared with the thermal speed.</text>
+        <text x="544" y="193" fill="{TEXT_DIM}" font-size="13">The crossing rate is then nearly unchanged.</text>
+
+        <rect x="526" y="242" width="338" height="158" rx="8" fill="{rgba(VORTICITY,0.10)}" stroke="{VORTICITY}" stroke-width="1.6"/>
+        <text x="544" y="272" fill="{VORTICITY}" font-size="14" font-weight="700">2 &#183; Fast relaxation</text>
+        <text x="544" y="305" fill="{TEXT}" font-size="13">Molecular relaxation is much faster</text>
+        <text x="544" y="327" fill="{TEXT}" font-size="13">than the imposed flow changes.</text>
+        <text x="544" y="365" fill="{TEXT_DIM}" font-size="13">Stress follows the current strain rate.</text>
     </svg>
     """
 

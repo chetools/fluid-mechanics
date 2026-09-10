@@ -79,6 +79,25 @@ def test_svd_rotation_recovers_named_pipe_groups():
     names = " | ".join(m["name"] for m in rot["mixes"])
     assert "Euler" in names
     assert "Reynolds" in names
+    # Named exponent vectors require scaling as well as mixing: R is not a rotation.
+    assert not np.allclose(rot["R"].T @ rot["R"], np.eye(4))
+
+
+def test_full_rectangular_svd_keeps_null_directions_without_zero_singular_values():
+    res = compute_null_space_pi_groups(get_cheme_preset("Pipe Flow Pressure Drop"))
+    matrix = res["A"]
+    left, singular, right_t = np.linalg.svd(matrix, full_matrices=True)
+    assert singular.size == 3
+    assert np.all(singular > 0)
+    assert np.allclose(res["singular_values"], singular)
+    middle = np.zeros(matrix.shape)
+    middle[:, :3] = np.diag(singular)
+    assert np.allclose(left @ middle @ right_t, matrix)
+    kernel = right_t.T[:, res["rank"]:]
+    assert kernel.shape == (7, 4)
+    assert np.allclose(matrix @ kernel, 0, atol=1e-12)
+    # Basis signs/orientations may differ; the orthogonal projection must agree.
+    assert np.allclose(kernel @ kernel.T, res["svd_basis"] @ res["svd_basis"].T)
 
 
 def test_stirred_tank_named_groups():

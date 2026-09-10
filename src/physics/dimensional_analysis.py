@@ -171,6 +171,7 @@ def compute_null_space_pi_groups(var_keys: List[str]) -> Dict:
     A, symbols = build_dimensional_matrix(var_keys)
     n_vars = len(symbols)
     rank_A = int(np.linalg.matrix_rank(A))
+    singular_values = np.linalg.svd(A, compute_uv=False)
     nullity = n_vars - rank_A
 
     ns = null_space(A) if n_vars else np.zeros((0, 0))
@@ -210,6 +211,7 @@ def compute_null_space_pi_groups(var_keys: List[str]) -> Dict:
         "symbols": symbols,
         "n_vars": n_vars,
         "rank": rank_A,
+        "singular_values": singular_values,
         "nullity": nullity,
         "pi_groups": pi_groups,
         "svd_groups": svd_groups,
@@ -226,10 +228,12 @@ def rotate_svd_to_named(
     named_groups: List[Dict],
     symbols: List[str],
 ) -> Optional[Dict]:
-    """Least-squares rotation that takes the orthonormal SVD kernel onto named Π groups.
+    """Change of basis from the orthonormal SVD kernel to conventional Π groups.
 
     If N is n×p (SVD null-space) and C is n×p (integer named groups),
     R = argmin || N R − C ||  so each standard group is a mix of SVD columns.
+    R generally mixes and scales directions; it need not be orthogonal. The
+    historical function/result names retain 'rotation' for API compatibility.
     """
     if svd_basis is None or svd_basis.size == 0 or not named_groups:
         return None

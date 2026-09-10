@@ -19,6 +19,7 @@ import streamlit as st
 
 from src.physics import momentum as mom
 from src.svg_diagrams import (
+    diagram_actuator_disc,
     diagram_hydraulic_jump,
     diagram_momentum_control_volume,
     diagram_rocket_control_volume,
@@ -1299,16 +1300,20 @@ def _section_propulsion() -> None:
     )
 
     st.markdown("#### 10.7.2 The actuator disc · propellers, rotors and the Betz limit")
+    render_svg(diagram_actuator_disc())
     prose(
         r"""
         The same balance, applied to a stream tube through a disc that adds or removes axial
-        momentum, bounds every wind turbine ever built — without a single word about blades.
-        $$C_P=\frac{P}{\tfrac12\rho AU^{3}}=4a(1-a)^{2},
-        \qquad C_{P,\max}=\frac{16}{27}\ \text{at}\ a=\tfrac13$$
+        momentum, gives a limit for an ideal unshrouded turbine in an unbounded stream.
+        Assume steady incompressible flow, uniform axial speeds at each section,
+        no wake swirl, and negligible losses outside a thin energy-extracting disc.
+        Far upstream and far downstream the pressure returns to the same ambient
+        value. The area $A$ used to normalise power is the rotor's swept area.
+        A duct, confinement or a different reference area changes the problem.
         """
     )
     render_derivation(
-        "the Betz limit: why no rotor can take more than 16/27 of the wind",
+        "the Betz limit for an ideal unshrouded turbine",
         [
             (
                 "The stream tube, and where the slowing happens",
@@ -1318,13 +1323,20 @@ def _section_propulsion() -> None:
                 axial induction factor $a$; far downstream in the wake it is some
                 $U(1-b)$. Continuity forces the tube to expand as it slows, which is why
                 the wake is wider than the rotor.
+                $$\dot m=\rho A_{up}U=\rho A u_d=\rho A_w u_w,
+                \qquad u_d=U(1-a),\quad u_w=U(1-b)$$
+                The mass flow is set by speed **at the disc**, not the undisturbed wind
+                speed multiplied by the disc area.
                 """,
             ),
             (
                 "Momentum on the tube gives the thrust",
                 r"""
-                Atmospheric pressure acts all round the tube and cancels, so the only
-                axial force is the disc's:
+                Use the axial momentum balance from Section 10.1, with ambient pressure
+                on distant boundaries and negligible net axial momentum change outside
+                the captured streamtube in the ideal one-dimensional model. The air
+                loses momentum; $T>0$ denotes the equal downstream thrust on the rotor.
+                The disc exerts $-T$ on the air:
                 $$T=\dot m\left(U-U(1-b)\right)=\rho A U(1-a)\,Ub$$
                 """,
             ),
@@ -1332,18 +1344,39 @@ def _section_propulsion() -> None:
                 "Bernoulli, applied twice and never across the disc",
                 r"""
                 The disc extracts energy, so Bernoulli may not be carried through it. But
-                it is perfectly valid *upstream* of the disc and *downstream* of it
-                separately. Doing both and subtracting gives the pressure jump across the
-                disc, hence
-                $$T=\Delta p\,A=\tfrac12\rho A\left(U^{2}-U^{2}(1-b)^{2}\right)$$
-                Equating the two expressions for $T$ yields $b=2a$: **the wake loses
-                twice what the disc has lost**, or equivalently half of the total
-                slowdown has already happened before the air reaches the rotor.
+                it applies along each lossless streamline on either side, using the
+                assumptions of Chapters 1 and 5. Let $p_+$ and $p_-$ be pressures just
+                before and after the disc. The disc is thin and mass is conserved,
+                so its two faces share speed $u_d$:
+                $$p_\infty+\tfrac12\rho U^2=p_++\tfrac12\rho u_d^2$$
+                $$p_-+\tfrac12\rho u_d^2=p_\infty+\tfrac12\rho u_w^2$$
+                Rearrange each equation for its disc-face pressure, then subtract.
+                Ambient pressure and the two equal disc-speed terms cancel:
+                $$p_+-p_-=\tfrac12\rho(U^2-u_w^2),\qquad T=(p_+-p_-)A$$
+                Pressure drops abruptly across the energy-extracting disc; velocity
+                stays continuous there and changes gradually in the surrounding flow.
+                """,
+            ),
+            (
+                "Equate the two balances to locate the disc speed",
+                r"""
+                Momentum and the pressure jump describe the same thrust. Substitute
+                $\dot m=\rho A u_d$ and factor the difference of squares:
+                $$\rho A u_d(U-u_w)=\tfrac12\rho A(U-u_w)(U+u_w)$$
+                For a loaded turbine $U>u_w$, cancellation is allowed, giving
+                $$u_d=\frac{U+u_w}{2},\qquad 1-a=1-\frac b2,
+                \qquad b=2a$$
+                Half of the total slowdown occurs before the disc. At zero loading
+                the cancelled factor is zero; the undisturbed solution is recovered
+                by continuity as $a\to0$.
                 """,
             ),
             (
                 "Power is thrust times the speed at the disc",
                 r"""
+                A pressure difference does work at rate $\Delta p\,Q$, where
+                $Q=A u_d$. Thus the extracted power is $T u_d$, even though the disc
+                itself is fixed in space. Insert the disc and wake speeds just derived:
                 $$T=2\rho AU^{2}a(1-a),\qquad
                 P=TU(1-a)=2\rho AU^{3}a(1-a)^{2}$$
                 $$C_P=\frac{P}{\tfrac12\rho AU^{3}}=4a(1-a)^{2}$$
@@ -1352,25 +1385,45 @@ def _section_propulsion() -> None:
             (
                 "Maximise, and notice what the limit is really saying",
                 r"""
+                Compare rotors at fixed $\rho$, swept area $A$ and upstream speed $U$.
+                Maximising power then means maximising $C_P$. Differentiate on the
+                forward-wake branch $0\le a<1/2$:
                 $$\frac{dC_P}{da}=4\left(1-4a+3a^{2}\right)=4(1-a)(1-3a)=0
                 \;\Longrightarrow\;a=\tfrac13$$
                 $$C_{P,\max}=4\cdot\tfrac13\cdot\left(\tfrac23\right)^{2}=\frac{16}{27}\approx0.593$$
                 The physical content is a trade-off, not a mystery: extracting energy
-                requires slowing the air, but air that has been slowed too much no longer
-                arrives. At $a=\tfrac12$ the wake would be at rest and no new air could
-                get through, so $C_P$ returns to zero. Real turbines reach about
-                $0.45$–$0.50$ because blades also shed tip vortices, spin the wake, and
-                have finite drag — all effects this control volume never claimed to
-                include.
+                requires slowing the air, but slowing it also reduces the mass flow
+                through the fixed swept area. The other stationary point, $a=1$, is
+                outside this branch. The finite maximum is the balance between those
+                two effects. Real blades introduce drag, wake swirl and tip losses
+                that this ideal model omits.
+                """,
+            ),
+            (
+                "Check the far-wake endpoint with continuity",
+                r"""
+                As $a\to1/2$ from below, the disc still passes air at $U/2$, while
+                $u_w\to0$. A finite mass flow at a vanishing wake speed requires
+                an unbounded wake area:
+                $$\frac{A_w}{A}=\frac{u_d}{u_w}=\frac{1-a}{1-2a}\to\infty$$
+                The coefficient expression tends to $1/2$, not zero. This is a singular
+                limit of the ideal forward-wake construction, not a finite stagnant
+                wake through which air continues to pass. High-induction real wakes
+                require physics beyond this simple model even before the endpoint.
                 """,
             ),
         ],
         closing=(
             "Run the disc the other way — adding momentum instead of removing it — and the "
-            "same algebra describes a propeller or a helicopter rotor, with an ideal propulsive "
-            "efficiency of $1/(1+a)$. Both are the momentum theorem applied to a stream tube; "
-            "only the sign of the work changes."
+            "streamtube contracts as the air speeds up. The sign conventions and useful-power "
+            "definition must be restated for that propeller problem; the turbine's induction "
+            "factor and extracted-power interpretation above belong to the turbine case."
         ),
+    )
+    st.caption(
+        "Further reading: [MIT wind-energy lecture, actuator-disc balances]"
+        "(https://ocw.mit.edu/courses/2-60j-fundamentals-of-advanced-energy-conversion-spring-2020/"
+        "68aba3c8ecd226970e77565ae4ba3a03_MIT2_60s20_lec22.pdf)."
     )
     c1, c2, c3 = st.columns(3)
     diameter = persistent_input(
@@ -1388,6 +1441,12 @@ def _section_propulsion() -> None:
     disk_area = math.pi * diameter**2 / 4.0
     air = 1.225
     disk = mom.actuator_disk(air, disk_area, wind, induction)
+    if induction == 0.5:
+        st.warning(
+            f"Singular endpoint: the algebra gives C_P = {disk['power_coefficient']:.3f} "
+            "and zero far-wake speed, requiring infinite wake area. These values are a "
+            "limiting calculation, not a realizable finite wake."
+        )
     m1, m2, m3, m4 = st.columns(4)
     m1.metric("Power extracted", f"{disk['power'] / 1e6:.3g} MW")
     m2.metric("Power coefficient", f"{disk['power_coefficient']:.3f}")

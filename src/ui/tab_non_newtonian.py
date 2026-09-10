@@ -98,11 +98,21 @@ def render_tab_non_newtonian():
     st.markdown("---")
     st.markdown("### 7.1 What the Newtonian law is really claiming")
     render_svg(diagram_newtonian_origin())
+    render_prose_and_latex(
+        r"""
+        **Scope of the picture:** a dilute gas near local equilibrium, with a smooth
+        velocity field on scales much larger than its mean free path. The coloured
+        paths represent molecular crossings; the horizontal arrows are mean layer
+        velocities. This kinetic estimate explains momentum transport in a gas.
+        Liquids can also be Newtonian, but their dense molecular interactions need
+        a different microscopic treatment.
+        """
+    )
     render_derivation(
         r"$\tau = \mu\,\dot\gamma$ from momentum crossing a plane",
         [
             (
-                "Shear stress is a flux of momentum, not a kind of force",
+                "Track the momentum exchanged across an internal plane",
                 r"""
                 Put an imaginary plane inside the fluid, parallel to the flow. Molecules
                 cross it in both directions all the time; on average as many go up as come
@@ -110,9 +120,13 @@ def render_tab_non_newtonian():
                 the streamwise momentum of a **faster** layer, and the ones arriving from
                 below carry that of a slower one.
 
-                The plane therefore transports $x$-momentum in the $y$ direction even
-                though there is no net mass transfer. That transport *is* the shear stress:
-                $$\tau_{yx}=\frac{\text{(x-momentum crossing per unit time)}}{\text{area}}$$
+                Momentum moves from the faster layer towards the slower layer even
+                though the opposing mass transfers cancel. Stress is force per area;
+                here its magnitude equals the net molecular momentum transfer rate
+                per area. For $du/dy>0$, define the positive shear magnitude $\tau$:
+                $$\tau=\frac{\text{net x-momentum transferred downwards per unit time}}{\text{area}}$$
+                The signed momentum flux in the positive $y$ direction is $-\tau$.
+                Chapter 6 distinguishes this flux sign from the traction on a chosen face.
                 This is the same statement as Chapter 3's transport analogy, where $\nu$,
                 $\alpha$ and $D_{AB}$ all turned out to be diffusivities of *something*.
                 """,
@@ -126,47 +140,54 @@ def render_tab_non_newtonian():
                 $$\Delta u \approx \ell\,\frac{du}{dy}$$
                 so each crossing delivers about $m\,\ell\,(du/dy)$ of excess momentum. This
                 is a *linearisation*: it is the first term of a Taylor expansion, and it is
-                accurate only because $\ell$ is minute compared with any length over which
-                $u$ changes.
+                accurate when $\ell$ is small compared with the length scale over which
+                the velocity gradient varies.
                 """,
             ),
             (
                 "Count the crossings — and notice the flow does not control them",
                 r"""
                 The number of crossings per unit area per unit time is set by the number
-                density and the thermal speed, $\sim n\bar{c}$. Both are properties of
-                temperature and composition. A shear rate of $1\;\mathrm{s^{-1}}$ or
-                $1000\;\mathrm{s^{-1}}$ is a rounding error beside a thermal speed of
-                hundreds of metres per second, so **the traffic across the plane is the
-                same whatever the flow is doing**. Multiplying the two factors:
-                $$\tau \sim (n\bar{c}m\ell)\,\frac{du}{dy}\;\Longrightarrow\;
+                density $n_{mol}$ and mean thermal speed, of order $n_{mol}\bar c$.
+                At a fixed local thermodynamic state, the shear barely changes that
+                thermal traffic **provided the velocity change across one free path
+                is small compared with the thermal speed**:
+                $$|\dot\gamma|\ell\ll\bar c
+                \quad\Longleftrightarrow\quad
+                |\dot\gamma|t_{collision}\ll1,\qquad t_{collision}\sim\ell/\bar c$$
+                Both sides of the first comparison are speeds. Equivalently, a molecule
+                undergoes little shear deformation between collisions. Multiplying
+                the crossing rate by the excess momentum, with $\rho=n_{mol}m$, gives
+                $$\tau \sim (n_{mol}\bar{c}m\ell)\,\frac{du}{dy}\;\Longrightarrow\;
                 \tau=\mu\,\frac{du}{dy},\qquad \mu\sim \rho\,\bar{c}\,\ell$$
-                The proportionality is not an approximation for small strain rates. It is a
-                consequence of the strain rate being irrelevant to everything in the bracket.
+                This is a linear-response estimate: the coefficient is independent of
+                shear rate within these assumptions. The order-one factor requires
+                averaging molecular directions and speeds; it is not determined here.
                 """,
             ),
             (
                 "Two assumptions were smuggled in, and both are structural",
                 r"""
-                **(1) There is nothing for the flow to orient.** The argument used only
-                positions and speeds — never a shape, an orientation or a contact network.
-                Small round molecules give the flow nothing to line up, so the bracket
-                cannot depend on $\dot\gamma$.
+                **(1) Shear does not appreciably change the transport coefficient.**
+                The estimate used a near-equilibrium molecular distribution. It did not
+                include chain alignment, deformable droplets or a particle contact network.
+                Such changes can make the effective viscosity depend on the shear rate.
 
-                **(2) The structure has no memory.** Any distortion relaxes on a molecular
-                time of order $10^{-12}\,\mathrm{s}$, hopelessly faster than any flow can
-                deform a parcel, so $\tau$ can depend on the strain rate *at this instant*
-                and on nothing that happened earlier.
+                **(2) Relaxation is fast compared with the imposed motion.**
+                When molecular relaxation is short compared with both the shear time
+                and the time over which the imposed flow changes, stress is well
+                approximated by the instantaneous strain rate. This is a comparison
+                of timescales, not a universal relaxation time for all fluids or flows.
 
-                Every non-Newtonian behaviour in this chapter is one of these two failing.
                 Long chains, deformable drops or attractive particles give shear something
                 to orient (assumption 1); a slow relaxation time gives the fluid a memory
-                (assumption 2).
+                (assumption 2). Section 7.7 makes these comparisons explicit through
+                the Weissenberg and Deborah numbers.
                 """,
             ),
         ],
         symbols=[
-            (r"\tau_{yx}", "x-momentum transported per unit time across a unit area of a plane normal to y (Pa)"),
+            (r"\tau", "positive shear magnitude for the illustrated positive velocity gradient (Pa)"),
             (r"\dot\gamma = du/dy", "shear rate, the rate at which two layers slide past each other (1/s)"),
             (r"\ell", "mean free path — how far a molecule travels between collisions (m)"),
             (r"\bar{c}", "mean thermal speed of the molecules (m/s)"),
@@ -174,11 +195,16 @@ def render_tab_non_newtonian():
         ],
         closing=(
             "The kinetic estimate $\\mu\\sim\\rho\\bar{c}\\ell$ is quantitative enough to "
-            "predict something surprising and correct: for a gas it is independent of "
-            "pressure, because raising the density raises $\\rho$ and shortens $\\ell$ in "
-            "exact proportion. That is Maxwell's result, and it is the reason to trust "
-            "the picture rather than merely the formula."
+            "predict the dilute-gas trend at fixed temperature and composition: viscosity "
+            "is approximately pressure independent because raising density increases "
+            "$\\rho$ while shortening $\\ell$ inversely. This estimate requires a "
+            "continuum gas; it does not establish pressure independence for dense gases or liquids."
         ),
+    )
+    st.caption(
+        "Further reading: [MIT mean-free-path transport notes]"
+        "(https://ocw.mit.edu/courses/5-62-physical-chemistry-ii-spring-2008/"
+        "f90a4c878e68f44e42b85dbbd4d18751_31_562ln08.pdf)."
     )
     render_callout(
         title="The definition, stated so that it can fail",
@@ -297,8 +323,10 @@ def render_tab_non_newtonian():
         curves.append(flow_curve(model, gamma_sweep, **params))
     if curves:
         render_what_to_notice(
-            "The Newtonian line is the only straight one through the origin on the left and the only flat one on the right. "
-            f"Carreau–Yasuda leaves its zero-shear plateau near γ̇ ≈ 1/λ = {1.0/float(lam_curve):.3g} 1/s and then runs parallel to the power law."
+            "A constant apparent viscosity gives a flat line on the right. "
+            "At n = 1, the power-law and Carreau–Yasuda models also become Newtonian. "
+            f"The Carreau rate scale is 1/λ = {1.0/float(lam_curve):.3g} 1/s; "
+            "the selected index n controls whether viscosity falls, stays constant or rises."
         )
         render_plot(plot_flow_curves(curves), key="nn-flow-curves")
         carreau = next((c for c in curves if c["model"] == "Carreau-Yasuda"), None)
@@ -308,11 +336,13 @@ def render_tab_non_newtonian():
             col_m1, col_m2, col_m3 = st.columns(3)
             col_m1.metric("μ at γ̇ = 0.01 1/s", f"{mu_low:.3g} Pa·s")
             col_m2.metric("μ at γ̇ = 1000 1/s", f"{mu_high:.3g} Pa·s")
-            col_m3.metric("Ratio across the sweep", f"{mu_low / mu_high:.0f}×")
+            col_m3.metric("Low/high shear viscosity ratio", f"{mu_low / mu_high:.3g}×")
             st.caption(
-                "Both numbers are the *same fluid*. Quoting one viscosity for it is a "
-                "factor-of-a-thousand error, and which one you would have measured "
-                "depends only on the instrument's shear rate."
+                f"For these settings, the low/high shear viscosity ratio is {mu_low / mu_high:.3g} "
+                "across the displayed sweep. "
+                + ("At n = 1, this model has constant viscosity throughout the sweep."
+                   if float(n_curve) == 1.0 else
+                   "Report the measurement's shear rate alongside its viscosity.")
             )
     else:
         st.info("Select at least one model to draw the flow curve.")
@@ -384,16 +414,45 @@ def render_tab_non_newtonian():
             (
                 "Integrate inward from the wall, where the velocity is known",
                 r"""
-                The only boundary condition available is no-slip, $u(R)=0$. Substituting
-                $dr=(2/G)\,d\tau$ with $G=-dp/dz$ and integrating from $r$ to $R$:
+                Assume $G=-dp/dz>0$ and $\tau_w>\tau_y$, so a yielded annulus exists.
+                The wall supplies the integration constant through no-slip, $u(R)=0$.
+                For $r\ge r_{plug}$, integrate the shear rate only across this annulus:
+                $$u(r)=\int_r^R\left[\frac{Gs/2-\tau_y}{K}\right]^{1/n}\,ds$$
+                The momentum balance gives $d\tau=(G/2)\,ds$. Changing variable makes
+                the limits $\tau(r)$ and $\tau_w$, both at or above the yield stress:
+                $$u(r)=\frac{2}{G}K^{-1/n}\int_{\tau(r)}^{\tau_w}(\tau-\tau_y)^{1/n}\,d\tau$$
+                Integrating the power gives the velocity in the yielded annulus:
                 $$u(r)=\frac{2}{G}\cdot\frac{n}{n+1}\cdot K^{-1/n}
                 \left[(\tau_w-\tau_y)^{\frac{n+1}{n}}-(\tau(r)-\tau_y)^{\frac{n+1}{n}}\right]$$
-                which is flat wherever $\tau(r)\le\tau_y$ — the plug appears on its own,
-                without being imposed. With $\tau_y=0$ the bracket collapses to the
-                power-law profile $u_{\max}[1-(r/R)^{(n+1)/n}]$, whose exponent is the whole
-                shape story: $2$ for a Newtonian parabola, larger than $2$ for $n>1$ (a
-                sharper apex), tending to $1$ as $n\to 0$ — a flat plug with all the shear
-                crammed against the wall.
+                Do not continue this fractional-power expression into the unyielded core,
+                where $\tau(r)-\tau_y$ is negative.
+                """,
+            ),
+            (
+                "Match the moving rigid plug to the yielded annulus",
+                r"""
+                Below the yield stress the ideal material has zero shear rate, so
+                $du/dr=0$ inside the plug. Velocity continuity at $r=r_{plug}$ fixes
+                this constant to the annular velocity at its inner edge:
+                $$u(r)=u(r_{plug})=\frac{2n}{G(n+1)}K^{-1/n}
+                (\tau_w-\tau_y)^{(n+1)/n},\qquad 0\le r\le r_{plug}$$
+                Thus the plug can translate without shearing. If $\tau_w\le\tau_y$,
+                the entire section is unyielded and the no-slip wall fixes its speed
+                to zero instead.
+                """,
+            ),
+            (
+                "Read the zero-yield limit as a shape, not just an exponent",
+                r"""
+                Setting $\tau_y=0$ removes the finite-radius plug and gives the
+                power-law profile. Compare shapes at fixed $r/R$ and fixed $u/u_{max}$:
+                $$\frac{u}{u_{max}}=1-(r/R)^m,\qquad m=1+\frac1n$$
+                At $n=1$ this is a parabola. For $n>1$, $1<m<2$, giving a more pointed
+                core. For $0<n<1$, $m>2$: raising a number between zero and one to a
+                larger power makes it smaller, so the velocity stays closer to its
+                maximum through more of the pipe. As $n\to0^+$, $m\to\infty$ and shear
+                concentrates near the wall. This is a plug-like limiting shape;
+                a zero-yield power law has no finite unyielded core.
                 """,
             ),
             (
@@ -402,14 +461,33 @@ def render_tab_non_newtonian():
                 A power-law fluid has no single viscosity, so $\rho\bar{u}D/\mu$ is not even
                 well posed. Metzner and Reed ran the argument backwards: **define** a
                 Reynolds number by whatever expression makes the laminar friction factor
-                come out at exactly $f_D=64/\mathrm{Re}$, so the whole Newtonian design
-                apparatus — Moody chart, pump curves, Chapter 2's head loss — keeps working:
+                come out at exactly $f_D=64/\mathrm{Re}$, so the Newtonian
+                laminar head-loss relation in Chapter 2 can be written in the same form:
                 $$\mathrm{Re}_{MR}=\frac{\rho\,\bar u^{\,2-n}D^{n}}
                 {K\,8^{\,n-1}\left(\frac{3n+1}{4n}\right)^{n}}$$
                 Every awkward factor in the denominator is there to make that identity
                 exact. Note what it does **not** do: it does not predict the transition
                 point. The $2100$ used below is carried over from Newtonian pipes and is an
-                approximation for these fluids.
+                approximation for these fluids. This identity applies to the **power-law
+                case with zero yield stress**. For Herschel–Bulkley flow below, this
+                Reynolds number uses only the power-law part and is a diagnostic guide.
+                """,
+            ),
+            (
+                "Use the actual wall stress when the fluid has a yield stress",
+                r"""
+                Chapter 2 defines Fanning friction as wall shear divided by dynamic
+                pressure. The cylindrical force balance above supplies the actual wall
+                stress, so it includes the yield-stress contribution without a friction
+                correlation. For positive mean velocity,
+                $$f_F=\frac{\tau_w}{\rho\bar u^2/2},\qquad f_D=4f_F$$
+                To compare yielding with viscous deformation, choose the shear-rate
+                scale $\bar u/D$. The consistency $K$ then gives a stress scale
+                $K(\bar u/D)^n$, so their ratio is dimensionless:
+                $$\mathrm{Bn}=\frac{\tau_y}{K(\bar u/D)^n}$$
+                Here $D=2R$; other shear-rate conventions give different numerical
+                Bingham numbers. With yield stress, $f_D=64/\mathrm{Re}_{MR}$ using
+                the power-law-only Reynolds number is no longer an identity.
                 """,
             ),
         ],
@@ -462,7 +540,8 @@ def render_tab_non_newtonian():
             "yields anywhere and the flow rate is exactly zero. Raise |dp/dz| or lower τ_y."
         )
     elif not hb["laminar"]:
-        st.warning("Re_MR ≥ 2100: the laminar profile and f_D = 64/Re_MR no longer apply.")
+        st.warning("Re_MR ≥ 2100: the laminar profile may be outside its validity range. "
+                   "This power-law-only Reynolds number is an approximate transition guide for yield-stress fluids.")
     render_what_to_notice(
         "Both panels share the same vertical axis. The flat core on the left starts exactly where "
         "the stress line on the right crosses τ_y — the plug is read off the stress plot, not fitted."
